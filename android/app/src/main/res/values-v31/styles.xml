@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ (API 31) draws its own system splash screen from the
+         app's launcher icon before Flutter's first frame, on top of
+         whatever windowSplashScreenBackground says — previously unset, so
+         it fell back to plain white, which read as an empty void around
+         the small, size-capped icon (Android itself limits how large the
+         splash icon can be, tablet or not — that part can't be changed).
+         A brand-tinted background at least makes the rest of the screen
+         feel designed instead of blank. -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowSplashScreenBackground">#F1F8E4</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
+</resources>

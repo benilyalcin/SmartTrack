@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>SmartTrack</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>SmartTrack</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<!-- Google Sign-In (Drive backup on the DDD Files page) — client ID
+	     registered in Google Cloud Console for this app's bundle ID
+	     (com.example.smarttrackMine). The URL scheme is the client ID
+	     with the segments reversed, required so Safari/ASWebAuthenticationSession
+	     can hand control back to the app after sign-in. -->
+	<key>GIDClientID</key>
+	<string>485587399589-tugu30q9fte17h8ifi0tbctdih6uftbb.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.485587399589-tugu30q9fte17h8ifi0tbctdih6uftbb</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<!-- Required since iOS 13 for any CoreBluetooth use (flutter_blue_plus) —
+	     without this the app crashes the instant it touches Bluetooth. -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>SmartTrack, takografınıza Bluetooth üzerinden bağlanarak sürüş verilerinizi okur.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>SmartTrack, takografınıza Bluetooth üzerinden bağlanarak sürüş verilerinizi okur.</string>
+	<!-- Analiz sekmesindeki rota haritası için — sürüş sırasında konumunuzu
+	     kaydedip haritada gösterebilmek amacıyla kullanılır. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SmartTrack, Analiz sekmesinde sürüş rotanızı haritada gösterebilmek için konumunuza ihtiyaç duyar.</string>
+	<!-- Lets an already-active tachograph BLE connection keep running (and
+	     deliver CoreBluetooth callbacks) while the app is backgrounded or
+	     suspended, instead of the connection being torn down the moment the
+	     driver switches away — see background_keepalive_service.dart. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+	</array>
+	<!-- Makes the app's own Documents folder browsable from the Files app
+	     under "On My iPhone/iPad > Smarttrack Mine" — used so the
+	     .ddd Verisi Al" flow's saved copies (DddPublicExportService,
+	     Documents/SmartTrack/Kart and /Takograf) show up there
+	     automatically, no save picker needed. -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+</dict>
+</plist>
