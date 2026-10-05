@@ -1822,6 +1822,22 @@ class AppLocalizations {
       'EN': 'Insufficient weekly rest period',
       'DE': 'Unzureichende wöchentliche Ruhezeit',
     },
+    'violation.dailyDrivingExceededExtended': {
+      'TR': 'Uzatmalı günlük sürüş limiti aşıldı (10 saat)',
+      'EN': 'Extended daily driving limit exceeded (10 hours)',
+      'DE': 'Verlängerte Tageslenkzeit überschritten (10 Stunden)',
+    },
+    'violation.weeklyRestDelayed': {
+      'TR': 'Haftalık dinlenme geç başladı (6×24 saat aşıldı)',
+      'EN': 'Weekly rest started late (after six 24-hour periods)',
+      'DE': 'Wöchentliche Ruhezeit zu spät begonnen (nach 6×24 Stunden)',
+    },
+    'violation.weeklyRestNotRegular': {
+      'TR':
+          'Üst üste ikinci indirgenmiş haftalık dinlenme (45 saat gerekiyordu)',
+      'EN': 'Second reduced weekly rest in a row (45 hours were due)',
+      'DE': 'Zweite reduzierte Wochenruhezeit in Folge (45 Stunden fällig)',
+    },
     'violation.missingRecord': {
       'TR': 'Kayıtsız zaman aralığı',
       'EN': 'Unrecorded time range',
@@ -2072,6 +2088,628 @@ class AppLocalizations {
       'EN': 'Preview: Locked',
       'DE': 'Vorschau: Gesperrt',
     },
+    'analysis.connectionConnected': {
+      'TR': 'Takograf Bağlı',
+      'EN': 'Tachograph Connected',
+      'DE': 'Fahrtenschreiber verbunden',
+    },
+    'analysis.connectionDisconnected': {
+      'TR': 'Takograf Bağlı Değil',
+      'EN': 'Tachograph Not Connected',
+      'DE': 'Fahrtenschreiber nicht verbunden',
+    },
+    'analysis.prevWeek': {'TR': 'Önceki', 'EN': 'Previous', 'DE': 'Zurück'},
+    'analysis.nextWeek': {'TR': 'Sonraki', 'EN': 'Next', 'DE': 'Weiter'},
+    'analysis.penaltyTrendTitle': {
+      'TR': 'Haftalık Ceza Trendi',
+      'EN': 'Weekly Penalty Trend',
+      'DE': 'Wöchentlicher Bußgeldtrend',
+    },
+    'analysis.openSeverityListButton': {
+      'TR': 'Cezalar ve Ciddiyetleri',
+      'EN': 'Penalties & Severities',
+      'DE': 'Bußgelder & Schweregrade',
+    },
+    'analysis.regulationLinkLabel': {
+      'TR': 'EC 561/2006 Yönetmeliğine ulaşmak için tıklayınız',
+      'EN': 'Click to open EC Regulation 561/2006',
+      'DE': 'Klicken Sie hier, um die EG-Verordnung 561/2006 zu öffnen',
+    },
+    'analysis.notificationsCardTitle': {
+      'TR': 'Bildirimleri açın',
+      'EN': 'Turn on notifications',
+      'DE': 'Benachrichtigungen aktivieren',
+    },
+    'analysis.notificationsCardSubtitle': {
+      'TR': 'Mola süresi ve limit aşımlarında anında sesli uyarı alın',
+      'EN': 'Get instant audio alerts on break time and limit overruns',
+      'DE':
+          'Erhalten Sie sofort akustische Warnungen bei Pausen- und Grenzüberschreitungen',
+    },
+    'analysis.backupSectionTitle': {
+      'TR': 'Verileri Otomatik İndirme ve Yedekleme',
+      'EN': 'Automatic Data Download & Backup',
+      'DE': 'Automatischer Datendownload & Backup',
+    },
+    'analysis.backupSectionSubtitle': {
+      'TR': 'Mevzuata uygun dijital arşivleme',
+      'EN': 'Compliant digital archiving',
+      'DE': 'Konforme digitale Archivierung',
+    },
+    'analysis.autoDddTitle': {
+      'TR': 'Otomatik .ddd İndirme',
+      'EN': 'Automatic .ddd Download',
+      'DE': 'Automatischer .ddd-Download',
+    },
+    'analysis.autoDddSubtitle': {
+      'TR': 'Bağlantı kesilip yeniden bağlanınca kalan dosyaları eşitler.',
+      'EN': 'Syncs remaining files when reconnected after a disconnect.',
+      'DE':
+          'Synchronisiert verbleibende Dateien nach einer erneuten Verbindung.',
+    },
+    'analysis.googleDriveTitle': {
+      'TR': 'Google Drive Yedekleme',
+      'EN': 'Google Drive Backup',
+      'DE': 'Google Drive-Backup',
+    },
+    'analysis.googleDriveNotConnected': {
+      'TR': 'Bağlı değil',
+      'EN': 'Not connected',
+      'DE': 'Nicht verbunden',
+    },
+    'analysis.googleDriveConnected': {
+      'TR': 'Bağlandı',
+      'EN': 'Connected',
+      'DE': 'Verbunden',
+    },
+    'analysis.googleDriveDescription': {
+      'TR':
+          'İndirdiğiniz her .ddd dosyasının güvenli bulut yedeği saklanır, veri kaybı riski ortadan kalkar.',
+      'EN':
+          'A secure cloud backup of every downloaded .ddd file is kept, removing data-loss risk.',
+      'DE':
+          'Von jeder heruntergeladenen .ddd-Datei wird ein sicheres Cloud-Backup gespeichert, das Risiko von Datenverlust entfällt.',
+    },
+    'analysis.googleDriveConnectButton': {
+      'TR': 'Google Hesabını Bağla',
+      'EN': 'Connect Google Account',
+      'DE': 'Google-Konto verbinden',
+    },
+    'analysis.googleDriveDisconnectButton': {
+      'TR': 'Bağlantıyı Kes',
+      'EN': 'Disconnect',
+      'DE': 'Trennen',
+    },
+    'analysis.insightDetailsButton': {
+      'TR': 'Detaylar',
+      'EN': 'Details',
+      'DE': 'Details',
+    },
+    'analysis.insightFixPlanButton': {
+      'TR': 'Planı Düzelt',
+      'EN': 'Fix Plan',
+      'DE': 'Plan anpassen',
+    },
+    'analysis.insightRestIssueTitle': {
+      'TR': 'Dinlenme sürenizi genelde aksatıyorsunuz',
+      'EN': 'You often fall short on rest time',
+      'DE': 'Sie unterschreiten Ihre Ruhezeit häufig',
+    },
+    'analysis.insightDrivingIssueTitle': {
+      'TR': 'Sürüş süresi limitlerini zorluyorsunuz',
+      'EN': 'You are pushing driving-time limits',
+      'DE': 'Sie reizen die Lenkzeitgrenzen aus',
+    },
+    'analysis.insightCleanTitle': {
+      'TR': 'Bu hafta mevzuata tam uyum sağladınız',
+      'EN': 'Full compliance this week',
+      'DE': 'Diese Woche vollständige Konformität',
+    },
+    'analysis.insightAveragePrefix': {'TR': 'Ort', 'EN': 'Avg', 'DE': 'Ø'},
+    'analysis.riskGaugeTaglineLow': {
+      'TR': 'Kusursuz Mevzuat Uyumu',
+      'EN': 'Perfect Regulatory Compliance',
+      'DE': 'Perfekte Vorschrifteneinhaltung',
+    },
+    'analysis.riskGaugeTaglineMedium': {
+      'TR': 'Genel Olarak Uyumlu',
+      'EN': 'Generally Compliant',
+      'DE': 'Im Allgemeinen konform',
+    },
+    'analysis.riskGaugeTaglineHigh': {
+      'TR': 'Yüksek İhlal Riski',
+      'EN': 'High Violation Risk',
+      'DE': 'Hohes Verstoßrisiko',
+    },
+    'analysis.violationCountNone': {
+      'TR': 'İhlal Yok',
+      'EN': 'No Violations',
+      'DE': 'Keine Verstöße',
+    },
+    'analysis.violationCountSuffix': {
+      'TR': '{count} İhlal',
+      'EN': '{count} Violations',
+      'DE': '{count} Verstöße',
+    },
+    'analysis.googleDriveBackupToggleLabel': {
+      'TR': 'Otomatik yedekleme',
+      'EN': 'Automatic backup',
+      'DE': 'Automatische Sicherung',
+    },
+    'analysis.penaltyTierUpToOneHour': {
+      'TR': '1 saate kadar aşım',
+      'EN': 'Exceeded by up to 1 h',
+      'DE': 'Bis zu 1 Std. überschritten',
+    },
+    'analysis.penaltyTierOverOneHour': {
+      'TR': '1 saatten fazla aşım',
+      'EN': 'Exceeded by more than 1 h',
+      'DE': 'Mehr als 1 Std. überschritten',
+    },
+    'analysis.penaltyTierOneToThreeHours': {
+      'TR': '1–3 saat aşım',
+      'EN': 'Exceeded by 1–3 h',
+      'DE': '1–3 Std. überschritten',
+    },
+    'analysis.penaltyTierThreeHoursOrMore': {
+      'TR': '3 saat ve üzeri aşım',
+      'EN': 'Exceeded by 3 h or more',
+      'DE': '3 Std. oder mehr überschritten',
+    },
+    'analysis.penaltyTierUpToFourHours': {
+      'TR': '4 saate kadar aşım',
+      'EN': 'Exceeded by up to 4 h',
+      'DE': 'Bis zu 4 Std. überschritten',
+    },
+    'analysis.penaltyTierFourToFifteenHours': {
+      'TR': '4–15 saat aşım',
+      'EN': 'Exceeded by 4–15 h',
+      'DE': '4–15 Std. überschritten',
+    },
+    'analysis.penaltyTierOverFifteenHours': {
+      'TR': '15 saat ve üzeri aşım',
+      'EN': 'Exceeded by 15 h or more',
+      'DE': '15 Std. oder mehr überschritten',
+    },
+    'analysis.penaltyTierFlatRate': {
+      'TR': 'Sabit tutar',
+      'EN': 'Flat rate',
+      'DE': 'Pauschalbetrag',
+    },
+    'analysis.insightRestDescription': {
+      'TR':
+          'Bu hafta {count} kez yetersiz dinlenme tespit edildi; dinlenme ortalama {minutes} dakika kısa kaldı.',
+      'EN':
+          'Insufficient rest was detected {count} time(s) this week, averaging {minutes} minutes short.',
+      'DE':
+          'Diese Woche wurde {count} Mal unzureichende Ruhezeit festgestellt, im Schnitt {minutes} Minuten zu kurz.',
+    },
+    'analysis.insightDrivingDescription': {
+      'TR': 'Bu hafta sürüş süresi limitleri {count} kez aşıldı.',
+      'EN': 'Driving-time limits were exceeded {count} time(s) this week.',
+      'DE': 'Diese Woche wurden die Lenkzeitgrenzen {count} Mal überschritten.',
+    },
+    'analysis.insightCleanDescription': {
+      'TR':
+          'Bu hafta hiçbir sürüş veya dinlenme ihlali tespit edilmedi. Böyle devam edin!',
+      'EN':
+          'No driving or rest violations were detected this week. Keep it up!',
+      'DE':
+          'Diese Woche wurden keine Lenk- oder Ruhezeitverstöße festgestellt. Weiter so!',
+    },
+    'analysis.dayFineSummary': {
+      'TR': '{count} ihlal · {points} ceza puanı',
+      'EN': '{count} violation(s) · {points} penalty points',
+      'DE': '{count} Verstoß/Verstöße · {points} Strafpunkte',
+    },
+    'analysis.notesTitle': {
+      'TR': 'Açıklamalar',
+      'EN': 'Notes',
+      'DE': 'Hinweise',
+    },
+    'analysis.noteEarlyPaymentTitle': {
+      'TR': '%25 erken ödeme indirimi',
+      'EN': '25% early-payment discount',
+      'DE': '25 % Rabatt bei früher Zahlung',
+    },
+    'analysis.noteOperatorDoubleTitle': {
+      'TR': 'İşletene 2 katı',
+      'EN': 'Double for the operator',
+      'DE': 'Doppelt für den Halter',
+    },
+    'analysis.noteOperatorDouble': {
+      'TR':
+          'Sürücü aracın işleteni değilse işletene ayrıca sürücü cezasının 2 katı kesilir. Sürücü aynı zamanda işletense 2 katı sürücüye uygulanır.',
+      'EN':
+          'If the driver is not the vehicle operator, the operator is also fined twice the driver amount. If the driver is also the operator, the double amount applies to the driver.',
+      'DE':
+          'Ist der Fahrer nicht der Halter, erhält der Halter zusätzlich das Doppelte des Fahrerbußgelds. Ist der Fahrer zugleich Halter, gilt der doppelte Betrag für den Fahrer.',
+    },
+    'analysis.noteOperatorDoubleCompany': {
+      'TR':
+          'Gösterilen tutarlar işleten tutarıdır, yani sürücü cezasının 2 katıdır. Sürücüye ayrıca ceza kesilir.',
+      'EN':
+          'The amounts shown are operator fines, i.e. twice the driver amount. The driver is fined separately as well.',
+      'DE':
+          'Die angezeigten Beträge sind Halterbußgelder, also das Doppelte des Fahrerbußgelds. Der Fahrer erhält zusätzlich ein eigenes Bußgeld.',
+    },
+    'analysis.noteOperatorValue': {
+      'TR': 'İşletene {amount}',
+      'EN': 'Operator: {amount}',
+      'DE': 'Halter: {amount}',
+    },
+    'analysis.noteDriverValue': {
+      'TR': 'Sürücüye {amount}',
+      'EN': 'Driver: {amount}',
+      'DE': 'Fahrer: {amount}',
+    },
+    'analysis.noteEarlyPaymentBody': {
+      'TR':
+          'Ceza, tebliğ tarihinden itibaren 15 gün içinde ödenirse %25 indirim uygulanır.',
+      'EN':
+          'If the fine is paid within 15 days of notification, a 25% discount applies.',
+      'DE':
+          'Wird das Bußgeld innerhalb von 15 Tagen nach Zustellung bezahlt, gibt es 25 % Rabatt.',
+    },
+    'analysis.noteEarlyPaymentValue': {
+      'TR': '{discounted}\n({full} yerine)',
+      'EN': '{discounted}\n(instead of {full})',
+      'DE': '{discounted}\n(statt {full})',
+    },
+    'analysis.notePointsTitle': {
+      'TR': 'Ceza puanı',
+      'EN': 'Penalty points',
+      'DE': 'Strafpunkte',
+    },
+    'analysis.notePointsBody': {
+      'TR': 'Her ihlal sürücü belgesine 20 ceza puanı işler.',
+      'EN': 'Each violation adds 20 penalty points to the licence.',
+      'DE': 'Jeder Verstoß bringt 20 Strafpunkte auf den Führerschein.',
+    },
+    'analysis.notePointsValue': {
+      'TR': '{points} puan',
+      'EN': '{points} points',
+      'DE': '{points} Punkte',
+    },
+    'analysis.noteBanTitle': {
+      'TR': 'Araç kullanmaktan men',
+      'EN': 'Driving ban',
+      'DE': 'Fahrverbot',
+    },
+    'analysis.noteBanBody': {
+      'TR': 'Her ihlalde sürücü araç kullanmaktan men edilir.',
+      'EN': 'With every violation the driver is barred from driving on.',
+      'DE': 'Bei jedem Verstoß wird die Weiterfahrt untersagt.',
+    },
+    'analysis.noteBanValue': {'TR': 'Uygulanır', 'EN': 'Applies', 'DE': 'Gilt'},
+    'analysis.notesColRule': {'TR': 'Kural', 'EN': 'Rule', 'DE': 'Regel'},
+    'analysis.notesColValue': {
+      'TR': 'Bu gün',
+      'EN': 'This day',
+      'DE': 'Dieser Tag',
+    },
+    'analysis.tableSeverity': {
+      'TR': 'Ciddiyet (AB)',
+      'EN': 'Severity (EU)',
+      'DE': 'Schwere (EU)',
+    },
+    'analysis.tableLegalBasis': {
+      'TR': 'Yasal dayanak',
+      'EN': 'Legal basis',
+      'DE': 'Rechtsgrundlage',
+    },
+    'analysis.tableTier': {'TR': 'Kademe', 'EN': 'Tier', 'DE': 'Stufe'},
+    'analysis.tableFine': {'TR': 'Ceza tutarı', 'EN': 'Fine', 'DE': 'Bußgeld'},
+    'analysis.tableDiscounted': {
+      'TR': '%25 indirimli',
+      'EN': 'With 25% discount',
+      'DE': 'Mit 25 % Rabatt',
+    },
+    'analysis.tablePoints': {
+      'TR': 'Ceza puanı',
+      'EN': 'Penalty points',
+      'DE': 'Strafpunkte',
+    },
+    'analysis.tableSanction': {
+      'TR': 'Ek yaptırım',
+      'EN': 'Further sanction',
+      'DE': 'Weitere Sanktion',
+    },
+    'analysis.riskBreakdownTitle': {
+      'TR': 'Puan Dökümü',
+      'EN': 'Score Breakdown',
+      'DE': 'Punkteaufschlüsselung',
+    },
+    'analysis.riskBreakdownStart': {
+      'TR': 'Başlangıç puanı',
+      'EN': 'Starting score',
+      'DE': 'Ausgangswert',
+    },
+    'analysis.riskBreakdownTotal': {
+      'TR': 'Toplam düşüş',
+      'EN': 'Total deducted',
+      'DE': 'Gesamtabzug',
+    },
+    'analysis.riskBreakdownScore': {
+      'TR': 'Uyum risk skoru',
+      'EN': 'Compliance risk score',
+      'DE': 'Compliance-Risikowert',
+    },
+    'analysis.riskBreakdownByType': {
+      'TR': 'İhlal türüne göre',
+      'EN': 'By violation type',
+      'DE': 'Nach Verstoßart',
+    },
+    'analysis.riskBreakdownByViolation': {
+      'TR': 'Tek tek ihlaller',
+      'EN': 'Violation by violation',
+      'DE': 'Einzelne Verstöße',
+    },
+    'analysis.riskBreakdownColType': {
+      'TR': 'İhlal türü',
+      'EN': 'Violation type',
+      'DE': 'Verstoßart',
+    },
+    'analysis.riskBreakdownColCount': {
+      'TR': 'Adet',
+      'EN': 'Count',
+      'DE': 'Anzahl',
+    },
+    'analysis.riskBreakdownColPoints': {
+      'TR': 'Düşüş',
+      'EN': 'Deducted',
+      'DE': 'Abzug',
+    },
+    'analysis.riskBreakdownColDate': {
+      'TR': 'Tarih',
+      'EN': 'Date',
+      'DE': 'Datum',
+    },
+    'analysis.riskBreakdownColViolation': {
+      'TR': 'İhlal',
+      'EN': 'Violation',
+      'DE': 'Verstoß',
+    },
+    'analysis.riskBreakdownCapped': {
+      'TR': '(üst sınır)',
+      'EN': '(capped)',
+      'DE': '(gedeckelt)',
+    },
+    'analysis.riskBreakdownEmpty': {
+      'TR': 'Son 28 günde ihlal yok, puan düşülmedi.',
+      'EN': 'No violations in the last 28 days, nothing was deducted.',
+      'DE': 'Keine Verstöße in den letzten 28 Tagen, nichts abgezogen.',
+    },
+    'analysis.riskBreakdownNote': {
+      'TR':
+          'Son 28 gündeki ihlaller sayılır. Her ihlal türünün bir temel puanı vardır; aşım ne kadar uzunsa düşüş o kadar artar (en fazla 1,75 katı). Aynı türden ihlallerin toplam düşüşü bir üst sınırı geçemez.',
+      'EN':
+          'Violations from the last 28 days count. Each violation type has a base deduction that grows with the size of the overage (up to 1.75×). The total for one type cannot exceed its cap.',
+      'DE':
+          'Gezählt werden Verstöße der letzten 28 Tage. Jede Verstoßart hat einen Grundabzug, der mit der Überschreitung wächst (bis 1,75-fach). Der Gesamtabzug einer Art ist gedeckelt.',
+    },
+    'analysis.sevIntro': {
+      'TR':
+          'Sürüş ve dinlenme ihlallerinin AB ciddiyet seviyesi ve 2026 Türkiye cezası.',
+      'EN':
+          'EU severity level and 2026 Turkish fine for driving and rest-time violations.',
+      'DE':
+          'EU-Schweregrad und türkisches Bußgeld 2026 für Lenk- und Ruhezeitverstöße.',
+    },
+    'analysis.sevGroupCrew': {
+      'TR': 'Mürettebat',
+      'EN': 'Crew',
+      'DE': 'Fahrpersonal',
+    },
+    'analysis.sevGroupDriving': {
+      'TR': 'Sürüş süreleri',
+      'EN': 'Driving times',
+      'DE': 'Lenkzeiten',
+    },
+    'analysis.sevGroupBreaks': {
+      'TR': 'Molalar',
+      'EN': 'Breaks',
+      'DE': 'Fahrtunterbrechungen',
+    },
+    'analysis.sevGroupRest': {
+      'TR': 'Dinlenme süreleri',
+      'EN': 'Rest periods',
+      'DE': 'Ruhezeiten',
+    },
+    'analysis.sevGroup12Day': {
+      'TR': '12 gün kuralı istisnası',
+      'EN': '12-day rule derogation',
+      'DE': '12-Tage-Ausnahme',
+    },
+    'analysis.sevGroupWork': {
+      'TR': 'İş organizasyonu',
+      'EN': 'Work organisation',
+      'DE': 'Arbeitsorganisation',
+    },
+    'analysis.sevRuleMinAge': {
+      'TR': 'Sürücü asgari yaşı',
+      'EN': 'Minimum driver age',
+      'DE': 'Mindestalter des Fahrers',
+    },
+    'analysis.sevRuleDaily9': {
+      'TR': 'Günlük sürüş (9 saat sınırı)',
+      'EN': 'Daily driving (9 h limit)',
+      'DE': 'Tageslenkzeit (9-Std.-Grenze)',
+    },
+    'analysis.sevRuleDaily10': {
+      'TR': 'Uzatmalı günlük sürüş (10 saat sınırı)',
+      'EN': 'Extended daily driving (10 h limit)',
+      'DE': 'Verlängerte Tageslenkzeit (10-Std.-Grenze)',
+    },
+    'analysis.sevRuleWeekly': {
+      'TR': 'Haftalık sürüş (56 saat sınırı)',
+      'EN': 'Weekly driving (56 h limit)',
+      'DE': 'Wochenlenkzeit (56-Std.-Grenze)',
+    },
+    'analysis.sevRuleBiWeekly': {
+      'TR': 'İki haftalık sürüş (90 saat sınırı)',
+      'EN': 'Two-week driving (90 h limit)',
+      'DE': 'Doppelwochenlenkzeit (90-Std.-Grenze)',
+    },
+    'analysis.sevRuleContinuous': {
+      'TR': 'Molasız sürüş (4 saat 30 dakika sınırı)',
+      'EN': 'Driving without a break (4 h 30 min limit)',
+      'DE': 'Lenkzeit ohne Pause (4 Std. 30 Min. Grenze)',
+    },
+    'analysis.sevRuleDailyRest11': {
+      'TR': 'Günlük dinlenme (11 saat gerekli)',
+      'EN': 'Daily rest (11 h required)',
+      'DE': 'Tägliche Ruhezeit (11 Std. nötig)',
+    },
+    'analysis.sevRuleDailyRest9': {
+      'TR': 'İndirgenmiş günlük dinlenme (9 saat gerekli)',
+      'EN': 'Reduced daily rest (9 h required)',
+      'DE': 'Reduzierte tägliche Ruhezeit (9 Std. nötig)',
+    },
+    'analysis.sevRuleSplitRest': {
+      'TR': 'Bölünmüş günlük dinlenme (3 + 9 saat gerekli)',
+      'EN': 'Split daily rest (3 + 9 h required)',
+      'DE': 'Aufgeteilte tägliche Ruhezeit (3 + 9 Std. nötig)',
+    },
+    'analysis.sevRuleMultiManning': {
+      'TR': 'Çok sürücülü araçta günlük dinlenme (9 saat gerekli)',
+      'EN': 'Daily rest, multi-manning (9 h required)',
+      'DE': 'Tägliche Ruhezeit, Mehrfahrerbetrieb (9 Std. nötig)',
+    },
+    'analysis.sevRuleReducedWeeklyRest': {
+      'TR': 'İndirgenmiş haftalık dinlenme (24 saat gerekli)',
+      'EN': 'Reduced weekly rest (24 h required)',
+      'DE': 'Reduzierte Wochenruhezeit (24 Std. nötig)',
+    },
+    'analysis.sevRuleWeeklyRest45': {
+      'TR': 'Haftalık dinlenme (45 saat gerekli)',
+      'EN': 'Weekly rest (45 h required)',
+      'DE': 'Wochenruhezeit (45 Std. nötig)',
+    },
+    'analysis.sevRuleWeeklyRestLate': {
+      'TR': 'Haftalık dinlenmede gecikme (6 × 24 saatten sonra)',
+      'EN': 'Late weekly rest (after six 24 h periods)',
+      'DE': 'Verspätete Wochenruhezeit (nach 6 × 24 Std.)',
+    },
+    'analysis.sevRule12Day': {
+      'TR': '12 gün kuralında gecikme (12 × 24 saatten sonra)',
+      'EN': 'Late rest under the 12-day rule (after twelve 24 h periods)',
+      'DE': 'Verspätung bei der 12-Tage-Regel (nach 12 × 24 Std.)',
+    },
+    'analysis.sevRule12DayRest': {
+      'TR': '12 günden sonraki haftalık dinlenme',
+      'EN': 'Weekly rest after 12 days',
+      'DE': 'Wochenruhezeit nach 12 Tagen',
+    },
+    'analysis.sevRuleNightDriving': {
+      'TR': 'Gece molasız sürüş (22:00–06:00, tek sürücü)',
+      'EN': 'Night driving without a break (22:00–06:00, single driver)',
+      'DE': 'Nachtlenkzeit ohne Pause (22:00–06:00, ein Fahrer)',
+    },
+    'analysis.sevRuleWageLink': {
+      'TR': 'Ücretin mesafeye veya yüke bağlanması',
+      'EN': 'Pay linked to distance or load',
+      'DE': 'Lohn nach Strecke oder Ladung',
+    },
+    'analysis.sevRuleWorkOrganisation': {
+      'TR': 'Sürücünün işinin düzenlenmemesi',
+      'EN': "Driver's work not organised",
+      'DE': 'Arbeit des Fahrers nicht organisiert',
+    },
+    'analysis.sevConditionNoBreak': {
+      'TR': 'molasız',
+      'EN': 'no break',
+      'DE': 'ohne Pause',
+    },
+    'analysis.sevNoTrPenalty': {
+      'TR': 'Karşılığı yok',
+      'EN': 'No equivalent',
+      'DE': 'Keine Entsprechung',
+    },
+    'analysis.sevOperatorDoubleOnly': {
+      'TR': 'Ayrı ceza yok',
+      'EN': 'No separate fine',
+      'DE': 'Kein eigenes Bußgeld',
+    },
+    'analysis.sevAnyCase': {
+      'TR': 'Her durumda',
+      'EN': 'In all cases',
+      'DE': 'In jedem Fall',
+    },
+    'analysis.sevColRange': {'TR': 'Süre', 'EN': 'Time', 'DE': 'Zeit'},
+    'analysis.sevColSeverity': {
+      'TR': 'Ciddiyet',
+      'EN': 'Severity',
+      'DE': 'Schwere',
+    },
+    'analysis.sevColFine': {'TR': 'Ceza', 'EN': 'Fine', 'DE': 'Bußgeld'},
+    'analysis.unitHourShort': {'TR': 'sa', 'EN': 'h', 'DE': 'Std.'},
+    'analysis.unitMinuteShort': {'TR': 'dk', 'EN': 'min', 'DE': 'Min.'},
+    'analysis.sevFootnoteFine': {
+      'TR':
+          'Tutarlar sürücü cezasıdır. 15 gün içinde ödenirse %25 indirim uygulanır; işletene 2 katı kesilir.',
+      'EN':
+          'Amounts are driver fines. Paid within 15 days they are 25% lower; the operator pays double.',
+      'DE':
+          'Beträge sind Fahrerbußgelder. Bei Zahlung binnen 15 Tagen 25 % weniger; der Halter zahlt das Doppelte.',
+    },
+    'analysis.sanctionDrivingBan': {
+      'TR': 'Araç kullanmaktan men',
+      'EN': 'Barred from driving on',
+      'DE': 'Weiterfahrt untersagt',
+    },
+    'analysis.euSeverityMI': {
+      'TR': 'Hafif ihlal (MI)',
+      'EN': 'Minor (MI)',
+      'DE': 'Geringfügig (MI)',
+    },
+    'analysis.euSeveritySI': {
+      'TR': 'Ciddi ihlal (SI)',
+      'EN': 'Serious (SI)',
+      'DE': 'Schwer (SI)',
+    },
+    'analysis.euSeverityVSI': {
+      'TR': 'Çok ciddi ihlal (VSI)',
+      'EN': 'Very serious (VSI)',
+      'DE': 'Sehr schwer (VSI)',
+    },
+    'analysis.euSeverityMSI': {
+      'TR': 'En ağır ihlal (MSI)',
+      'EN': 'Most serious (MSI)',
+      'DE': 'Schwerwiegendster Verstoß (MSI)',
+    },
+    'analysis.insightDetailsDialogTitle': {
+      'TR': 'Bu haftaki ilgili ihlaller',
+      'EN': "This week's related violations",
+      'DE': 'Verstöße dieser Woche',
+    },
+    'analysis.activeSuffix': {'TR': 'Aktif', 'EN': 'Active', 'DE': 'Aktiv'},
+    'analysis.backupDriverSuffix': {
+      'TR': 'Yedek',
+      'EN': 'Backup',
+      'DE': 'Ersatz',
+    },
+    'analysis.weekRangeLabel': {
+      'TR': '{range} haftası',
+      'EN': 'Week of {range}',
+      'DE': 'Woche vom {range}',
+    },
+    'analysis.insightRestChartCaption': {
+      'TR': 'Haftalık Dinlenme Eksikliği (Dakika)',
+      'EN': 'Weekly Rest Deficit (Minutes)',
+      'DE': 'Wöchentliches Ruhezeitdefizit (Minuten)',
+    },
+    'analysis.insightDrivingChartCaption': {
+      'TR': 'Günlük Sürüş İhlali Sayısı',
+      'EN': 'Daily Driving Violation Count',
+      'DE': 'Tägliche Anzahl an Lenkzeitverstößen',
+    },
+    'analysis.insightCleanChartCaption': {
+      'TR': 'Haftalık Uyum Durumu',
+      'EN': 'Weekly Compliance Status',
+      'DE': 'Wöchentlicher Konformitätsstatus',
+    },
+    'analysis.minutesUnit': {'TR': 'dk', 'EN': 'min', 'DE': 'Min'},
 
     'alerts.pageTitle': {
       'TR': 'Uyarılar ve Durumlar',

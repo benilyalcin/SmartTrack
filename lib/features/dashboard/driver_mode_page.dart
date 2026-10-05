@@ -84,8 +84,8 @@ class _DriverModePageState extends State<DriverModePage> {
       body: SafeArea(
         child: Column(
           children: [
-            const BluetoothWarningBanner(),
-            const CardSlotWarningBanner(),
+            const BluetoothWarningBanner(compact: true),
+            const CardSlotWarningBanner(compact: true),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -102,27 +102,40 @@ class _DriverModePageState extends State<DriverModePage> {
                     ),
                     const SizedBox(height: 12),
                     Expanded(
-                      child: isLandscape
-                          ? _buildLandscapeBody(
-                              context,
-                              scheme,
-                              appState,
-                              continuous,
-                              daily,
-                              weekly,
-                              timeUntilBreak,
-                              live,
-                            )
-                          : _buildPortraitBody(
-                              context,
-                              scheme,
-                              appState,
-                              continuous,
-                              daily,
-                              weekly,
-                              timeUntilBreak,
-                              live,
-                            ),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          // The landscape body is a fixed flex (Expanded-based)
+                          // layout with no scroll fallback, so it needs a
+                          // minimum amount of vertical room. When the warning
+                          // banners above shrink the available space below
+                          // that (e.g. right after a Bluetooth disconnect),
+                          // fall back to the scrollable portrait layout so the
+                          // page degrades gracefully instead of overflowing.
+                          final useFlexLayout =
+                              isLandscape && constraints.maxHeight >= 280;
+                          return useFlexLayout
+                              ? _buildLandscapeBody(
+                                  context,
+                                  scheme,
+                                  appState,
+                                  continuous,
+                                  daily,
+                                  weekly,
+                                  timeUntilBreak,
+                                  live,
+                                )
+                              : _buildPortraitBody(
+                                  context,
+                                  scheme,
+                                  appState,
+                                  continuous,
+                                  daily,
+                                  weekly,
+                                  timeUntilBreak,
+                                  live,
+                                );
+                        },
+                      ),
                     ),
                   ],
                 ),

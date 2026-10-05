@@ -5,7 +5,13 @@ import '../localization/localization.dart';
 import '../providers/app_state.dart';
 
 class BluetoothWarningBanner extends StatefulWidget {
-  const BluetoothWarningBanner({super.key});
+  /// When true, renders a slim single-line strip instead of the full
+  /// two-line banner. Used on screens with tight vertical space (e.g. the
+  /// landscape driver-mode cockpit), where the full-height banner can push
+  /// the rest of the layout into overflow.
+  final bool compact;
+
+  const BluetoothWarningBanner({super.key, this.compact = false});
 
   @override
   State<BluetoothWarningBanner> createState() => _BluetoothWarningBannerState();
@@ -43,6 +49,54 @@ class _BluetoothWarningBannerState extends State<BluetoothWarningBanner>
 
     final lang = appState.selectedLanguage;
     final scheme = Theme.of(context).colorScheme;
+
+    if (widget.compact) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+        child: FadeTransition(
+          opacity: _opacity,
+          child: GestureDetector(
+            onTap: () => context.push('/bluetooth-scan'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: scheme.errorContainer.withValues(alpha: 0.5),
+                border: Border.all(color: scheme.error.withValues(alpha: 0.3)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.bluetooth_disabled, color: scheme.error, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${AppLocalizations.getText(lang, 'bt.errorTitleShort')} — '
+                      '${AppLocalizations.getText(lang, 'bt.errorMsgShort')}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: scheme.error,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  InkWell(
+                    onTap: appState.dismissBluetoothWarning,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(Icons.close, size: 16, color: scheme.error),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),

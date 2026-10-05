@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/localization/localization.dart';
@@ -11,7 +10,6 @@ import '../../core/providers/app_state.dart';
 import '../../core/services/bluetooth_service.dart';
 import '../../core/services/ddd_file_repository.dart';
 
-import '../../core/services/google_drive_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/widgets/app_snackbar.dart';
@@ -39,67 +37,8 @@ class _DddFilesPageState extends State<DddFilesPage> {
   bool _selectionMode = false;
   final Set<String> _selectedIds = {};
   bool _newestFirst = true;
-  bool _isDriveBackupEnabled = false;
 
   bool _isSharing = false;
-  GoogleSignInAccount? _driveUser;
-  bool _isDriveConnecting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadDriveState();
-  }
-
-  Future<void> _loadDriveState() async {
-    final enabled = await GoogleDriveService.instance.isBackupEnabled();
-    final user = await GoogleDriveService.instance.signInSilently();
-    if (!mounted) return;
-    setState(() {
-      _isDriveBackupEnabled = enabled;
-      _driveUser = user;
-    });
-  }
-
-  Future<void> _connectDrive() async {
-    setState(() => _isDriveConnecting = true);
-    try {
-      final user = await GoogleDriveService.instance.signIn();
-      if (!mounted) return;
-      setState(() {
-        _driveUser = user;
-        if (user != null) _isDriveBackupEnabled = true;
-      });
-      if (user != null)
-        await GoogleDriveService.instance.setBackupEnabled(true);
-    } catch (e) {
-      debugPrint('Google Drive sign-in failed: $e');
-      if (mounted)
-        showAppSnackBar(
-          context,
-          _t('ddd.driveConnectError'),
-          type: AppSnackBarType.error,
-        );
-    } finally {
-      if (mounted) setState(() => _isDriveConnecting = false);
-    }
-  }
-
-  Future<void> _disconnectDrive() async {
-    await GoogleDriveService.instance.signOut();
-    await GoogleDriveService.instance.setBackupEnabled(false);
-    if (!mounted) return;
-    setState(() {
-      _driveUser = null;
-      _isDriveBackupEnabled = false;
-    });
-  }
-
-  Future<void> _toggleDriveBackup() async {
-    final next = !_isDriveBackupEnabled;
-    setState(() => _isDriveBackupEnabled = next);
-    await GoogleDriveService.instance.setBackupEnabled(next);
-  }
 
   String _t(String key) => AppLocalizations.getText(
     AppStateProvider.of(context).selectedLanguage,
@@ -526,8 +465,6 @@ class _DddFilesPageState extends State<DddFilesPage> {
                     )
                   else
                     ...files.map((f) => _buildFileCard(context, scheme, f)),
-                  const SizedBox(height: 32),
-                  _buildGoogleDriveBackupSection(scheme),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -763,147 +700,6 @@ class _DddFilesPageState extends State<DddFilesPage> {
     );
   }
 
-  Widget _buildGoogleDriveBackupSection(ColorScheme scheme) {
-    final connected = _driveUser != null;
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLowest,
-        border: Border.all(color: scheme.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: AppTheme.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Icon(Icons.cloud_upload, color: scheme.outline, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _t('settings.backupTitle'),
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: scheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            connected
-                                ? (_driveUser!.email.isNotEmpty
-                                      ? _driveUser!.email
-                                      : _t('settings.statusActive'))
-                                : _t('settings.statusInactive'),
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: connected
-                                  ? scheme.secondary
-                                  : scheme.outline,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (connected)
-                GestureDetector(
-                  onTap: _toggleDriveBackup,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 48,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: _isDriveBackupEnabled
-                          ? scheme.secondary
-                          : scheme.outlineVariant,
-                    ),
-                    child: Stack(
-                      children: [
-                        AnimatedPositioned(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeIn,
-                          left: _isDriveBackupEnabled ? 26 : 2,
-                          right: _isDriveBackupEnabled ? 2 : 26,
-                          top: 2,
-                          bottom: 2,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 2,
-                                  offset: const Offset(0, 1),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _t('settings.backupDesc'),
-            style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          if (connected)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: _disconnectDrive,
-                icon: Icon(Icons.link_off, size: 16, color: scheme.error),
-                label: Text(
-                  _t('ddd.driveDisconnect'),
-                  style: TextStyle(
-                    color: scheme.error,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            )
-          else
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _isDriveConnecting ? null : _connectDrive,
-                icon: _isDriveConnecting
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.g_mobiledata, size: 22),
-                label: Text(_t('ddd.driveConnect')),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 
   Widget? _buildBottomBar(
     BuildContext context,

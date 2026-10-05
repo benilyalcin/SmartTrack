@@ -4,7 +4,13 @@ import '../localization/localization.dart';
 import '../providers/app_state.dart';
 
 class CardSlotWarningBanner extends StatefulWidget {
-  const CardSlotWarningBanner({super.key});
+  /// When true, renders a slim single-line strip instead of the full
+  /// banner. Used on screens with tight vertical space (e.g. the
+  /// landscape driver-mode cockpit), where the full-height banner can push
+  /// the rest of the layout into overflow.
+  final bool compact;
+
+  const CardSlotWarningBanner({super.key, this.compact = false});
 
   @override
   State<CardSlotWarningBanner> createState() => _CardSlotWarningBannerState();
@@ -42,6 +48,54 @@ class _CardSlotWarningBannerState extends State<CardSlotWarningBanner> {
     final slotKey = slot1Empty && slot2Empty
         ? 'cardSlot.noCardBoth'
         : (slot1Empty ? 'cardSlot.noCardSlot1' : 'cardSlot.noCardSlot2');
+
+    if (widget.compact) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: scheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.credit_card_off,
+                color: scheme.onSecondaryContainer,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${AppLocalizations.getText(lang, slotKey)} '
+                  '${AppLocalizations.getText(lang, 'cardSlot.ambiguityWarning')}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: scheme.onSecondaryContainer,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => setState(() => _dismissed = true),
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: Icon(
+                    Icons.close,
+                    size: 16,
+                    color: scheme.onSecondaryContainer,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),

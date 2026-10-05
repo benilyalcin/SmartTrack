@@ -45,7 +45,8 @@ class DrivingRuleResult {
     return rem.isNegative ? Duration.zero : rem;
   }
 
-  bool get isExceeded => used >= limit;
+  // Driving exactly up to the limit is allowed; only going past it is not.
+  bool get isExceeded => used > limit;
 
   bool get isWarning => remaining <= const Duration(minutes: 30) && !isExceeded;
 }
@@ -54,11 +55,18 @@ class LimitExceededWindow {
   final DateTime start;
   final DateTime end;
   final Duration excess;
+
+  /// The limit that was exceeded (e.g. 9h, or 10h on an extended day).
+  final Duration limit;
+
   const LimitExceededWindow({
     required this.start,
     required this.end,
     required this.excess,
+    required this.limit,
   });
+
+  Duration get total => limit + excess;
 }
 
 class DrivingTimeCalculator {
@@ -67,8 +75,19 @@ class DrivingTimeCalculator {
     minutes: 30,
   );
   static const Duration dailyDrivingLimit = Duration(hours: 9);
+
+  /// Art. 6.1: the daily limit may be extended to 10h at most twice a week.
+  static const Duration extendedDailyDrivingLimit = Duration(hours: 10);
+  static const int maxDailyExtensionsPerWeek = 2;
+
   static const Duration weeklyDrivingLimit = Duration(hours: 56);
   static const Duration biWeeklyDrivingLimit = Duration(hours: 90);
+
+  /// Local Monday 00:00 of the week [t] falls in.
+  static DateTime localWeekStart(DateTime t) {
+    final l = t.toLocal();
+    return DateTime(l.year, l.month, l.day - (l.weekday - DateTime.monday));
+  }
 
   Map<String, DrivingRuleResult> calculate(
     List<TachographActivity> activities,
@@ -280,12 +299,13 @@ class DrivingTimeCalculator {
     DateTime? cursor;
 
     void closeOpenEpisode(DateTime at) {
-      if (crossing != null && currentContinuous >= continuousDrivingLimit) {
+      if (crossing != null && currentContinuous > continuousDrivingLimit) {
         windows.add(
           LimitExceededWindow(
             start: crossing!,
             end: at,
             excess: currentContinuous - continuousDrivingLimit,
+            limit: continuousDrivingLimit,
           ),
         );
       }
@@ -327,66 +347,88 @@ class DrivingTimeCalculator {
             currentTime.difference(trailingGap) >= const Duration(minutes: 30))
         ? trailingGap
         : currentTime;
-    if (crossing != null && currentContinuous >= continuousDrivingLimit) {
+    if (crossing != null && currentContinuous > continuousDrivingLimit) {
       windows.add(
         LimitExceededWindow(
           start: crossing!,
           end: effectiveEnd,
           excess: currentContinuous - continuousDrivingLimit,
+          limit: continuousDrivingLimit,
         ),
       );
     }
     return windows;
   }
 
+  /// Daily driving periods (between daily rests of 9h+) whose driving went
+  /// past the limit. A day over 9h uses one of the week's two 10h extensions
+  /// while any are left, and is then measured against 10h instead of 9h.
   List<LimitExceededWindow> dailyExceededWindows(
     List<TachographActivity> activities,
     DateTime currentTime,
   ) {
     final sorted = _activitiesUpTo(activities, currentTime);
-    Duration currentDaily = Duration.zero;
-    DateTime? crossing;
     final windows = <LimitExceededWindow>[];
+    final extensionsUsedByWeek = <DateTime, int>{};
+    var periodDriving = <TachographActivity>[];
     DateTime? cursor;
 
-    void closeOpenEpisode(DateTime at) {
-      if (crossing != null && currentDaily >= dailyDrivingLimit) {
-        windows.add(
-          LimitExceededWindow(
-            start: crossing!,
-            end: at,
-            excess: currentDaily - dailyDrivingLimit,
-          ),
-        );
+    void closePeriod(DateTime at) {
+      final segments = periodDriving;
+      periodDriving = [];
+      final total = segments.fold<Duration>(
+        Duration.zero,
+        (sum, a) => sum + a.duration,
+      );
+      if (total <= dailyDrivingLimit) return;
+
+      final week = localWeekStart(segments.first.startTime);
+      final used = extensionsUsedByWeek[week] ?? 0;
+      var limit = dailyDrivingLimit;
+      if (used < maxDailyExtensionsPerWeek) {
+        extensionsUsedByWeek[week] = used + 1;
+        limit = extendedDailyDrivingLimit;
       }
-      currentDaily = Duration.zero;
-      crossing = null;
+      if (total <= limit) return;
+
+      var accumulated = Duration.zero;
+      DateTime? crossing;
+      for (final segment in segments) {
+        crossing ??= _crossingInstant(
+          segment.startTime,
+          segment.duration,
+          accumulated,
+          limit,
+        );
+        accumulated += segment.duration;
+      }
+      windows.add(
+        LimitExceededWindow(
+          start: crossing!,
+          end: at,
+          excess: total - limit,
+          limit: limit,
+        ),
+      );
     }
 
     for (final act in sorted) {
       final gapSince = cursor;
-      if (gapSince != null && act.startTime.isAfter(gapSince))
-        closeOpenEpisode(gapSince);
+      if (gapSince != null && act.startTime.isAfter(gapSince)) {
+        closePeriod(gapSince);
+      }
       if (act.type == ActivityType.unknown) {
-        closeOpenEpisode(act.startTime);
+        closePeriod(act.startTime);
         cursor = act.endTime;
         continue;
       }
       if (act.type == ActivityType.rest &&
           act.duration >= const Duration(hours: 9)) {
-        closeOpenEpisode(act.startTime.add(const Duration(hours: 9)));
+        closePeriod(act.startTime);
         cursor = act.endTime;
         continue;
       }
-      if (act.type == ActivityType.driving) {
-        crossing ??= _crossingInstant(
-          act.startTime,
-          act.duration,
-          currentDaily,
-          dailyDrivingLimit,
-        );
-        currentDaily += act.duration;
-      }
+      if (act.type == ActivityType.driving) periodDriving.add(act);
       cursor = act.endTime;
     }
 
@@ -396,16 +438,77 @@ class DrivingTimeCalculator {
             currentTime.difference(trailingGap) >= const Duration(minutes: 30))
         ? trailingGap
         : currentTime;
-    if (crossing != null && currentDaily >= dailyDrivingLimit) {
-      windows.add(
-        LimitExceededWindow(
-          start: crossing!,
-          end: effectiveEnd,
-          excess: currentDaily - dailyDrivingLimit,
-        ),
-      );
-    }
+    closePeriod(effectiveEnd);
     return windows;
+  }
+
+  /// Calendar weeks (local Monday–Sunday) whose driving went past 56h, and
+  /// pairs of consecutive weeks whose driving went past 90h.
+  ({List<LimitExceededWindow> weekly, List<LimitExceededWindow> biWeekly})
+  weeklyExceededWindows(
+    List<TachographActivity> activities,
+    DateTime currentTime,
+  ) {
+    final driving = _activitiesUpTo(
+      activities,
+      currentTime,
+    ).where((a) => a.type == ActivityType.driving).toList();
+    final weekly = <LimitExceededWindow>[];
+    final biWeekly = <LimitExceededWindow>[];
+    if (driving.isEmpty) return (weekly: weekly, biWeekly: biWeekly);
+
+    final lastWeek = localWeekStart(currentTime);
+    for (
+      var week = localWeekStart(driving.first.startTime);
+      !week.isAfter(lastWeek);
+      week = DateTime(week.year, week.month, week.day + 7)
+    ) {
+      final weekEnd = DateTime(week.year, week.month, week.day + 7);
+      final previousWeek = DateTime(week.year, week.month, week.day - 7);
+      final w = _windowOverLimit(
+        driving,
+        week,
+        weekEnd,
+        weeklyDrivingLimit,
+        currentTime,
+      );
+      if (w != null) weekly.add(w);
+      final b = _windowOverLimit(
+        driving,
+        previousWeek,
+        weekEnd,
+        biWeeklyDrivingLimit,
+        currentTime,
+      );
+      if (b != null) biWeekly.add(b);
+    }
+    return (weekly: weekly, biWeekly: biWeekly);
+  }
+
+  static LimitExceededWindow? _windowOverLimit(
+    List<TachographActivity> driving,
+    DateTime from,
+    DateTime to,
+    Duration limit,
+    DateTime currentTime,
+  ) {
+    var total = Duration.zero;
+    DateTime? crossing;
+    for (final a in driving) {
+      final start = a.startTime.isBefore(from) ? from : a.startTime;
+      final end = a.endTime.isAfter(to) ? to : a.endTime;
+      if (!end.isAfter(start)) continue;
+      final d = end.difference(start);
+      crossing ??= _crossingInstant(start, d, total, limit);
+      total += d;
+    }
+    if (total <= limit) return null;
+    return LimitExceededWindow(
+      start: crossing!,
+      end: to.isBefore(currentTime) ? to : currentTime,
+      excess: total - limit,
+      limit: limit,
+    );
   }
 
   static DateTime _article7ResolutionInstant(

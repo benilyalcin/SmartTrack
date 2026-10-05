@@ -4,17 +4,37 @@ import 'violation_analyzer.dart';
 
 enum RiskLevel { low, medium, high }
 
+/// The points one violation took off the score, before the per-type cap.
+class RiskDeduction {
+  final Violation violation;
+  final double points;
+
+  const RiskDeduction({required this.violation, required this.points});
+}
+
 class RiskScoreResult {
   final int score;
   final RiskLevel level;
 
+  /// Points taken off per violation type, after the per-type cap.
   final Map<ViolationType, double> deductionByType;
+
+  final List<RiskDeduction> deductions;
 
   const RiskScoreResult({
     required this.score,
     required this.level,
     required this.deductionByType,
+    this.deductions = const [],
   });
+
+  /// Whether the per-type cap limited the deduction for [type].
+  bool isCapped(ViolationType type) {
+    final raw = deductions
+        .where((d) => d.violation.type == type)
+        .fold<double>(0, (sum, d) => sum + d.points);
+    return raw > (deductionByType[type] ?? raw);
+  }
 }
 
 class RiskScoreCalculator {
@@ -51,6 +71,7 @@ class RiskScoreCalculator {
 
   RiskScoreResult calculate(List<Violation> violationsInWindow) {
     final cumulativeByType = <ViolationType, double>{};
+    final deductions = <RiskDeduction>[];
 
     for (final v in violationsInWindow) {
       final referenceMinutes = _referenceMinutes[v.type];
@@ -61,6 +82,7 @@ class RiskScoreCalculator {
 
       final deduction = (_baseWeights[v.type] ?? 0) * severityMultiplier;
       cumulativeByType[v.type] = (cumulativeByType[v.type] ?? 0) + deduction;
+      deductions.add(RiskDeduction(violation: v, points: deduction));
     }
 
     final cappedByType = <ViolationType, double>{
@@ -78,6 +100,7 @@ class RiskScoreCalculator {
       score: score,
       level: _levelFor(score),
       deductionByType: cappedByType,
+      deductions: deductions,
     );
   }
 
