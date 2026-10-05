@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../config/dev_flags.dart';
 import '../models/role_permissions.dart';
 import '../providers/app_state.dart';
 import '../localization/localization.dart';
@@ -97,38 +98,34 @@ class MainLayout extends StatelessWidget {
         ],
       ),
       actions: [
-        IconButton(
-          icon: Icon(
-            Icons.terminal,
-            color: Theme.of(context).colorScheme.primary,
+        // The log has its own tab now; the raw-value and dongle pages stay up
+        // here, for developer builds only.
+        if (kDeveloperBuild) ...[
+          IconButton(
+            icon: Icon(
+              Icons.fact_check_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            tooltip: 'Ham Değerler',
+            onPressed: () => context.push('/debug-values'),
           ),
-          tooltip: 'Log',
-          onPressed: () => context.push('/kline-log'),
-        ),
-        IconButton(
-          icon: Icon(
-            Icons.fact_check_outlined,
-            color: Theme.of(context).colorScheme.primary,
+          IconButton(
+            icon: Icon(
+              Icons.developer_board,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            tooltip: 'Dongle — Ham Değerler',
+            onPressed: () => context.push('/dongle-values'),
           ),
-          tooltip: 'Ham Değerler',
-          onPressed: () => context.push('/debug-values'),
-        ),
-        IconButton(
-          icon: Icon(
-            Icons.developer_board,
-            color: Theme.of(context).colorScheme.primary,
+          IconButton(
+            icon: Icon(
+              Icons.history,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            tooltip: 'Dongle Log',
+            onPressed: () => context.push('/dongle-log'),
           ),
-          tooltip: 'Dongle — Ham Değerler',
-          onPressed: () => context.push('/dongle-values'),
-        ),
-        IconButton(
-          icon: Icon(
-            Icons.history,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          tooltip: 'Dongle Log',
-          onPressed: () => context.push('/dongle-log'),
-        ),
+        ],
         _NotificationBell(appState: appState, lang: lang),
         const SizedBox(width: 8),
       ],
@@ -143,6 +140,43 @@ class MainLayout extends StatelessWidget {
     return realName.isNotEmpty ? realName : '-';
   }
 
+  /// The tabs, in order. The Log tab exists only in a developer build.
+  static const List<_NavTab> _tabs = [
+    _NavTab(
+      '/dashboard',
+      'nav.dashboard',
+      Icons.dashboard_outlined,
+      Icons.dashboard,
+    ),
+    _NavTab(
+      '/logs',
+      'nav.alerts',
+      Icons.warning_amber_outlined,
+      Icons.warning_amber,
+    ),
+    _NavTab(
+      '/timeline',
+      'nav.timeline',
+      Icons.timeline_outlined,
+      Icons.timeline,
+    ),
+    _NavTab(
+      '/analysis',
+      'nav.analysis',
+      Icons.analytics_outlined,
+      Icons.analytics,
+    ),
+    _NavTab('/ddd-files', 'nav.dddFiles', Icons.folder_outlined, Icons.folder),
+    _NavTab(
+      '/settings',
+      'nav.settings',
+      Icons.settings_outlined,
+      Icons.settings,
+    ),
+    if (kDeveloperBuild)
+      _NavTab('/dev-log', null, Icons.terminal_outlined, Icons.terminal),
+  ];
+
   Widget _buildBottomNav(BuildContext context, String lang) {
     return NavigationBar(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -150,36 +184,12 @@ class MainLayout extends StatelessWidget {
       selectedIndex: _calculateSelectedIndex(context),
       onDestinationSelected: (int index) => _onItemTapped(index, context),
       destinations: [
-        NavigationDestination(
-          icon: const Icon(Icons.dashboard_outlined),
-          selectedIcon: const Icon(Icons.dashboard),
-          label: AppLocalizations.getText(lang, 'nav.dashboard'),
-        ),
-        NavigationDestination(
-          icon: const Icon(Icons.warning_amber_outlined),
-          selectedIcon: const Icon(Icons.warning_amber),
-          label: AppLocalizations.getText(lang, 'nav.alerts'),
-        ),
-        NavigationDestination(
-          icon: const Icon(Icons.timeline_outlined),
-          selectedIcon: const Icon(Icons.timeline),
-          label: AppLocalizations.getText(lang, 'nav.timeline'),
-        ),
-        NavigationDestination(
-          icon: const Icon(Icons.analytics_outlined),
-          selectedIcon: const Icon(Icons.analytics),
-          label: AppLocalizations.getText(lang, 'nav.analysis'),
-        ),
-        NavigationDestination(
-          icon: const Icon(Icons.folder_outlined),
-          selectedIcon: const Icon(Icons.folder),
-          label: AppLocalizations.getText(lang, 'nav.dddFiles'),
-        ),
-        NavigationDestination(
-          icon: const Icon(Icons.settings_outlined),
-          selectedIcon: const Icon(Icons.settings),
-          label: AppLocalizations.getText(lang, 'nav.settings'),
-        ),
+        for (final tab in _tabs)
+          NavigationDestination(
+            icon: Icon(tab.icon),
+            selectedIcon: Icon(tab.selectedIcon),
+            label: tab.label(lang),
+          ),
       ],
     );
   }
@@ -192,72 +202,40 @@ class MainLayout extends StatelessWidget {
       onDestinationSelected: (int index) => _onItemTapped(index, context),
       labelType: NavigationRailLabelType.all,
       destinations: [
-        NavigationRailDestination(
-          icon: const Icon(Icons.dashboard_outlined),
-          selectedIcon: const Icon(Icons.dashboard),
-          label: Text(AppLocalizations.getText(lang, 'nav.dashboard')),
-        ),
-        NavigationRailDestination(
-          icon: const Icon(Icons.warning_amber_outlined),
-          selectedIcon: const Icon(Icons.warning_amber),
-          label: Text(AppLocalizations.getText(lang, 'nav.alerts')),
-        ),
-        NavigationRailDestination(
-          icon: const Icon(Icons.timeline_outlined),
-          selectedIcon: const Icon(Icons.timeline),
-          label: Text(AppLocalizations.getText(lang, 'nav.timeline')),
-        ),
-        NavigationRailDestination(
-          icon: const Icon(Icons.analytics_outlined),
-          selectedIcon: const Icon(Icons.analytics),
-          label: Text(AppLocalizations.getText(lang, 'nav.analysis')),
-        ),
-        NavigationRailDestination(
-          icon: const Icon(Icons.folder_outlined),
-          selectedIcon: const Icon(Icons.folder),
-          label: Text(AppLocalizations.getText(lang, 'nav.dddFiles')),
-        ),
-        NavigationRailDestination(
-          icon: const Icon(Icons.settings_outlined),
-          selectedIcon: const Icon(Icons.settings),
-          label: Text(AppLocalizations.getText(lang, 'nav.settings')),
-        ),
+        for (final tab in _tabs)
+          NavigationRailDestination(
+            icon: Icon(tab.icon),
+            selectedIcon: Icon(tab.selectedIcon),
+            label: Text(tab.label(lang)),
+          ),
       ],
     );
   }
 
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.path;
-    if (location.startsWith('/dashboard')) return 0;
-    if (location.startsWith('/logs')) return 1;
-    if (location.startsWith('/timeline')) return 2;
-    if (location.startsWith('/analysis')) return 3;
-    if (location.startsWith('/ddd-files')) return 4;
-    if (location.startsWith('/settings')) return 5;
-    return 0;
+    final index = _tabs.indexWhere((tab) => location.startsWith(tab.path));
+    return index < 0 ? 0 : index;
   }
 
   void _onItemTapped(int index, BuildContext context) {
-    switch (index) {
-      case 0:
-        context.go('/dashboard');
-        break;
-      case 1:
-        context.go('/logs');
-        break;
-      case 2:
-        context.go('/timeline');
-        break;
-      case 3:
-        context.go('/analysis');
-        break;
-      case 4:
-        context.go('/ddd-files');
-        break;
-      case 5:
-        context.go('/settings');
-        break;
-    }
+    context.go(_tabs[index].path);
+  }
+}
+
+class _NavTab {
+  final String path;
+
+  /// Localization key; null for the developer-only Log tab.
+  final String? labelKey;
+  final IconData icon;
+  final IconData selectedIcon;
+
+  const _NavTab(this.path, this.labelKey, this.icon, this.selectedIcon);
+
+  String label(String lang) {
+    final key = labelKey;
+    return key == null ? 'Log' : AppLocalizations.getText(lang, key);
   }
 }
 

@@ -213,17 +213,63 @@ void main() {
         expect(RdbiResponseParser.parseDriverName(data), 'AHMET YILMAZ');
       },
     );
+
+    test('parseDriverName reads code page 9 as Turkish', () {
+      final data = _driverNamePayload('KARATA\xDE', '\xDDLKER');
+      data[0] = 9;
+      data[36] = 9;
+      expect(RdbiResponseParser.parseDriverName(data), 'İLKER KARATAŞ');
+    });
+
+    test('parseVehicleRegistrationNumber drops the code page byte', () {
+      final data = Uint8List(14)
+        ..[0] = 0x01
+        ..setRange(1, 9, 'BKARATAS'.codeUnits);
+      for (var i = 9; i < 14; i++) {
+        data[i] = 0x20;
+      }
+      expect(
+        RdbiResponseParser.parseVehicleRegistrationNumber(data),
+        'BKARATAS',
+      );
+    });
+
+    test('parseDriverIdentification reads state and number, and treats a '
+        'blank card number as no card', () {
+      final id = RdbiResponseParser.parseDriverIdentification(
+        Uint8List.fromList('TR 1234567890123456'.codeUnits),
+      );
+      expect(id?.issuingState, 'TR');
+      expect(id?.cardNumber, '1234567890123456');
+
+      // What the unit sends for a slot without a valid driver card.
+      final blank = Uint8List(19)..setRange(0, 3, 'A  '.codeUnits);
+      expect(RdbiResponseParser.parseDriverIdentification(blank), isNull);
+    });
   });
 
   group('RdbiResponseParser date parsing', () {
-    test('parseCompactDate decodes [month, day, yearOffsetFrom1985]', () {
-      final data = Uint8List.fromList([6, 15, 40]);
-      expect(RdbiResponseParser.parseCompactDate(data), DateTime(2025, 6, 15));
+    test('parseCompactDate reads the day in quarter days, as the unit sends '
+        'it', () {
+      // Card dates: day * 4 (ParamDriver1CardExpiryDate::serialise).
+      expect(
+        RdbiResponseParser.parseCompactDate(Uint8List.fromList([6, 60, 40])),
+        DateTime(2025, 6, 15),
+      );
+      // Next calibration date: (day - 1) * 4 + 2.
+      expect(
+        RdbiResponseParser.parseCompactDate(Uint8List.fromList([6, 58, 40])),
+        DateTime(2025, 6, 15),
+      );
+      expect(
+        RdbiResponseParser.parseCompactDate(Uint8List.fromList([12, 124, 41])),
+        DateTime(2026, 12, 31),
+      );
     });
 
     test('parseCompactDate rejects an out-of-range day/month', () {
       expect(
-        RdbiResponseParser.parseCompactDate(Uint8List.fromList([13, 15, 40])),
+        RdbiResponseParser.parseCompactDate(Uint8List.fromList([13, 60, 40])),
         isNull,
       );
       expect(
@@ -232,11 +278,67 @@ void main() {
       );
     });
 
-    test('parseDateTime decodes the 8-byte TimeDate group', () {
-      final data = Uint8List.fromList([0, 30, 14, 58, 6, 40, 0, 0]);
+    test('parseDateTime decodes TimeDate with month before day, as the unit '
+        'writes it (ParamTimeDate::serialise)', () {
+      // 5 Oct 2026 14:38:20 - seconds * 4, day * 4, offsets + 125.
+      final data = Uint8List.fromList([80, 38, 14, 10, 20, 41, 125, 128]);
       expect(
         RdbiResponseParser.parseDateTime(data),
-        DateTime(2025, 6, 15, 14, 30),
+        DateTime(2026, 10, 5, 14, 38, 20),
+      );
+    });
+
+    test('parseDateTime gives no date for the all-0xFF null value and does '
+        'not roll a bad field into another date', () {
+      expect(
+        RdbiResponseParser.parseDateTime(
+          Uint8List.fromList(List.filled(8, 0xFF)),
+        ),
+        isNull,
+      );
+      // Day and month swapped: month 20.
+      expect(
+        RdbiResponseParser.parseDateTime(
+          Uint8List.fromList([0, 38, 14, 20, 40, 41, 125, 125]),
+        ),
+        isNull,
+      );
+      // 31 June.
+      expect(
+        RdbiResponseParser.parseDateTime(
+          Uint8List.fromList([0, 0, 0, 6, 124, 41, 125, 125]),
+        ),
+        isNull,
+      );
+    });
+
+    test('parseBcdDate reads BCD YY MM DD from 2000; all zero is no date', () {
+      expect(
+        RdbiResponseParser.parseBcdDate(Uint8List.fromList([0x26, 0x10, 0x05])),
+        DateTime(2026, 10, 5),
+      );
+      expect(
+        RdbiResponseParser.parseBcdDate(Uint8List.fromList([0x00, 0x00, 0x00])),
+        isNull,
+      );
+      expect(
+        RdbiResponseParser.parseBcdDate(Uint8List.fromList([0x2A, 0x10, 0x05])),
+        isNull,
+      );
+    });
+
+    test('parseBcdDateTime reads BCD YYYY MM DD hh mm ss', () {
+      expect(
+        RdbiResponseParser.parseBcdDateTime(
+          Uint8List.fromList([0x20, 0x25, 0x03, 0x14, 0x09, 0x30, 0x15, 0x00]),
+        ),
+        DateTime(2025, 3, 14, 9, 30, 15),
+      );
+      expect(
+        RdbiResponseParser.parseBcdDateTime(
+          Uint8List.fromList(List.filled(8, 0)),
+        ),
+        isNull,
       );
     });
   });

@@ -44,6 +44,22 @@ class KLineLogExportService {
     );
   }
 
+  /// The log as a plain text file, which is what is wanted for a bug report:
+  /// searchable, and no font to fetch first.
+  static Future<void> shareAsText(List<String> lines) async {
+    final dir = await getTemporaryDirectory();
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    final path = '${dir.path}/smarttrack_log_$stamp.txt';
+    final header = 'SmartTrack log - ${_fmt(DateTime.now())}\n\n';
+    await File(path).writeAsString(header + lines.join('\n'), flush: true);
+
+    await Share.shareXFiles(
+      [XFile(path, mimeType: 'text/plain')],
+      subject: 'SmartTrack log',
+      fileNameOverrides: ['smarttrack_log_$stamp.txt'],
+    );
+  }
+
   static String _fmt(DateTime dt) {
     final d = dt.day.toString().padLeft(2, '0');
     final m = dt.month.toString().padLeft(2, '0');

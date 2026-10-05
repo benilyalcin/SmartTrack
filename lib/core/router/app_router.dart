@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../config/dev_flags.dart';
 import '../widgets/main_layout.dart';
 import '../../features/about/about_page.dart';
 import '../../features/alerts/alerts_page.dart';
@@ -57,6 +58,12 @@ final goRouter = GoRouter(
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: AlertsPage()),
         ),
+        if (kDeveloperBuild)
+          GoRoute(
+            path: '/dev-log',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: KLineLogPage(embedded: true)),
+          ),
         GoRoute(
           path: '/timeline',
           pageBuilder: (context, state) =>

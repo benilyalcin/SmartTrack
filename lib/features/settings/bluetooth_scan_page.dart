@@ -5,14 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart'
     show openAppSettings;
 
+import '../../core/bluetooth/services/vu_app_connection_service.dart';
 import '../../core/exceptions/ble_exception.dart';
 import '../../core/localization/localization.dart';
 import '../../core/providers/app_state.dart';
 import '../../core/services/bluetooth_service.dart';
 import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/bouncing_dots_loader.dart';
-
-const String _tachographOuiPrefix = '00:03:73';
 
 class BluetoothScanPage extends StatefulWidget {
   const BluetoothScanPage({super.key});
@@ -34,7 +33,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
   late final AnimationController _dotController;
 
   bool _looksLikeTachograph(AppBluetoothDevice d) =>
-      d.id.toUpperCase().startsWith(_tachographOuiPrefix);
+      AppBluetoothService.isVehicleUnit(id: d.id, name: d.name);
 
   bool _looksLikeDongle(AppBluetoothDevice d) =>
       d.id.toUpperCase() == AppBluetoothService.dongleDeviceId;
@@ -260,6 +259,50 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
           type: AppSnackBarType.error,
         );
       }
+    }
+  }
+
+  Future<void> _removeBond(AppBluetoothDevice device) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eşleşme kaldırılsın mı?'),
+        content: Text(
+          '${device.displayName} bu telefonun eşleşmiş cihazlarından '
+          'silinecek. Sonraki bağlantıda takograf ekranındaki kodu yeniden '
+          'onaylamanız gerekir.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Kaldır'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await AppBluetoothService.instance.removeBond(device.id);
+      if (!mounted) return;
+      setState(() => _devices.removeWhere((d) => d.id == device.id));
+      showAppSnackBar(
+        context,
+        '${device.displayName}: eşleşme kaldırıldı.',
+        type: AppSnackBarType.success,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        '${device.displayName}: eşleşme kaldırılamadı '
+        '(${e is UnsupportedError ? e.message : e}).',
+        type: AppSnackBarType.error,
+      );
     }
   }
 
@@ -633,22 +676,24 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                // The unit's name is "TACHOGRAPH-" plus a plate of up to 14
+                // characters, so it gets a line of its own and may wrap.
+                Text(
+                  d.displayName,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
-                    Flexible(
-                      child: Text(
-                        d.displayName,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: scheme.onSurface,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
                     if (featured) ...[
-                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
@@ -669,7 +714,6 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
                       ),
                     ],
                     if (d.isPaired) ...[
-                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
@@ -701,6 +745,10 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (isConnecting) ...[
+                  const SizedBox(height: 4),
+                  _buildLinkPhase(scheme),
+                ],
                 const SizedBox(height: 2),
                 Row(
                   children: [
@@ -725,6 +773,12 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
             ),
           ),
           const SizedBox(width: 8),
+          if (d.isPaired && !isConnecting && _connectingDeviceId == null)
+            IconButton(
+              tooltip: 'Eşleşmeyi kaldır',
+              icon: Icon(Icons.link_off, color: scheme.error),
+              onPressed: () => _removeBond(d),
+            ),
           if (isConnecting)
             BouncingDotsLoader(color: scheme.primary, dotSize: 7, travel: 16)
           else if (featured)
@@ -734,7 +788,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
                 backgroundColor: scheme.primary,
                 foregroundColor: scheme.onPrimary,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
+                  horizontal: 14,
                   vertical: 10,
                 ),
                 shape: RoundedRectangleBorder(
@@ -767,6 +821,34 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
     return Opacity(opacity: isWeak ? 0.6 : 1.0, child: card);
   }
 
+  Widget _buildLinkPhase(ColorScheme scheme) {
+    return ValueListenableBuilder<VuLinkPhase>(
+      valueListenable: AppBluetoothService.instance.linkPhase,
+      builder: (context, phase, _) {
+        final (text, highlight) = switch (phase) {
+          VuLinkPhase.disconnected ||
+          VuLinkPhase.connecting => ('Bağlanılıyor...', false),
+          VuLinkPhase.discovering => ('Servisler aranıyor...', false),
+          VuLinkPhase.bonding => (
+            'Takograf ekranındaki 6 haneli kod telefondakiyle aynıysa iki '
+                'tarafta da onaylayın (25 sn).',
+            true,
+          ),
+          VuLinkPhase.subscribing => ('Veri kanalı açılıyor...', false),
+          VuLinkPhase.ready => ('Takograf verileri okunuyor...', false),
+        };
+        return Text(
+          text,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: highlight ? FontWeight.w700 : FontWeight.w400,
+            color: highlight ? scheme.primary : scheme.onSurfaceVariant,
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildPermissionDenied(ColorScheme scheme) {
     return Center(
       child: Padding(
@@ -777,7 +859,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
             Icon(Icons.bluetooth_disabled, size: 40, color: scheme.error),
             const SizedBox(height: 16),
             Text(
-              'Bluetooth taraması için gerekli izinler verilmedi. Lütfen uygulama ayarlarından Bluetooth ve Konum izinlerini verin.',
+              'Bluetooth taraması için gerekli izin verilmedi. Lütfen uygulama ayarlarından "Yakındaki cihazlar" iznini verin.',
               textAlign: TextAlign.center,
               style: TextStyle(color: scheme.outline),
             ),
@@ -794,7 +876,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
 
   Widget _buildHelpFooter(ColorScheme scheme) {
     return Text(
-      'Cihazınızı listede göremiyor musunuz? Takografın Bluetooth modunun açık olduğundan ve eşleşme moduna geçtiğinden emin olun.',
+      'Takografınızı listede göremiyor musunuz? Bluetooth yalnızca kontak açıkken yayın yapar; takograf "TACHOGRAPH-" ile başlayan adıyla görünür.',
       textAlign: TextAlign.center,
       style: TextStyle(
         fontSize: 12,

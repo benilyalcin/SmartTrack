@@ -1,11 +1,20 @@
 import 'dart:async';
+import 'dart:io' show Platform;
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
-import 'package:flutter_classic_bluetooth/flutter_classic_bluetooth.dart'
-    as fcb;
+import 'package:flutter_blue_plus/flutter_blue_plus.dart'
+    show
+        BluetoothBondState,
+        BluetoothDevice,
+        FlutterBluePlus,
+        FlutterBluePlusException;
 import 'package:permission_handler/permission_handler.dart' as ph;
 import '../bluetooth/config/bluetooth_config.dart';
 import '../bluetooth/repositories/ble_connection_repository.dart';
 import '../bluetooth/repositories/ble_scanner_repository.dart';
+import '../bluetooth/services/vu_app_connection_service.dart';
+import '../bluetooth/vu/vu_app_link.dart';
 import '../exceptions/ble_connection_exception.dart';
 import '../models/ddd_file.dart';
 import '../providers/app_state.dart';
@@ -58,20 +67,38 @@ class AppBluetoothService {
   final BleScannerRepository _bleScanner = createScannerService(
     BtTransport.ble,
   );
-  final BleScannerRepository _classicScanner = createScannerService(
-    BtTransport.classic,
-  );
-  final fcb.FlutterClassicBluetooth _classicBluetooth =
-      fcb.FlutterClassicBluetooth();
 
   BleConnectionRepository? _activeConnection;
+  String? _activeDeviceId;
   StreamSubscription<BleConnectionState>? _connectionStateSubscription;
+  StreamSubscription? _connectionLogSubscription;
   Timer? _liveRefreshTimer;
   Timer? _speedRefreshTimer;
 
+  /// Where the vehicle unit link has got to, for the connect screen - most
+  /// usefully [VuLinkPhase.bonding], while the user has to confirm the code.
+  final ValueNotifier<VuLinkPhase> linkPhase = ValueNotifier(
+    VuLinkPhase.disconnected,
+  );
+
   bool _wrapKLineForDongle = false;
 
-  String get _lineTag => _wrapKLineForDongle ? 'K-LINE' : 'UART';
+  String get _lineTag => _wrapKLineForDongle
+      ? 'K-LINE'
+      : (_activeConnection is VuAppConnectionService ? 'BLE' : 'UART');
+
+  /// A request the unit has not answered in this long is lost. Generous next
+  /// to a K-line round trip: the answer has to cross the unit's application
+  /// thread and a BLE connection event or two, and nothing else can go out
+  /// while one request is open anyway.
+  static const Duration _vuMinResponseWait = Duration(seconds: 3);
+
+  static const int _vuMaxPendingRetries = 15;
+
+  /// The unit takes one app service message at a time in each direction, so
+  /// requests from the handshake, both refresh timers and the debug pages are
+  /// queued here rather than allowed to overlap.
+  Future<void> _vuRequestChain = Future.value();
 
   bool _refreshInFlight = false;
 
@@ -84,18 +111,33 @@ class AppBluetoothService {
       _scanResultsController.stream;
 
   StreamSubscription? _bleScanSubscription;
-  StreamSubscription? _classicScanSubscription;
 
   final Map<String, AppBluetoothDevice> _discoveredDevices = {};
 
+  /// Scanning and connecting need BLUETOOTH_SCAN and BLUETOOTH_CONNECT. The
+  /// manifest declares the scan `neverForLocation` and vehicle units are found
+  /// by name, so location is asked for - Android 11 and older still want it
+  /// for any BLE scan - but a refusal does not block the connection.
   Future<bool> ensurePermissions() async {
     final statuses = await [
       ph.Permission.bluetoothScan,
       ph.Permission.bluetoothConnect,
-      ph.Permission.location,
     ].request();
-    return statuses.values.every((status) => status.isGranted);
+    if (!statuses.values.every((status) => status.isGranted)) return false;
+
+    if (Platform.isAndroid) {
+      try {
+        await ph.Permission.locationWhenInUse.request();
+      } catch (e) {
+        debugPrint('Location permission request failed: $e');
+      }
+    }
+    return true;
   }
+
+  static bool isVehicleUnit({required String id, required String name}) =>
+      name.startsWith(VuAppUuids.namePrefix) ||
+      id.toUpperCase().startsWith(VuAppUuids.macPrefix);
 
   Future<bool> startUnifiedScan() async {
     if (!await ensurePermissions()) return false;
@@ -103,32 +145,41 @@ class AppBluetoothService {
     _discoveredDevices.clear();
     _scanResultsController.add([]);
 
-    try {
-      final paired = await _classicBluetooth.getPairedDevices();
-      for (final device in paired) {
-        _discoveredDevices['${device.address}-Classic'] = AppBluetoothDevice(
-          id: device.address,
-          name: device.name ?? device.alias ?? '',
-          rssi: device.rssi ?? -50,
-          type: AppBluetoothType.classic,
-          isPaired: true,
-        );
+    // Units bonded to this phone, which never need finding again - and which
+    // stop advertising to it as connectable while another phone holds them.
+    if (Platform.isAndroid) {
+      try {
+        final bonded = await FlutterBluePlus.bondedDevices;
+        for (final device in bonded) {
+          final id = device.remoteId.str;
+          final name = device.platformName;
+          if (!isVehicleUnit(id: id, name: name)) continue;
+          _discoveredDevices[id] = AppBluetoothDevice(
+            id: id,
+            name: name,
+            rssi: -50,
+            type: AppBluetoothType.le,
+            isPaired: true,
+          );
+        }
+        _emitResults();
+      } catch (e) {
+        debugPrint('bondedDevices failed: $e');
       }
-      _emitResults();
-    } catch (e) {
-      debugPrint('getPairedDevices failed: $e');
     }
 
     _bleScanSubscription?.cancel();
     _bleScanSubscription = _bleScanner.scanResults.listen((results) {
       for (final r in results) {
-        final key = '${r.deviceId}-LE';
-        _discoveredDevices[key] = AppBluetoothDevice(
+        if (!isVehicleUnit(id: r.deviceId, name: r.name)) continue;
+        final known = _discoveredDevices[r.deviceId];
+        _discoveredDevices[r.deviceId] = AppBluetoothDevice(
           id: r.deviceId,
-          name: r.name,
+          // The advertised name follows the plate, so it is the fresher one.
+          name: r.name.isNotEmpty ? r.name : (known?.name ?? ''),
           rssi: r.rssi,
           type: AppBluetoothType.le,
-          isPaired: _discoveredDevices[key]?.isPaired ?? false,
+          isPaired: known?.isPaired ?? false,
         );
       }
       _emitResults();
@@ -139,29 +190,6 @@ class AppBluetoothService {
       ) {
         debugPrint('BLE scan failed: $e');
       }),
-    );
-
-    _classicScanSubscription?.cancel();
-    _classicScanSubscription = _classicScanner.scanResults.listen((results) {
-      for (final r in results) {
-        final key = '${r.deviceId}-Classic';
-        final wasPaired = _discoveredDevices[key]?.isPaired ?? false;
-        _discoveredDevices[key] = AppBluetoothDevice(
-          id: r.deviceId,
-          name: r.name,
-          rssi: r.rssi,
-          type: AppBluetoothType.classic,
-          isPaired: wasPaired,
-        );
-      }
-      _emitResults();
-    }, onError: (Object e) => debugPrint('Classic scan stream error: $e'));
-    unawaited(
-      _classicScanner
-          .startScan(timeout: const Duration(seconds: 15))
-          .catchError((Object e) {
-            debugPrint('Classic scan failed: $e');
-          }),
     );
 
     return true;
@@ -178,11 +206,43 @@ class AppBluetoothService {
     }
   }
 
+  /// Forgets the bond with a unit on this phone (Android only). The unit keeps
+  /// its half until the next pairing overwrites it, so the next connect pairs
+  /// afresh with Numeric Comparison.
+  Future<void> removeBond(String deviceId) async {
+    if (!Platform.isAndroid) {
+      throw UnsupportedError(
+        'Eşleşme yalnızca Android\'de uygulamadan kaldırılabilir; iOS\'ta '
+        'Ayarlar > Bluetooth üzerinden kaldırın.',
+      );
+    }
+    if (_activeDeviceId == deviceId) await disconnect();
+
+    final device = BluetoothDevice.fromId(deviceId);
+    try {
+      await device.removeBond();
+    } on FlutterBluePlusException {
+      // FBP waits for the change only while connected; on an idle link it
+      // gives up at once while Android goes on removing the bond.
+      final state = await device.bondState
+          .firstWhere((s) => s == BluetoothBondState.none)
+          .timeout(
+            const Duration(seconds: 5),
+            onTimeout: () => BluetoothBondState.bonded,
+          );
+      if (state != BluetoothBondState.none) rethrow;
+    }
+    _discoveredDevices.remove(deviceId);
+    _emitResults();
+  }
+
   void stopScan() {
-    _bleScanner.stopScan();
+    unawaited(
+      _bleScanner.stopScan().catchError((Object e) {
+        debugPrint('BLE stopScan failed: $e');
+      }),
+    );
     _bleScanSubscription?.cancel();
-    _classicScanner.stopScan();
-    _classicScanSubscription?.cancel();
   }
 
   Future<AppBluetoothDevice?> findDongle({
@@ -214,6 +274,24 @@ class AppBluetoothService {
 
   static const Duration _connectTimeout = Duration(seconds: 12);
 
+  /// Connecting to a vehicle unit can include pairing, where the user has up
+  /// to 25 s to compare and confirm the code on both screens - and pairing
+  /// can start during discovery as well as in the bonding step. The link's
+  /// own steps time out sooner; this only catches one that never returns.
+  static const Duration _vuConnectTimeout = Duration(seconds: 150);
+
+  /// A vehicle unit is reached over its BLE app service; the Classic path is
+  /// left only for the K-line dongle until the download moves to ITS.
+  BleConnectionRepository _connectionFor(AppBluetoothDevice device) {
+    if (device.type == AppBluetoothType.le) {
+      return VuAppConnectionService(onPhase: (p) => linkPhase.value = p);
+    }
+    return createConnectionService(BtTransport.classic);
+  }
+
+  Duration _connectTimeoutFor(BleConnectionRepository conn) =>
+      conn is VuAppConnectionService ? _vuConnectTimeout : _connectTimeout;
+
   Future<void> connectToDevice(
     AppBluetoothDevice device,
     AppState appState,
@@ -222,26 +300,31 @@ class AppBluetoothService {
     if (!await ensurePermissions()) {
       throw const BleConnectionException(
         message:
-            'Bluetooth izni eksik. Lütfen uygulama ayarlarından Bluetooth ve Konum izinlerini kontrol edin.',
+            'Bluetooth izni eksik. Lütfen uygulama ayarlarından "Yakındaki cihazlar" iznini verin.',
       );
     }
 
-    final conn = createConnectionService(
-      device.type == AppBluetoothType.le
-          ? BtTransport.ble
-          : BtTransport.classic,
-    );
+    // One unit at a time: a previous link would otherwise keep its timers
+    // and its GATT connection alive behind the new one.
+    await disconnect();
+
+    final conn = _connectionFor(device);
     _wrapKLineForDongle = device.id.toUpperCase() == dongleDeviceId;
+    _connectionLogSubscription?.cancel();
+    _connectionLogSubscription = conn.logs.listen(
+      (entry) => debugPrint('LINK: ${entry.message}'),
+    );
     try {
       await conn
           .connect(device.id)
           .timeout(
-            _connectTimeout,
+            _connectTimeoutFor(conn),
             onTimeout: () => throw TimeoutException(
               'Cihaz yanıt vermiyor (zaman aşımı) — açık ve menzil içinde olduğundan emin olun',
             ),
           );
       _activeConnection = conn;
+      _activeDeviceId = device.id;
       onConnectionChange(true);
 
       unawaited(BackgroundKeepAliveService.start());
@@ -257,6 +340,15 @@ class AppBluetoothService {
           onConnectionChange(false);
           unawaited(BackgroundKeepAliveService.stop());
           _wrapKLineForDongle = false;
+          // A BLE link that drops is gone: the unit wants a fresh connect,
+          // discovery and subscription, so nothing here waits for it.
+          // The connect screen that passed onConnectionChange is usually
+          // closed by now, so the app state hears it from here.
+          if (conn is VuAppConnectionService &&
+              identical(_activeConnection, conn)) {
+            appState.setBluetoothConnected(false);
+            unawaited(Future(disconnect));
+          }
         } else if (state == BleConnectionState.connected && sawDisconnectBlip) {
           sawDisconnectBlip = false;
           onConnectionChange(true);
@@ -398,6 +490,10 @@ class AppBluetoothService {
     int wirePrefix = 0x0C,
     bool Function()? shouldAbort,
   }) {
+    if (conn is VuAppConnectionService) {
+      return _buildVuAppTransport(conn, shouldAbort: shouldAbort);
+    }
+
     final rxBuffer = <int>[];
     final rxSub = conn.notifyStream('SPP_DATA').listen((data) {
       rxBuffer.addAll(data);
@@ -501,6 +597,126 @@ class AppBluetoothService {
     return (sendAndReceive: sendAndReceive, rxSub: rxSub);
   }
 
+  /// Request and response over the vehicle unit's app service.
+  ///
+  /// The link hands over whole KWP2000 messages, so there is no byte stream
+  /// to poll and no frame length to guess: a request waits for the message
+  /// that answers it. What answers it is decided by service identifier,
+  /// because a StartCommunication or StopCommunication reaches both of the
+  /// unit's protocols and the second answer, when it is not dropped on the
+  /// unit's side, arrives after the first has already been taken.
+  ///
+  /// Requests are rewritten to FMT 0x80 with a length byte, which the unit's
+  /// router needs, and responses are rewritten the same way, which the
+  /// parsers in kline_protocol.dart expect. The wire prefix is a dongle
+  /// matter and never sent here.
+  ({SendAndReceive sendAndReceive, StreamSubscription rxSub})
+  _buildVuAppTransport(
+    VuAppConnectionService conn, {
+    bool Function()? shouldAbort,
+  }) {
+    final mailbox = VuMessageMailbox();
+    final rxSub = conn
+        .notifyStream(VuAppConnectionService.kwpChannel)
+        .listen(mailbox.put);
+
+    // A unit that has stopped answering - the front connector holds the
+    // interface, or the link is half dead - would otherwise cost the full
+    // wait on each of the sixty-odd reads of a handshake. The next cycle
+    // builds a new transport and tries again.
+    var unansweredInARow = 0;
+    const giveUpAfterUnanswered = 3;
+
+    Future<List<int>> exchange(List<int> cmd, int waitMs, String label) async {
+      if (shouldAbort?.call() ?? false) return const [];
+      if (unansweredInARow >= giveUpAfterUnanswered) return const [];
+
+      final request = KwpFrame.withLengthByte(cmd) ?? cmd;
+      final requestSid = KwpFrame.serviceId(request);
+      final resolvedLabel = _rdbiLabel(request, label) ?? label;
+      final wait = Duration(
+        milliseconds: math.max(waitMs, _vuMinResponseWait.inMilliseconds),
+      );
+
+      // Anything still queued answered an earlier request.
+      mailbox.clear();
+      _log('BLE TX [$resolvedLabel]: ${_hex(request)}');
+      try {
+        await conn.writeCharacteristic(
+          VuAppConnectionService.kwpChannel,
+          request,
+        );
+      } catch (e) {
+        _log('BLE [$resolvedLabel]: gönderilemedi ($e)');
+        return const [];
+      }
+
+      var pendingRetries = 0;
+      while (true) {
+        final raw = await mailbox.take(wait);
+        if (raw == null) {
+          unansweredInARow++;
+          _log(
+            'BLE [$resolvedLabel]: ${wait.inMilliseconds} ms içinde yanıt yok'
+            '${unansweredInARow >= giveUpAfterUnanswered ? ' — bu döngüdeki kalan istekler atlanıyor' : ''}',
+          );
+          return const [];
+        }
+        unansweredInARow = 0;
+
+        final response = KwpFrame.withLengthByte(raw);
+        if (response == null) {
+          _log(
+            'BLE [$resolvedLabel]: KWP2000 çerçevesi değil, atlandı: '
+            '${_hex(raw)}',
+          );
+          continue;
+        }
+        if (requestSid != null &&
+            !KwpFrame.isResponseTo(requestSid, response)) {
+          _log(
+            'BLE [$resolvedLabel]: başka isteğin yanıtı, atlandı: '
+            '${_hex(raw)}',
+          );
+          continue;
+        }
+        if (!KwpFrame.checksumValid(raw)) {
+          _log('BLE [$resolvedLabel]: checksum tutmuyor: ${_hex(raw)}');
+        }
+
+        if (KwpFrame.negativeCode(response) == KwpFrame.responsePending &&
+            pendingRetries < _vuMaxPendingRetries) {
+          pendingRetries++;
+          _log(
+            'BLE [$resolvedLabel]: RESPONSE PENDING (0x78) — bekleniyor '
+            '($pendingRetries/$_vuMaxPendingRetries)',
+          );
+          continue;
+        }
+
+        _log('BLE RX [$resolvedLabel]: ${_hex(raw)}');
+        return response;
+      }
+    }
+
+    Future<List<int>> sendAndReceive(
+      List<int> cmd, {
+      int waitMs = 800,
+      String label = '',
+      int? prefixOverride,
+    }) {
+      final result = _vuRequestChain.then((_) => exchange(cmd, waitMs, label));
+      _vuRequestChain = result.then((_) {}, onError: (_) {});
+      return result;
+    }
+
+    return (sendAndReceive: sendAndReceive, rxSub: rxSub);
+  }
+
+  static String _hex(List<int> bytes) => bytes
+      .map((e) => e.toRadixString(16).padLeft(2, '0').toUpperCase())
+      .join(' ');
+
   ({SendAndReceive sendAndReceive, StreamSubscription rxSub})?
   _downloadTestTransport;
 
@@ -564,6 +780,15 @@ class AppBluetoothService {
       );
       if (nrc == 0x33 || nrc == 0x35 || nrc == 0x36 || nrc == 0x37) {
         return 'Cihaz güvenlik erişimi istiyor (kalibrasyon/servis kartı gerekebilir)';
+      }
+      // conditionsNotCorrect has two causes on the unit and the answer does
+      // not say which: the value is not available now (no valid card in the
+      // slot, nothing recorded yet), or - in operational mode over Bluetooth
+      // - it is personal and the driver has not given ITS consent (Annex IC
+      // 3.4, Ek-13 ITS_20/24).
+      if (nrc == 0x22 && _activeConnection is VuAppConnectionService) {
+        return 'Takograf $label alanını şu an vermiyor: ilgili yuvada geçerli '
+            'kart yok ya da sürücü kişisel veri paylaşımına onay vermemiş.';
       }
       return 'Cihaz $label alanını reddetti (NRC 0x${nrc.toRadixString(16).padLeft(2, '0').toUpperCase()})';
     } else if (response.isEmpty) {
@@ -633,11 +858,17 @@ class AppBluetoothService {
         label: 'StartComm',
       );
 
-      await sendAndReceive(
-        KLineFrame.sessionStandard,
-        waitMs: 600,
-        label: 'DiagSession-Standard',
-      );
+      // Over the vehicle unit's app service StartDiagnosticSession is routed
+      // to the Annex 7 download protocol only, and the reads that follow go
+      // to the calibration protocol, which needs no session over Bluetooth.
+      // Opening a download session to read a speed would be noise at best.
+      if (conn is! VuAppConnectionService) {
+        await sendAndReceive(
+          KLineFrame.sessionStandard,
+          waitMs: 600,
+          label: 'DiagSession-Standard',
+        );
+      }
 
       final vinResp = await sendAndReceive(
         KLineFrame.readById(TachoRecordId.vin),
@@ -861,7 +1092,7 @@ class AppBluetoothService {
       failureReason ??= _logIfFailed(vrnResp, TachoRecordId.vrn, 'VRN (Plaka)');
       String vrn = '';
       if (vrnData != null) {
-        vrn = RdbiResponseParser.parseAscii(vrnData);
+        vrn = RdbiResponseParser.parseVehicleRegistrationNumber(vrnData);
       }
       trace('VRN', vrnData != null, vrn.isEmpty ? null : vrn);
 
@@ -917,12 +1148,11 @@ class AppBluetoothService {
         TachoRecordId.driver2Identification,
         'Driver2Identification',
       );
-      final driver2IssuingState = (d2IdData != null && d2IdData.length >= 19)
-          ? RdbiResponseParser.parseAscii(d2IdData.sublist(0, 3))
-          : '';
-      final driver2CardNumber = d2IdData != null
-          ? RdbiResponseParser.parseDriverCardNumber(d2IdData)
-          : '';
+      final d2Id = d2IdData != null
+          ? RdbiResponseParser.parseDriverIdentification(d2IdData)
+          : null;
+      final driver2IssuingState = d2Id?.issuingState ?? '';
+      final driver2CardNumber = d2Id?.cardNumber ?? '';
       trace(
         'Driver2Identification',
         d2IdData != null,
@@ -1301,14 +1531,11 @@ class AppBluetoothService {
         TachoRecordId.driver1Identification,
         'DriverCardId',
       );
-      final driverCardNumber = cardIdData != null
-          ? RdbiResponseParser.parseDriverCardNumber(cardIdData)
-          : '';
-
-      final driver1IssuingState =
-          (cardIdData != null && cardIdData.length >= 19)
-          ? RdbiResponseParser.parseAscii(cardIdData.sublist(0, 3))
-          : '';
+      final d1Id = cardIdData != null
+          ? RdbiResponseParser.parseDriverIdentification(cardIdData)
+          : null;
+      final driverCardNumber = d1Id?.cardNumber ?? '';
+      final driver1IssuingState = d1Id?.issuingState ?? '';
       trace(
         'Driver1Identification',
         cardIdData != null,
@@ -1474,7 +1701,7 @@ class AppBluetoothService {
         'ECU-MfgDate',
       );
       final ecuManufacturingDate = ecuMfgData != null
-          ? RdbiResponseParser.parseCompactDate(ecuMfgData)
+          ? RdbiResponseParser.parseBcdDateTime(ecuMfgData)
           : null;
       trace('ECU-ManufacturingDate', ecuMfgData != null, ecuManufacturingDate);
 
@@ -1489,7 +1716,7 @@ class AppBluetoothService {
       );
       _logIfFailed(calDateResp, TachoRecordId.calibrationDate, 'CalDate');
       final calibrationDate = calDateData != null
-          ? RdbiResponseParser.parseCompactDate(calDateData)
+          ? RdbiResponseParser.parseBcdDate(calDateData)
           : null;
       trace('CalibrationDate', calDateData != null, calibrationDate);
 
@@ -1508,7 +1735,7 @@ class AppBluetoothService {
         'ECU-InstallDate',
       );
       final ecuInstallDate = ecuInstData != null
-          ? RdbiResponseParser.parseCompactDate(ecuInstData)
+          ? RdbiResponseParser.parseBcdDate(ecuInstData)
           : null;
       trace('ECU-InstallDate', ecuInstData != null, ecuInstallDate);
 
@@ -1726,6 +1953,10 @@ class AppBluetoothService {
   }
 
   void _startLiveRefresh(BleConnectionRepository conn, AppState appState) {
+    // The handshake that ends here is not awaited by connectToDevice, so the
+    // user may have disconnected - or connected elsewhere - meanwhile.
+    if (!identical(_activeConnection, conn)) return;
+
     _liveRefreshTimer?.cancel();
     _liveRefreshTimer = Timer.periodic(const Duration(seconds: 20), (_) async {
       var waited = Duration.zero;
@@ -1777,7 +2008,16 @@ class AppBluetoothService {
     _stopLiveRefresh();
     _connectionStateSubscription?.cancel();
     _connectionStateSubscription = null;
+    final dead = _activeConnection;
     _activeConnection = null;
+    _activeDeviceId = null;
+    if (dead != null) {
+      unawaited(
+        dead.dispose().catchError((Object e) {
+          debugPrint('Dead connection dispose failed: $e');
+        }),
+      );
+    }
     unawaited(BackgroundKeepAliveService.stop());
     _wrapKLineForDongle = false;
     appState.setBluetoothConnected(false);
@@ -1799,11 +2039,14 @@ class AppBluetoothService {
         waitMs: 400,
         label: 'SpeedOnly-StartComm',
       );
-      await sendAndReceive(
-        KLineFrame.sessionStandard,
-        waitMs: 400,
-        label: 'SpeedOnly-DiagSession',
-      );
+      // See _performTachographHandshake for why the app service skips it.
+      if (conn is! VuAppConnectionService) {
+        await sendAndReceive(
+          KLineFrame.sessionStandard,
+          waitMs: 400,
+          label: 'SpeedOnly-DiagSession',
+        );
+      }
 
       final spdResp = await sendAndReceive(
         KLineFrame.readById(TachoRecordId.vehicleSpeed),
@@ -1911,11 +2154,14 @@ class AppBluetoothService {
         label: 'Refresh-StartComm',
       );
 
-      await sendAndReceive(
-        KLineFrame.sessionStandard,
-        waitMs: 400,
-        label: 'Refresh-DiagSession-Standard',
-      );
+      // See _performTachographHandshake for why the app service skips it.
+      if (conn is! VuAppConnectionService) {
+        await sendAndReceive(
+          KLineFrame.sessionStandard,
+          waitMs: 400,
+          label: 'Refresh-DiagSession-Standard',
+        );
+      }
 
       final spdResp = await sendAndReceive(
         KLineFrame.readById(TachoRecordId.vehicleSpeed),
@@ -2783,22 +3029,36 @@ class AppBluetoothService {
       }
 
       final current = appState.tachographLiveData;
+      final identity1 =
+          await _readSlotIdentity(sendAndReceive, slot: 1) ??
+          _SlotIdentity.of(current, slot: 1);
+      final identity2 =
+          await _readSlotIdentity(sendAndReceive, slot: 2) ??
+          _SlotIdentity.of(current, slot: 2);
+      trace(
+        'Refresh-Driver1Identity',
+        identity1.cardNumber.isNotEmpty,
+        identity1.cardNumber.isEmpty
+            ? null
+            : '${identity1.issuingState} ${identity1.cardNumber} ${identity1.name}',
+      );
+
       appState.setTachographLiveData(
         TachographLiveData(
-          driver1Name: current.driver1Name,
-          driver2Name: current.driver2Name,
-          driver1IssuingState: current.driver1IssuingState,
-          driver1CardNumber: current.driver1CardNumber,
-          driver2IssuingState: current.driver2IssuingState,
-          driver2CardNumber: current.driver2CardNumber,
-          driver1PreferredLanguage: current.driver1PreferredLanguage,
-          driver2PreferredLanguage: current.driver2PreferredLanguage,
-          driver1CardExpiryDate: current.driver1CardExpiryDate,
-          driver2CardExpiryDate: current.driver2CardExpiryDate,
+          driver1Name: identity1.name,
+          driver2Name: identity2.name,
+          driver1IssuingState: identity1.issuingState,
+          driver1CardNumber: identity1.cardNumber,
+          driver2IssuingState: identity2.issuingState,
+          driver2CardNumber: identity2.cardNumber,
+          driver1PreferredLanguage: identity1.preferredLanguage,
+          driver2PreferredLanguage: identity2.preferredLanguage,
+          driver1CardExpiryDate: identity1.cardExpiryDate,
+          driver2CardExpiryDate: identity2.cardExpiryDate,
           driver1CardNextMandatoryDownloadDate:
-              current.driver1CardNextMandatoryDownloadDate,
+              identity1.nextMandatoryDownloadDate,
           driver2CardNextMandatoryDownloadDate:
-              current.driver2CardNextMandatoryDownloadDate,
+              identity2.nextMandatoryDownloadDate,
           vin: current.vin,
           vrn: current.vrn,
           memberState: current.memberState,
@@ -2843,6 +3103,79 @@ class AppBluetoothService {
     }
   }
 
+  /// The card in one slot, read afresh on every full refresh. The handshake
+  /// runs once, and a card inserted after it - or one the unit had not
+  /// finished reading when it ran - would otherwise never show.
+  ///
+  /// An empty identity when the slot has no valid driver card; null when the
+  /// unit did not answer at all, so the caller keeps what it had rather than
+  /// blanking the screen over one missed reply.
+  Future<_SlotIdentity?> _readSlotIdentity(
+    SendAndReceive sendAndReceive, {
+    required int slot,
+  }) async {
+    final d1 = slot == 1;
+    Future<({bool answered, Uint8List? data})> read(int id) async {
+      final resp = await sendAndReceive(
+        KLineFrame.readById(id),
+        waitMs: 500,
+        label: 'Refresh',
+      );
+      return (
+        answered: resp.isNotEmpty,
+        data: RdbiResponseParser.extractData(resp, id),
+      );
+    }
+
+    final idRead = await read(
+      d1
+          ? TachoRecordId.driver1Identification
+          : TachoRecordId.driver2Identification,
+    );
+    if (!idRead.answered) return null;
+
+    final id = idRead.data != null
+        ? RdbiResponseParser.parseDriverIdentification(idRead.data!)
+        : null;
+    if (id == null) return const _SlotIdentity.empty();
+
+    final name = await read(
+      d1 ? TachoRecordId.driver1Name : TachoRecordId.driver2Name,
+    );
+    final language = await read(
+      d1
+          ? TachoRecordId.driver1PreferredLanguage
+          : TachoRecordId.driver2PreferredLanguage,
+    );
+    final expiry = await read(
+      d1
+          ? TachoRecordId.driver1CardExpiryDate
+          : TachoRecordId.driver2CardExpiryDate,
+    );
+    final nextDownload = await read(
+      d1
+          ? TachoRecordId.driver1CardNextMandatoryDownloadDate
+          : TachoRecordId.driver2CardNextMandatoryDownloadDate,
+    );
+
+    return _SlotIdentity(
+      name: name.data != null
+          ? RdbiResponseParser.parseDriverName(name.data!)
+          : '',
+      issuingState: id.issuingState,
+      cardNumber: id.cardNumber,
+      preferredLanguage: language.data != null
+          ? RdbiResponseParser.parseAscii(language.data!)
+          : '',
+      cardExpiryDate: expiry.data != null
+          ? RdbiResponseParser.parseCompactDate(expiry.data!)
+          : null,
+      nextMandatoryDownloadDate: nextDownload.data != null
+          ? RdbiResponseParser.parseCompactDate(nextDownload.data!)
+          : null,
+    );
+  }
+
   Future<void> disconnect() async {
     _stopLiveRefresh();
     _connectionStateSubscription?.cancel();
@@ -2850,13 +3183,66 @@ class AppBluetoothService {
     unawaited(BackgroundKeepAliveService.stop());
     _wrapKLineForDongle = false;
 
-    if (_activeConnection != null) {
+    final conn = _activeConnection;
+    _activeConnection = null;
+    _activeDeviceId = null;
+    if (conn != null) {
       try {
-        await _activeConnection!.dispose();
+        await conn.dispose();
       } catch (e) {
         debugPrint('Disconnect error: $e');
       }
-      _activeConnection = null;
     }
+    _connectionLogSubscription?.cancel();
+    _connectionLogSubscription = null;
+    linkPhase.value = VuLinkPhase.disconnected;
   }
+}
+
+/// Who is in one card slot, as the dashboard's identity dialog shows it.
+class _SlotIdentity {
+  final String name;
+  final String issuingState;
+  final String cardNumber;
+  final String preferredLanguage;
+  final DateTime? cardExpiryDate;
+  final DateTime? nextMandatoryDownloadDate;
+
+  const _SlotIdentity({
+    required this.name,
+    required this.issuingState,
+    required this.cardNumber,
+    required this.preferredLanguage,
+    required this.cardExpiryDate,
+    required this.nextMandatoryDownloadDate,
+  });
+
+  /// No valid driver card in the slot.
+  const _SlotIdentity.empty()
+    : name = '',
+      issuingState = '',
+      cardNumber = '',
+      preferredLanguage = '',
+      cardExpiryDate = null,
+      nextMandatoryDownloadDate = null;
+
+  /// What [live] already holds for [slot].
+  factory _SlotIdentity.of(TachographLiveData live, {required int slot}) =>
+      slot == 1
+      ? _SlotIdentity(
+          name: live.driver1Name,
+          issuingState: live.driver1IssuingState,
+          cardNumber: live.driver1CardNumber,
+          preferredLanguage: live.driver1PreferredLanguage,
+          cardExpiryDate: live.driver1CardExpiryDate,
+          nextMandatoryDownloadDate: live.driver1CardNextMandatoryDownloadDate,
+        )
+      : _SlotIdentity(
+          name: live.driver2Name,
+          issuingState: live.driver2IssuingState,
+          cardNumber: live.driver2CardNumber,
+          preferredLanguage: live.driver2PreferredLanguage,
+          cardExpiryDate: live.driver2CardExpiryDate,
+          nextMandatoryDownloadDate: live.driver2CardNextMandatoryDownloadDate,
+        );
 }

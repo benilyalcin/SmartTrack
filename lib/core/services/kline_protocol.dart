@@ -578,25 +578,85 @@ class RdbiResponseParser {
     return parseAscii(data.sublist(3, 19));
   }
 
+  /// Driver1Identification / Driver2Identification: the issuing member state
+  /// as three letters, then the 16 character card number. With no valid
+  /// driver card in the slot the unit still answers, with an empty card
+  /// number and the issuing state of a blank record - so that answer means
+  /// "no card", not a card from wherever the blank happens to point.
+  static ({String issuingState, String cardNumber})? parseDriverIdentification(
+    Uint8List data,
+  ) {
+    if (data.length < 19) return null;
+    final cardBytes = data.sublist(3, 19);
+    if (cardBytes.every((b) => b == 0x00 || b == 0x20 || b == 0xFF)) {
+      return null;
+    }
+    return (
+      issuingState: parseAscii(data.sublist(0, 3)),
+      cardNumber: parseAscii(cardBytes),
+    );
+  }
+
+  /// HolderName: surname, then first names, each a code page byte and 35
+  /// characters.
   static String parseDriverName(Uint8List data) {
     if (data.length < 72) return '';
-    final surname = parseAscii(data.sublist(1, 36));
-    final firstName = parseAscii(data.sublist(37, 72));
+    final surname = parseCodePageString(data.sublist(0, 36));
+    final firstName = parseCodePageString(data.sublist(36, 72));
     final full = '$firstName $surname'.trim();
     return full;
   }
 
+  /// VehicleRegistrationNumber: a code page byte and 13 characters. The code
+  /// page byte is not text - printed as one it is the box in front of the
+  /// plate.
+  static String parseVehicleRegistrationNumber(Uint8List data) {
+    if (data.length == 14) return parseCodePageString(data);
+    return parseAscii(data);
+  }
+
+  /// A string whose first byte is the ISO/IEC 8859 part its characters are
+  /// in (Annex 1C, `codePage`). Parts 1 and 9 cover the cards and plates met
+  /// here; 9 differs from 1 only in the six Turkish letters, and any other
+  /// part is read as 1, which keeps the ASCII range right.
+  static String parseCodePageString(Uint8List data) {
+    if (data.isEmpty) return '';
+    final codePage = data[0];
+    final chars = data.sublist(1).map((b) {
+      if (codePage == 9) {
+        switch (b) {
+          case 0xD0:
+            return 0x011E; // Ğ
+          case 0xDD:
+            return 0x0130; // İ
+          case 0xDE:
+            return 0x015E; // Ş
+          case 0xF0:
+            return 0x011F; // ğ
+          case 0xFD:
+            return 0x0131; // ı
+          case 0xFE:
+            return 0x015F; // ş
+        }
+      }
+      return b;
+    });
+    return String.fromCharCodes(
+      chars,
+    ).replaceAll(RegExp(r'[\x00\xFF]+$'), '').trim();
+  }
+
+  /// `[month, day, year - 1985]` with the day in quarter days (ISO 16844-7):
+  /// 1 to 4 is the first day of the month. The unit sends day × 4 for card
+  /// dates and (day - 1) × 4 + 2 for the next calibration date; both land in
+  /// the right day. 0 is no date.
   static DateTime? parseCompactDate(Uint8List data) {
     if (data.length < 3) return null;
     final month = data[0];
-    final day = data[1];
+    final day = (data[1] + 3) ~/ 4;
     final year = 1985 + data[2];
     if (day < 1 || day > 31 || month < 1 || month > 12) return null;
-    try {
-      return DateTime(year, month, day);
-    } catch (_) {
-      return null;
-    }
+    return _exactDate(year, month, day);
   }
 
   static DriverAdditionalInfo? parseAdditionalInformation(Uint8List data) {
@@ -613,19 +673,92 @@ class RdbiResponseParser {
     );
   }
 
+  /// TimeDate (ISO 16844-7): seconds in quarter seconds, minutes, hours,
+  /// month, day in quarter days, year - 1985, then the local minute and hour
+  /// offsets + 125. This is the order the unit writes for CurrentDateTime,
+  /// the ends of the last daily and weekly rest and VehicleRegistrationDate
+  /// - month before day, as in the three byte date. All 0xFF, or a field out
+  /// of range, is no date: DateTime would otherwise roll a month of 20 over
+  /// into a date a year and a half away without a word.
   static DateTime? parseDateTime(Uint8List data) {
     if (data.length < 6) return null;
-    try {
-      final minute = data[1];
-      final hour = data[2];
-      final dayEncoded = data[3];
-      final month = data[4];
-      final year = 1985 + data[5];
-      final day = ((dayEncoded - 2) ~/ 4) + 1;
-      return DateTime(year, month, day, hour, minute);
-    } catch (_) {
+    final second = data[0] ~/ 4;
+    final minute = data[1];
+    final hour = data[2];
+    final month = data[3];
+    final day = (data[4] + 3) ~/ 4;
+    final year = 1985 + data[5];
+    if (second > 59 ||
+        minute > 59 ||
+        hour > 23 ||
+        month < 1 ||
+        month > 12 ||
+        day < 1 ||
+        day > 31) {
       return null;
     }
+    return _exactDate(year, month, day, hour, minute, second);
+  }
+
+  /// BCD `YY MM DD`, the year from 2000 (BCDDate<1>: CalibrationDate,
+  /// ProgrammingDate; ECUInstallationDate as the workshop wrote it). All
+  /// zero is no date.
+  static DateTime? parseBcdDate(Uint8List data) {
+    if (data.length < 3) return null;
+    final yy = _bcd(data[0]);
+    final month = _bcd(data[1]);
+    final day = _bcd(data[2]);
+    if (yy == null || month == null || day == null) return null;
+    return _exactDate(2000 + yy, month, day);
+  }
+
+  /// BCD `YYYY MM DD hh mm ss` (BCDDateTime: ECUManufacturingDate), with a
+  /// millisecond byte after it that is not needed here.
+  static DateTime? parseBcdDateTime(Uint8List data) {
+    if (data.length < 7) return null;
+    final yyHigh = _bcd(data[0]);
+    final yyLow = _bcd(data[1]);
+    final month = _bcd(data[2]);
+    final day = _bcd(data[3]);
+    final hour = _bcd(data[4]);
+    final minute = _bcd(data[5]);
+    final second = _bcd(data[6]);
+    if ([yyHigh, yyLow, month, day, hour, minute, second].contains(null)) {
+      return null;
+    }
+    if (hour! > 23 || minute! > 59 || second! > 59) return null;
+    return _exactDate(
+      yyHigh! * 100 + yyLow!,
+      month!,
+      day!,
+      hour,
+      minute,
+      second,
+    );
+  }
+
+  /// Two decimal digits in one byte, or null when a nibble is not a digit.
+  static int? _bcd(int byte) {
+    final high = byte >> 4;
+    final low = byte & 0x0F;
+    if (high > 9 || low > 9) return null;
+    return high * 10 + low;
+  }
+
+  /// The date only if every field is what it says - no rolling 31 June
+  /// into 1 July, and no month 0.
+  static DateTime? _exactDate(
+    int year,
+    int month,
+    int day, [
+    int hour = 0,
+    int minute = 0,
+    int second = 0,
+  ]) {
+    if (month < 1 || month > 12 || day < 1) return null;
+    final date = DateTime(year, month, day, hour, minute, second);
+    if (date.month != month || date.day != day) return null;
+    return date;
   }
 }
 

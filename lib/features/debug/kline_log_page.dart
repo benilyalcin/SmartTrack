@@ -5,7 +5,11 @@ import '../../core/services/kline_log_export_service.dart';
 import '../../core/widgets/app_snackbar.dart';
 
 class KLineLogPage extends StatefulWidget {
-  const KLineLogPage({super.key});
+  /// Shown as a tab inside the main layout rather than pushed over it: no
+  /// back button, and a shorter bar under the layout's own.
+  final bool embedded;
+
+  const KLineLogPage({super.key, this.embedded = false});
 
   @override
   State<KLineLogPage> createState() => _KLineLogPageState();
@@ -48,6 +52,24 @@ class _KLineLogPageState extends State<KLineLogPage> {
     }
   }
 
+  Future<void> _shareText() async {
+    if (_exporting) return;
+    setState(() => _exporting = true);
+    try {
+      await KLineLogExportService.shareAsText(AppLogService.instance.lines);
+    } catch (e) {
+      if (mounted) {
+        showAppSnackBar(
+          context,
+          'Log paylaşılamadı: $e',
+          type: AppSnackBarType.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,8 +77,18 @@ class _KLineLogPageState extends State<KLineLogPage> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: const Text('Log'),
+        automaticallyImplyLeading: !widget.embedded,
+        toolbarHeight: widget.embedded ? 44 : null,
+        title: Text(
+          widget.embedded ? 'Geliştirici Logu' : 'Log',
+          style: widget.embedded ? const TextStyle(fontSize: 16) : null,
+        ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.share_outlined),
+            tooltip: 'Metin olarak paylaş',
+            onPressed: _exporting ? null : _shareText,
+          ),
           IconButton(
             icon: _exporting
                 ? const SizedBox(
@@ -133,8 +165,13 @@ class _KLineLogPageState extends State<KLineLogPage> {
       return Colors.redAccent;
     }
     if (line.contains('[Refresh-')) return Colors.cyanAccent;
-    if (line.contains('UART TX')) return Colors.lightBlueAccent;
-    if (line.contains('UART RX')) return Colors.greenAccent;
+    if (line.contains('UART TX') || line.contains('BLE TX')) {
+      return Colors.lightBlueAccent;
+    }
+    if (line.contains('UART RX') || line.contains('BLE RX')) {
+      return Colors.greenAccent;
+    }
+    if (line.contains('LINK:')) return Colors.orangeAccent;
     return Colors.white70;
   }
 }
