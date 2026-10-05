@@ -2692,9 +2692,9 @@ class AppLocalizations {
     },
     'analysis.sevColRange': {'TR': 'Süre', 'EN': 'Time', 'DE': 'Zeit'},
     'analysis.sevColSeverity': {
-      'TR': 'Ciddiyet',
-      'EN': 'Severity',
-      'DE': 'Schwere',
+      'TR': 'Seviye',
+      'EN': 'Level',
+      'DE': 'Stufe',
     },
     'analysis.sevColFine': {'TR': 'Ceza', 'EN': 'Fine', 'DE': 'Bußgeld'},
     'analysis.unitHourShort': {'TR': 'sa', 'EN': 'h', 'DE': 'Std.'},

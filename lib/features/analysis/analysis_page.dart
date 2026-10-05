@@ -197,12 +197,12 @@ class _AnalysisPageState extends State<AnalysisPage>
     await GoogleDriveService.instance.setBackupEnabled(next);
   }
 
-  String _t(String key) {
-    return AppLocalizations.getText(
-      AppStateProvider.of(context).selectedLanguage,
-      key,
-    );
-  }
+  /// The language of the last build. Sheets and dialogs read it through
+  /// [_t], so they keep working if this page is rebuilt or disposed while
+  /// they are open.
+  String _lang = 'TR';
+
+  String _t(String key) => AppLocalizations.getText(_lang, key);
 
   String _weekdayShort(int weekday, String lang) {
     final names = lang == 'EN'
@@ -224,6 +224,9 @@ class _AnalysisPageState extends State<AnalysisPage>
 
   String _shortDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}';
+
+  /// "05.10.2026"; with the year it cannot be mistaken for a time.
+  String _fullDate(DateTime d) => '${_shortDate(d)}.${d.year}';
 
   String _hourMinute(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
@@ -268,6 +271,7 @@ class _AnalysisPageState extends State<AnalysisPage>
   Widget build(BuildContext context) {
     final appState = AppStateProvider.of(context);
     final lang = appState.selectedLanguage;
+    _lang = lang;
 
     // The selected Monday–Sunday week. Violations are found over all data and
     // then picked by week; the risk score of a past week only counts
@@ -984,8 +988,7 @@ class _AnalysisPageState extends State<AnalysisPage>
       0,
       (sum, x) => sum + (x.estimate.penaltyPoints ?? 0),
     );
-    final dateText =
-        '${day.day.toString().padLeft(2, '0')}.${day.month.toString().padLeft(2, '0')}.${day.year}';
+    final dateText = _fullDate(day);
 
     // Same layout as the day tiles of downloaded files: date as the title,
     // a summary underneath, and the details behind the chevron.
@@ -1141,12 +1144,19 @@ class _AnalysisPageState extends State<AnalysisPage>
                   children: [
                     for (final title in columnTitles)
                       _tableCell(
-                        Text(
-                          title,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: scheme.onSurfaceVariant,
+                        // A column title never breaks mid-word: if it does
+                        // not fit, it shrinks a little instead.
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
                       ),
@@ -1391,8 +1401,7 @@ class _AnalysisPageState extends State<AnalysisPage>
     final rounded = (points * 10).round() / 10;
     if (rounded == rounded.roundToDouble()) return '${rounded.toInt()}';
     final text = rounded.toStringAsFixed(1);
-    final lang = AppStateProvider.of(context).selectedLanguage;
-    return lang == 'EN' ? text : text.replaceFirst('.', ',');
+    return _lang == 'EN' ? text : text.replaceFirst('.', ',');
   }
 
   void _openRiskBreakdownSheet(BuildContext context, RiskScoreResult risk) {
@@ -1492,7 +1501,7 @@ class _AnalysisPageState extends State<AnalysisPage>
                 ),
                 const SizedBox(height: 14),
                 _tableCard(
-                  context,
+                  scrollContext,
                   columnWidths: const {
                     0: FlexColumnWidth(3),
                     1: FlexColumnWidth(2),
@@ -1533,7 +1542,7 @@ class _AnalysisPageState extends State<AnalysisPage>
                 ] else ...[
                   sectionTitle(_t('analysis.riskBreakdownByType')),
                   _tableCard(
-                    context,
+                    scrollContext,
                     columnTitles: [
                       _t('analysis.riskBreakdownColType'),
                       _t('analysis.riskBreakdownColCount'),
@@ -1568,14 +1577,14 @@ class _AnalysisPageState extends State<AnalysisPage>
                   ),
                   sectionTitle(_t('analysis.riskBreakdownByViolation')),
                   _tableCard(
-                    context,
+                    scrollContext,
                     columnTitles: [
                       _t('analysis.riskBreakdownColDate'),
                       _t('analysis.riskBreakdownColViolation'),
                       _t('analysis.riskBreakdownColPoints'),
                     ],
                     columnWidths: const {
-                      0: FixedColumnWidth(70),
+                      0: FixedColumnWidth(98),
                       1: FlexColumnWidth(),
                       2: FixedColumnWidth(64),
                     },
@@ -1583,7 +1592,9 @@ class _AnalysisPageState extends State<AnalysisPage>
                       for (final d in deductions)
                         [
                           Text(
-                            '${_shortDate(d.violation.start.toLocal())}\n${_hourMinute(d.violation.start.toLocal())}',
+                            '${_fullDate(d.violation.start.toLocal())}\n${_hourMinute(d.violation.start.toLocal())}',
+                            maxLines: 2,
+                            softWrap: false,
                             style: label,
                           ),
                           Column(
@@ -1596,7 +1607,7 @@ class _AnalysisPageState extends State<AnalysisPage>
                               if (d.violation.euSeverity != null) ...[
                                 const SizedBox(height: 4),
                                 _euSeverityTag(
-                                  context,
+                                  scrollContext,
                                   d.violation.euSeverity!,
                                 ),
                               ],
@@ -1789,17 +1800,17 @@ class _AnalysisPageState extends State<AnalysisPage>
                   runSpacing: 8,
                   children: [
                     for (final s in EuSeverity.values.reversed)
-                      _euSeverityTag(context, s),
+                      _euSeverityTag(scrollContext, s),
                   ],
                 ),
                 for (final group in severityReference) ...[
                   const SizedBox(height: 22),
-                  _severitySectionHeader(context, _t(group.titleKey)),
+                  _severitySectionHeader(scrollContext, _t(group.titleKey)),
                   const SizedBox(height: 10),
                   for (final rule in group.rules)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildSeverityRuleTable(context, rule),
+                      child: _buildSeverityRuleTable(scrollContext, rule),
                     ),
                 ],
                 const SizedBox(height: 16),
