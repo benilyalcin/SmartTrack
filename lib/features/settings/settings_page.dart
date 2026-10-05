@@ -16,6 +16,12 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  String _liveRefreshLabel(int seconds) {
+    if (seconds == 0) return _t('settings.liveRefreshOff');
+    if (seconds < 60) return '$seconds ${_t('settings.liveRefreshSeconds')}';
+    return '${seconds ~/ 60} ${_t('settings.liveRefreshMinutes')}';
+  }
+
   String _t(String key) {
     return AppLocalizations.getText(
       AppStateProvider.of(context).selectedLanguage,
@@ -632,6 +638,60 @@ class _SettingsPageState extends State<SettingsPage> {
                 onChanged: (value) =>
                     appState.setAutoFetchDddOnReconnect(value),
                 activeTrackColor: Theme.of(context).colorScheme.primary,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.update,
+                color: Theme.of(context).colorScheme.outline,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _t('settings.liveRefresh'),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _t('settings.liveRefreshDesc'),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              DropdownButton<int>(
+                value: appState.liveRefreshSeconds,
+                underline: const SizedBox.shrink(),
+                items: [
+                  for (final seconds in AppState.liveRefreshChoices)
+                    DropdownMenuItem(
+                      value: seconds,
+                      child: Text(_liveRefreshLabel(seconds)),
+                    ),
+                ],
+                onChanged: (seconds) {
+                  if (seconds == null) return;
+                  appState.setLiveRefreshSeconds(seconds);
+                  AppBluetoothService.instance.restartLiveRefresh(appState);
+                },
               ),
             ],
           ),

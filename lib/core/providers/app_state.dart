@@ -58,6 +58,7 @@ class AppState extends ChangeNotifier {
   bool _freeScreenMode = false;
 
   bool _autoFetchDddOnReconnect = true;
+  int _liveRefreshSeconds = 60;
   AppRole _activeRole = AppRole.driver;
 
   String _vehiclePlate = '';
@@ -179,6 +180,10 @@ class AppState extends ChangeNotifier {
     if (prefs.containsKey('autoFetchDddOnReconnect')) {
       _autoFetchDddOnReconnect =
           prefs.getBool('autoFetchDddOnReconnect') ?? true;
+    }
+    final storedRefresh = prefs.getInt('liveRefreshSeconds');
+    if (storedRefresh != null && liveRefreshChoices.contains(storedRefresh)) {
+      _liveRefreshSeconds = storedRefresh;
     }
 
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
@@ -516,6 +521,24 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     SharedPreferences.getInstance().then((prefs) {
       prefs.setBool('freeScreenMode', enabled);
+    });
+  }
+
+  /// The choices for how often a connected vehicle unit is read on its own,
+  /// in seconds; 0 is never - the refresh button only.
+  static const List<int> liveRefreshChoices = [0, 30, 60, 300];
+
+  /// How often a connected vehicle unit is read on its own, or null for
+  /// never. Each read is a full cycle of some sixty requests.
+  Duration? get liveRefreshInterval =>
+      _liveRefreshSeconds > 0 ? Duration(seconds: _liveRefreshSeconds) : null;
+  int get liveRefreshSeconds => _liveRefreshSeconds;
+  void setLiveRefreshSeconds(int seconds) {
+    if (_liveRefreshSeconds == seconds) return;
+    _liveRefreshSeconds = seconds;
+    notifyListeners();
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setInt('liveRefreshSeconds', seconds);
     });
   }
 

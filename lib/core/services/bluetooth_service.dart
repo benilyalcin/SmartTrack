@@ -1957,33 +1957,90 @@ class AppBluetoothService {
     // user may have disconnected - or connected elsewhere - meanwhile.
     if (!identical(_activeConnection, conn)) return;
 
-    _liveRefreshTimer?.cancel();
-    _liveRefreshTimer = Timer.periodic(const Duration(seconds: 20), (_) async {
-      var waited = Duration.zero;
-      while (_refreshInFlight) {
-        if (downloadTestModeActive) return;
-        if (waited >= const Duration(seconds: 10)) return;
-        await Future.delayed(const Duration(milliseconds: 200));
-        waited += const Duration(milliseconds: 200);
-      }
+    // A vehicle unit is read every liveRefreshInterval, or only on request
+    // (refreshNow) when that is off. The 2 s speed-and-odometer cycle is a
+    // K-line dongle matter: over the app service it was some 120 messages a
+    // minute for a number the unit shows on its own display anyway.
+    final isVu = conn is VuAppConnectionService;
+    final interval = isVu
+        ? appState.liveRefreshInterval
+        : _dongleRefreshInterval;
 
-      if (downloadTestModeActive) return;
-      _refreshInFlight = true;
-      _refreshLiveFields(
-        conn,
-        appState,
-      ).whenComplete(() => _refreshInFlight = false);
-    });
+    _liveRefreshTimer?.cancel();
+    _liveRefreshTimer = interval == null
+        ? null
+        : Timer.periodic(interval, (_) async {
+            var waited = Duration.zero;
+            while (_refreshInFlight) {
+              if (downloadTestModeActive) return;
+              if (waited >= const Duration(seconds: 10)) return;
+              await Future.delayed(const Duration(milliseconds: 200));
+              waited += const Duration(milliseconds: 200);
+            }
+
+            if (downloadTestModeActive) return;
+            await _runFullRefresh(conn, appState);
+          });
 
     _speedRefreshTimer?.cancel();
-    _speedRefreshTimer = Timer.periodic(const Duration(seconds: 2), (_) {
-      if (_refreshInFlight || downloadTestModeActive) return;
-      _refreshInFlight = true;
-      _refreshSpeedOnly(
-        conn,
-        appState,
-      ).whenComplete(() => _refreshInFlight = false);
-    });
+    _speedRefreshTimer = isVu
+        ? null
+        : Timer.periodic(const Duration(seconds: 2), (_) {
+            if (_refreshInFlight || downloadTestModeActive) return;
+            _refreshInFlight = true;
+            _refreshSpeedOnly(
+              conn,
+              appState,
+            ).whenComplete(() => _refreshInFlight = false);
+          });
+  }
+
+  static const Duration _dongleRefreshInterval = Duration(seconds: 20);
+
+  /// True while a full refresh is running, for the refresh button.
+  final ValueNotifier<bool> refreshing = ValueNotifier(false);
+
+  Future<void> _runFullRefresh(
+    BleConnectionRepository conn,
+    AppState appState,
+  ) async {
+    _refreshInFlight = true;
+    refreshing.value = true;
+    try {
+      await _refreshLiveFields(conn, appState);
+    } finally {
+      _refreshInFlight = false;
+      refreshing.value = false;
+    }
+  }
+
+  /// Reads everything now, for the refresh button. False when there is no
+  /// connection, a refresh would not start, or the unit did not answer.
+  /// The periodic timer starts its interval again afterwards, so a manual
+  /// refresh is not followed a second later by an automatic one.
+  Future<bool> refreshNow(AppState appState) async {
+    final conn = _activeConnection;
+    if (conn == null || downloadTestModeActive) return false;
+
+    var waited = Duration.zero;
+    while (_refreshInFlight) {
+      if (waited >= const Duration(seconds: 10)) return false;
+      await Future.delayed(const Duration(milliseconds: 200));
+      waited += const Duration(milliseconds: 200);
+    }
+    if (!identical(_activeConnection, conn)) return false;
+
+    await _runFullRefresh(conn, appState);
+    if (!identical(_activeConnection, conn)) return false;
+
+    _startLiveRefresh(conn, appState);
+    return _consecutiveRefreshFailures == 0;
+  }
+
+  /// Picks up a changed refresh interval on the running connection.
+  void restartLiveRefresh(AppState appState) {
+    final conn = _activeConnection;
+    if (conn != null) _startLiveRefresh(conn, appState);
   }
 
   void _stopLiveRefresh() {
@@ -1992,6 +2049,7 @@ class AppBluetoothService {
     _speedRefreshTimer?.cancel();
     _speedRefreshTimer = null;
     _refreshInFlight = false;
+    refreshing.value = false;
     _consecutiveRefreshFailures = 0;
   }
 
@@ -2117,7 +2175,10 @@ class AppBluetoothService {
         }
       }
 
+      // Fresh speed every few seconds of a slow K-line cycle; over the app
+      // service the whole cycle takes about as long as one of these did.
       Future<void> refreshSpeedMidCycle(String label) async {
+        if (conn is VuAppConnectionService) return;
         final r = await sendAndReceive(
           KLineFrame.readById(TachoRecordId.vehicleSpeed),
           waitMs: 400,

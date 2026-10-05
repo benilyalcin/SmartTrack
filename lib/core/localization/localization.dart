@@ -326,6 +326,38 @@ class AppLocalizations {
       'DE':
           'Beim erneuten Verbinden werden automatisch Daten vom Fahrtenschreiber angefordert, um die Lücke zu schließen — bei Deaktivierung werden Sie stattdessen direkt gefragt.',
     },
+    'settings.liveRefresh': {
+      'TR': 'Otomatik Veri Yenileme',
+      'EN': 'Automatic Data Refresh',
+      'DE': 'Automatische Datenaktualisierung',
+    },
+    'settings.liveRefreshDesc': {
+      'TR':
+          'Bağlıyken takograf verilerinin ne sıklıkla okunacağı. Kapalıyken veriler yalnızca üst bardaki yenile düğmesiyle güncellenir; çizelge de yalnızca o anlarda kayıt alır.',
+      'EN':
+          'How often tachograph data is read while connected. When off, data is updated only with the refresh button in the top bar, and the timeline records only at those moments.',
+      'DE':
+          'Wie oft die Fahrtenschreiberdaten bei bestehender Verbindung gelesen werden. Wenn deaktiviert, werden die Daten nur über die Schaltfläche in der oberen Leiste aktualisiert, und die Zeitleiste zeichnet nur dann auf.',
+    },
+    'settings.liveRefreshOff': {'TR': 'Kapalı', 'EN': 'Off', 'DE': 'Aus'},
+    'settings.liveRefreshSeconds': {'TR': 'sn', 'EN': 's', 'DE': 's'},
+    'settings.liveRefreshMinutes': {'TR': 'dk', 'EN': 'min', 'DE': 'Min'},
+    'live.refresh': {
+      'TR': 'Verileri yenile',
+      'EN': 'Refresh data',
+      'DE': 'Daten aktualisieren',
+    },
+    'live.refreshed': {
+      'TR': 'Takograf verileri güncellendi',
+      'EN': 'Tachograph data updated',
+      'DE': 'Fahrtenschreiberdaten aktualisiert',
+    },
+    'live.refreshFailed': {
+      'TR': 'Takograf yanıt vermedi, veriler güncellenemedi',
+      'EN': 'The tachograph did not answer; data was not updated',
+      'DE':
+          'Der Fahrtenschreiber hat nicht geantwortet; Daten nicht aktualisiert',
+    },
     'settings.backupTitle': {
       'TR': 'Google Drive Yedekleme',
       'EN': 'Google Drive Backup',

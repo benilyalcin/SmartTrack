@@ -4,10 +4,12 @@ import '../config/dev_flags.dart';
 import '../models/role_permissions.dart';
 import '../providers/app_state.dart';
 import '../localization/localization.dart';
+import '../services/bluetooth_service.dart';
 import '../services/violation_analyzer.dart';
 import '../utils/responsive.dart';
 import 'animated_bell_button.dart';
 import 'animated_profile_avatar.dart';
+import 'app_snackbar.dart';
 import 'compliance_notice_listener.dart';
 import 'continuous_driving_limit_dialog.dart';
 import 'free_screen_viewer.dart';
@@ -126,6 +128,8 @@ class MainLayout extends StatelessWidget {
             onPressed: () => context.push('/dongle-log'),
           ),
         ],
+        if (appState.isBluetoothConnected)
+          _RefreshDataButton(appState: appState, lang: lang),
         _NotificationBell(appState: appState, lang: lang),
         const SizedBox(width: 8),
       ],
@@ -220,6 +224,47 @@ class MainLayout extends StatelessWidget {
 
   void _onItemTapped(int index, BuildContext context) {
     context.go(_tabs[index].path);
+  }
+}
+
+/// Reads the vehicle unit now - the way to get fresh data when the automatic
+/// refresh is slow or off (Settings > Automatic Data Refresh).
+class _RefreshDataButton extends StatelessWidget {
+  final AppState appState;
+  final String lang;
+
+  const _RefreshDataButton({required this.appState, required this.lang});
+
+  Future<void> _refresh(BuildContext context) async {
+    final ok = await AppBluetoothService.instance.refreshNow(appState);
+    if (!context.mounted) return;
+    showAppSnackBar(
+      context,
+      AppLocalizations.getText(
+        lang,
+        ok ? 'live.refreshed' : 'live.refreshFailed',
+      ),
+      type: ok ? AppSnackBarType.success : AppSnackBarType.error,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return ValueListenableBuilder<bool>(
+      valueListenable: AppBluetoothService.instance.refreshing,
+      builder: (context, busy, _) => IconButton(
+        tooltip: AppLocalizations.getText(lang, 'live.refresh'),
+        onPressed: busy ? null : () => _refresh(context),
+        icon: busy
+            ? SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: color),
+              )
+            : Icon(Icons.refresh, color: color),
+      ),
+    );
   }
 }
 
