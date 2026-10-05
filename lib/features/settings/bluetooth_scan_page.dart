@@ -7,6 +7,8 @@ import 'package:permission_handler/permission_handler.dart'
 
 import '../../core/bluetooth/services/vu_app_connection_service.dart';
 import '../../core/exceptions/ble_exception.dart';
+import '../../core/exceptions/vu_profile_mismatch_exception.dart';
+import '../../core/models/tachograph_type.dart';
 import '../../core/localization/localization.dart';
 import '../../core/providers/app_state.dart';
 import '../../core/services/bluetooth_service.dart';
@@ -14,7 +16,12 @@ import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/bouncing_dots_loader.dart';
 
 class BluetoothScanPage extends StatefulWidget {
-  const BluetoothScanPage({super.key});
+  /// Shown as the step after choosing a tachograph (/connect) rather than
+  /// pushed over the app: it leads on to the dashboard, back goes to the
+  /// choice, and the user may go on without connecting.
+  final bool standalone;
+
+  const BluetoothScanPage({super.key, this.standalone = false});
 
   @override
   State<BluetoothScanPage> createState() => _BluetoothScanPageState();
@@ -187,7 +194,10 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
     }
   }
 
-  void _connectTo(AppBluetoothDevice device) async {
+  void _connectTo(
+    AppBluetoothDevice device, {
+    bool allowTypeMismatch = false,
+  }) async {
     if (_legalOnlyDemoEnabled && _looksLikeTachograph(device)) {
       final wantsLegalOnlyDemo = await _confirmLegalOnlyDemo();
       if (!mounted) return;
@@ -214,7 +224,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
             deviceName: device.displayName,
           );
         }
-      });
+      }, allowTypeMismatch: allowTypeMismatch);
 
       if (mounted) {
         final index = _devices.indexWhere(
@@ -237,7 +247,6 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
       }
 
       if (mounted) {
-        Navigator.of(context).pop();
         showAppSnackBar(
           context,
           AppLocalizations.getText(
@@ -246,7 +255,15 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
           ),
           type: AppSnackBarType.success,
         );
+        _leave(toDashboard: true);
       }
+    } on VuProfileMismatchException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isScanning = false;
+        _connectingDeviceId = null;
+      });
+      await _resolveTypeMismatch(device, e);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -260,6 +277,80 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
         );
       }
     }
+  }
+
+  /// The device is the other kind of tachograph than the one chosen on the
+  /// launch screen. Nothing has been sent to it yet; ask whether to switch
+  /// to the matching kind, go on with the choice, or leave it.
+  Future<void> _resolveTypeMismatch(
+    AppBluetoothDevice device,
+    VuProfileMismatchException e,
+  ) async {
+    final appState = AppStateProvider.of(context);
+    final selected = appState.tachographType;
+    final detected = TachographType.forDevice(hasIts: e.deviceHasIts);
+
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(_t('connect.mismatchTitle')),
+        content: Text(
+          _t('connect.mismatchBody')
+              .replaceAll('{device}', device.displayName)
+              .replaceAll('{detected}', detected.code)
+              .replaceAll('{selected}', selected?.code ?? '-'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop('cancel'),
+            child: Text(_t('connect.mismatchCancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop('keep'),
+            child: Text(_t('connect.mismatchKeep')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop('switch'),
+            child: Text(
+              _t(
+                'connect.mismatchSwitch',
+              ).replaceAll('{detected}', detected.code),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+
+    switch (choice) {
+      case 'switch':
+        appState.setTachographType(detected);
+        _connectTo(device);
+      case 'keep':
+        _connectTo(device, allowTypeMismatch: true);
+    }
+  }
+
+  String _t(String key) => AppLocalizations.getText(
+    AppStateProvider.of(context).selectedLanguage,
+    key,
+  );
+
+  String _title() {
+    final type = AppStateProvider.of(context).tachographType;
+    final title = _t('connect.title');
+    return type == null ? title : '${type.code} · $title';
+  }
+
+  /// Out of this screen: on to the dashboard after connecting (or skipping),
+  /// or back. Standalone, back is the tachograph choice; pushed over the
+  /// app, both are a pop.
+  void _leave({required bool toDashboard}) {
+    if (!widget.standalone) {
+      Navigator.of(context).pop();
+      return;
+    }
+    context.go(toDashboard ? '/dashboard' : '/select-device');
   }
 
   Future<void> _removeBond(AppBluetoothDevice device) async {
@@ -341,11 +432,11 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
           icon: Icon(Icons.arrow_back, color: scheme.primary),
           onPressed: () {
             AppBluetoothService.instance.stopScan();
-            Navigator.of(context).pop();
+            _leave(toDashboard: false);
           },
         ),
         title: Text(
-          'Cihaz Bağla',
+          _title(),
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 24,
@@ -386,6 +477,19 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
                       ..._buildDeviceSections(scheme),
                       const SizedBox(height: 40),
                       _buildHelpFooter(scheme),
+                      if (widget.standalone) ...[
+                        const SizedBox(height: 16),
+                        Center(
+                          child: TextButton.icon(
+                            onPressed: () {
+                              AppBluetoothService.instance.stopScan();
+                              _leave(toDashboard: true);
+                            },
+                            icon: const Icon(Icons.skip_next),
+                            label: Text(_t('connect.skip')),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 24),
                     ],
                   ),

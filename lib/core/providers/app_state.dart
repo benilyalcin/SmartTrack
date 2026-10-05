@@ -20,6 +20,7 @@ import '../services/kline_protocol.dart';
 import '../services/tachograph_parser.dart';
 import '../services/violation_analyzer.dart';
 import '../services/vu/vu_file_decoder.dart';
+import '../models/tachograph_type.dart';
 
 enum ComplianceNoticeSeverity { info, warning }
 
@@ -59,6 +60,7 @@ class AppState extends ChangeNotifier {
 
   bool _autoFetchDddOnReconnect = true;
   int _liveRefreshSeconds = 60;
+  TachographType? _tachographType;
   AppRole _activeRole = AppRole.driver;
 
   String _vehiclePlate = '';
@@ -522,6 +524,15 @@ class AppState extends ChangeNotifier {
     SharedPreferences.getInstance().then((prefs) {
       prefs.setBool('freeScreenMode', enabled);
     });
+  }
+
+  /// The tachograph chosen on the launch screen. Deliberately not persisted:
+  /// the choice is asked for on every launch.
+  TachographType? get tachographType => _tachographType;
+  void setTachographType(TachographType type) {
+    if (_tachographType == type) return;
+    _tachographType = type;
+    notifyListeners();
   }
 
   /// The choices for how often a connected vehicle unit is read on its own,

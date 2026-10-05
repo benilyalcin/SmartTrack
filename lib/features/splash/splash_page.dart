@@ -114,7 +114,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
   void _goToLogin() {
     if (_navigated || !mounted) return;
     _navigated = true;
-    context.go('/login');
+    context.go('/select-device');
   }
 
   @override

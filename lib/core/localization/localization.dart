@@ -80,9 +80,9 @@ class AppLocalizations {
       'DE': 'Verbunden — Datenübertragung aktiv',
     },
     'settings.disconnected': {
-      'TR': 'Aselsan STC-8255 Bağlantısı Yok',
-      'EN': 'Aselsan STC-8255 Disconnected',
-      'DE': 'Aselsan STC-8255 Getrennt',
+      'TR': 'Takograf Bağlantısı Yok',
+      'EN': 'Tachograph Disconnected',
+      'DE': 'Fahrtenschreiber getrennt',
     },
     'settings.connectedNoData': {
       'TR': 'Bağlı, Veri Alınamıyor',
@@ -325,6 +325,60 @@ class AppLocalizations {
           'On reconnect, automatically requests data from the tachograph to fill the gap — when off, you\'re asked directly instead.',
       'DE':
           'Beim erneuten Verbinden werden automatisch Daten vom Fahrtenschreiber angefordert, um die Lücke zu schließen — bei Deaktivierung werden Sie stattdessen direkt gefragt.',
+    },
+    'select.title': {
+      'TR': 'Takograf Seçin',
+      'EN': 'Choose Your Tachograph',
+      'DE': 'Fahrtenschreiber wählen',
+    },
+    'select.subtitle': {
+      'TR': 'Bağlanacağınız takografın tipini seçin',
+      'EN': 'Choose the type of tachograph to connect to',
+      'DE': 'Wählen Sie den Typ des Fahrtenschreibers für die Verbindung',
+    },
+    'select.stc8255Desc': {
+      'TR': 'Aselsan STC-8255 · BLE dongle üzerinden canlı sürüş verisi',
+      'EN': 'Aselsan STC-8255 · live driving data through the BLE dongle',
+      'DE': 'Aselsan STC-8255 · Live-Fahrdaten über den BLE-Dongle',
+    },
+    'select.atc8256Desc': {
+      'TR': 'ATC-8256 · canlı sürüş verisi, ITS veri indirme ve diagnostik',
+      'EN': 'ATC-8256 · live driving data, ITS data download and diagnostics',
+      'DE': 'ATC-8256 · Live-Fahrdaten, ITS-Datendownload und Diagnose',
+    },
+    'connect.title': {'TR': 'Bağlan', 'EN': 'Connect', 'DE': 'Verbinden'},
+    'connect.mismatchTitle': {
+      'TR': 'Takograf tipi uyuşmuyor',
+      'EN': 'Tachograph type does not match',
+      'DE': 'Fahrtenschreibertyp stimmt nicht überein',
+    },
+    'connect.mismatchBody': {
+      'TR':
+          '{device} bir {detected} görünüyor, ama {selected} seçildi. Yanlış profille bağlanılırsa takograf her mesajı hatalı sayar.',
+      'EN':
+          '{device} looks like a {detected}, but {selected} was chosen. Connected with the wrong profile, the tachograph rejects every message as malformed.',
+      'DE':
+          '{device} scheint ein {detected} zu sein, gewählt wurde aber {selected}. Mit dem falschen Profil wertet der Fahrtenschreiber jede Nachricht als fehlerhaft.',
+    },
+    'connect.mismatchSwitch': {
+      'TR': '{detected} olarak bağlan',
+      'EN': 'Connect as {detected}',
+      'DE': 'Als {detected} verbinden',
+    },
+    'connect.mismatchKeep': {
+      'TR': 'Seçimle devam et',
+      'EN': 'Keep my choice',
+      'DE': 'Auswahl beibehalten',
+    },
+    'connect.mismatchCancel': {
+      'TR': 'Vazgeç',
+      'EN': 'Cancel',
+      'DE': 'Abbrechen',
+    },
+    'connect.skip': {
+      'TR': 'Bağlanmadan devam et',
+      'EN': 'Continue without connecting',
+      'DE': 'Ohne Verbindung fortfahren',
     },
     'settings.liveRefresh': {
       'TR': 'Otomatik Veri Yenileme',

@@ -75,7 +75,12 @@ class MainLayout extends StatelessWidget {
           AnimatedProfileAvatar(
             onOpenSettings: () => context.go('/settings'),
             onOpenAbout: () => context.push('/about'),
-            onLogout: () => context.go('/login'),
+            // Back to choosing a tachograph, with the link to this one closed.
+            onLogout: () {
+              AppBluetoothService.instance.disconnect();
+              appState.setBluetoothConnected(false);
+              context.go('/select-device');
+            },
           ),
           const SizedBox(width: 12),
 
@@ -100,34 +105,6 @@ class MainLayout extends StatelessWidget {
         ],
       ),
       actions: [
-        // The log has its own tab now; the raw-value and dongle pages stay up
-        // here, for developer builds only.
-        if (kDeveloperBuild) ...[
-          IconButton(
-            icon: Icon(
-              Icons.fact_check_outlined,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            tooltip: 'Ham Değerler',
-            onPressed: () => context.push('/debug-values'),
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.developer_board,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            tooltip: 'Dongle — Ham Değerler',
-            onPressed: () => context.push('/dongle-values'),
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.history,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            tooltip: 'Dongle Log',
-            onPressed: () => context.push('/dongle-log'),
-          ),
-        ],
         if (appState.isBluetoothConnected)
           _RefreshDataButton(appState: appState, lang: lang),
         _NotificationBell(appState: appState, lang: lang),

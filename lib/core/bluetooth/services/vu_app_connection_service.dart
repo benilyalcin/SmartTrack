@@ -5,11 +5,13 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide LogLevel;
 
 import '../../exceptions/ble_characteristic_exception.dart';
 import '../../exceptions/ble_connection_exception.dart';
+import '../../exceptions/vu_profile_mismatch_exception.dart';
 import '../models/ble_gatt_service.dart';
 import '../models/log_entry.dart';
 import '../repositories/ble_connection_repository.dart' hide BleConnectionState;
 import '../repositories/ble_connection_repository.dart' as repo;
 import '../vu/vu_app_link.dart';
+import '../vu/vu_link_profile.dart';
 
 /// How far [VuAppConnectionService.connect] has got, for the connect screen.
 enum VuLinkPhase {
@@ -24,7 +26,9 @@ enum VuLinkPhase {
   ready,
 }
 
-/// A link to an AVU3 vehicle unit over its app service (see [VuAppUuids]).
+/// A link to a tachograph over the app service (see [VuAppUuids]): the ATC
+/// 8256's own, or the BLE dongle in front of an STC 8255. Which one, and so
+/// whether to bond first and whether to subscribe ITS as well, is [profile].
 ///
 /// The rest of the app talks to a tachograph through one characteristic
 /// alias, [kwpChannel], carried over from the Classic SPP days: a KWP2000
@@ -36,7 +40,20 @@ enum VuLinkPhase {
 /// single operation queue Android needs - so nothing here queues on its own
 /// beyond keeping one message's packets together.
 class VuAppConnectionService implements BleConnectionRepository {
-  VuAppConnectionService({this.onPhase});
+  VuAppConnectionService({
+    required this.profile,
+    this.onPhase,
+    this.checkProfile = true,
+  });
+
+  /// Refuse a device whose services say it is the other kind of tachograph
+  /// (see [VuProfileMismatchException]). Off when the user has chosen to go
+  /// on with their selection anyway.
+  final bool checkProfile;
+
+  /// What sits behind the app service, and so what is subscribed and how
+  /// frames are framed (see [VuLinkProfile]).
+  final VuLinkProfile profile;
 
   static const String kwpChannel = 'SPP_DATA';
 
@@ -75,6 +92,15 @@ class VuAppConnectionService implements BleConnectionRepository {
   StreamSubscription? _connStateSub;
   StreamSubscription? _txSub;
 
+  StreamSubscription<BluetoothBondState>? _bondWatch;
+  bool _pairingSeen = false;
+  VuLinkPhase _phaseBeforePairing = VuLinkPhase.connecting;
+
+  List<BluetoothService> _rawServices = const [];
+  final Map<String, BluetoothCharacteristic> _itsChars = {};
+  final List<StreamSubscription> _itsSubs = [];
+  final Map<String, StreamController<List<int>>> _itsPackets = {};
+
   /// Each message's packets go out back to back, never interleaved with the
   /// next message's.
   Future<void> _writeChain = Future.value();
@@ -102,6 +128,7 @@ class VuAppConnectionService implements BleConnectionRepository {
       // The MTU is requested below, after discovery, the order AvuItsTester
       // uses; FBP's own request right after connecting would race it.
       await device.connect(timeout: _gattConnectTimeout, mtu: null);
+      _watchPairing(device);
 
       _connStateSub?.cancel();
       _connStateSub = device.connectionState.skip(1).listen((state) {
@@ -117,13 +144,28 @@ class VuAppConnectionService implements BleConnectionRepository {
       _setPhase(VuLinkPhase.discovering);
       await _discover(device);
 
+      // Before anything is bonded or subscribed: an ATC answers a dongle's
+      // prefixed frames with "FMT not correct" on every message, and a
+      // dongle has no ITS to subscribe.
+      final deviceHasIts = VuItsUuids.characteristics.keys.any(
+        (uuid) => _rawServices.any((s) => s.serviceUuid == Guid(uuid)),
+      );
+      if (checkProfile && deviceHasIts != profile.subscribeIts) {
+        _log(
+          'Cihaz seçilen profile uymuyor (ITS servisleri '
+          '${deviceHasIts ? 'var' : 'yok'}).',
+          LogLevel.error,
+        );
+        throw VuProfileMismatchException(deviceHasIts: deviceHasIts);
+      }
+
       _mtu = await _negotiateMtu(device);
       _log(
         'MTU $_mtu, paket başına ${VuAppPacketCodec.payloadSizeFor(_mtu)} bayt.',
         LogLevel.info,
       );
 
-      await _bond(device);
+      if (profile.bondFirst) await _bond(device);
 
       _setPhase(VuLinkPhase.subscribing);
       final tx = _tx!;
@@ -131,6 +173,10 @@ class VuAppConnectionService implements BleConnectionRepository {
       _txSub = tx.onValueReceived.listen(_onPacket);
       await tx.setNotifyValue(true, timeout: _subscribeTimeoutSeconds);
 
+      if (profile.subscribeIts) await _subscribeIts();
+
+      await _bondWatch?.cancel();
+      _bondWatch = null;
       _setPhase(VuLinkPhase.ready);
       _stateController.add(repo.BleConnectionState.connected);
       _log('Uygulama servisi hazır.', LogLevel.success);
@@ -142,42 +188,52 @@ class VuAppConnectionService implements BleConnectionRepository {
     }
   }
 
-  /// Discovery that survives pairing starting underneath it.
-  ///
-  /// Pairing does not always wait for [_bond]: when the phone still holds a
-  /// bond the unit has forgotten, or the unit asks for security on its own,
-  /// Android starts it right after connecting and holds discovery until the
-  /// user has answered on both screens. A 15 s discovery timeout then fires
-  /// a second or two before the user is done and tears the link down - and
-  /// the discovery that finally completes after the pairing can come back
-  /// empty, so it is asked for once more.
+  /// Pairing does not wait for [_bond]. When the phone still holds a bond
+  /// the unit has forgotten, when the unit asks for security itself, or when
+  /// a profile without [VuLinkProfile.bondFirst] writes an authenticated
+  /// CCCD, Android starts it on its own - in the middle of discovery or of a
+  /// subscription - and holds that step until the user has answered on both
+  /// screens. Watching the bond state for the whole connect shows the code
+  /// prompt whichever step it lands in, and tells discovery to look again.
+  void _watchPairing(BluetoothDevice device) {
+    _pairingSeen = false;
+    _bondWatch?.cancel();
+    if (!Platform.isAndroid) return;
+    _bondWatch = device.bondState.listen((state) {
+      if (state == BluetoothBondState.bonding) {
+        _pairingSeen = true;
+        if (_phase != VuLinkPhase.bonding) {
+          _phaseBeforePairing = _phase;
+          _log('Eşleşme başladı ($_phaseBeforePairing).', LogLevel.info);
+          _setPhase(VuLinkPhase.bonding);
+        }
+      } else if (_phase == VuLinkPhase.bonding) {
+        _setPhase(_phaseBeforePairing);
+      }
+    });
+  }
+
+  /// Discovery that survives pairing starting underneath it (see
+  /// [_watchPairing]): long enough for the user to answer, and asked again
+  /// when the one that completes after the pairing comes back without the
+  /// app service. FBP's own subscription to Service Changed is left out -
+  /// it is a CCCD write of its own, after discovery, on a fixed 15 s
+  /// timeout, which a pairing landing there would run out.
   Future<List<BluetoothService>> _discoverAcrossPairing(
     BluetoothDevice device,
   ) async {
-    var pairingSeen = false;
-    StreamSubscription<BluetoothBondState>? bondSub;
-    if (Platform.isAndroid) {
-      bondSub = device.bondState.listen((state) {
-        if (state == BluetoothBondState.bonding) {
-          pairingSeen = true;
-          _log('Keşif sırasında eşleşme başladı.', LogLevel.info);
-          _setPhase(VuLinkPhase.bonding);
-        } else if (pairingSeen) {
-          _setPhase(VuLinkPhase.discovering);
-        }
-      });
+    var raw = await device.discoverServices(
+      subscribeToServicesChanged: false,
+      timeout: _discoverTimeoutSeconds,
+    );
+    if (_pairingSeen && !_hasAppService(raw)) {
+      _log('Eşleşme sonrası servisler yeniden aranıyor.', LogLevel.info);
+      raw = await device.discoverServices(
+        subscribeToServicesChanged: false,
+        timeout: _discoverTimeoutSeconds,
+      );
     }
-
-    try {
-      var raw = await device.discoverServices(timeout: _discoverTimeoutSeconds);
-      if (pairingSeen && !_hasAppService(raw)) {
-        _log('Eşleşme sonrası servisler yeniden aranıyor.', LogLevel.info);
-        raw = await device.discoverServices(timeout: 15);
-      }
-      return raw;
-    } finally {
-      await bondSub?.cancel();
-    }
+    return raw;
   }
 
   static bool _hasAppService(List<BluetoothService> services) {
@@ -209,6 +265,7 @@ class VuAppConnectionService implements BleConnectionRepository {
         ),
     ];
 
+    _rawServices = raw;
     final app = raw.where((s) => s.serviceUuid == serviceGuid).firstOrNull;
     _rx = app?.characteristics
         .where((c) => c.characteristicUuid == rxGuid)
@@ -263,6 +320,67 @@ class VuAppConnectionService implements BleConnectionRepository {
       );
     }
     _log('Eşleşme tamam.', LogLevel.success);
+  }
+
+  /// The ITS FIFOs and credits, by indication. Like App TX they are
+  /// authenticated, so this only works after bonding. A unit without the
+  /// ITS services is logged rather than refused: live data over the app
+  /// service still works, only the ITS features will not.
+  Future<void> _subscribeIts() async {
+    for (final entry in VuItsUuids.characteristics.entries) {
+      final service = _rawServices
+          .where((s) => s.serviceUuid == Guid(entry.key))
+          .firstOrNull;
+      if (service == null) {
+        _log('ITS servisi yok: ${entry.key}', LogLevel.error);
+        continue;
+      }
+      for (final uuid in entry.value) {
+        final char = service.characteristics
+            .where((c) => c.characteristicUuid == Guid(uuid))
+            .firstOrNull;
+        if (char == null) {
+          _log('ITS karakteristiği yok: $uuid', LogLevel.error);
+          continue;
+        }
+        final ctrl = _itsPackets.putIfAbsent(
+          uuid,
+          () => StreamController<List<int>>.broadcast(),
+        );
+        _itsSubs.add(char.onValueReceived.listen(ctrl.add));
+        await char.setNotifyValue(
+          true,
+          timeout: _subscribeTimeoutSeconds,
+          forceIndications: true,
+        );
+        _itsChars[uuid] = char;
+      }
+    }
+    _log(
+      '${_itsChars.length} ITS karakteristiğine abone olundu.',
+      LogLevel.info,
+    );
+  }
+
+  /// Whether the ITS characteristic [uuid] (see [VuItsUuids]) is subscribed.
+  bool hasIts(String uuid) => _itsChars.containsKey(uuid);
+
+  /// Raw indications from an ITS FIFO or credits characteristic. The
+  /// credit-based framing on top of them is the ITS channel's job.
+  Stream<List<int>> itsPackets(String uuid) => _itsPackets
+      .putIfAbsent(uuid, () => StreamController<List<int>>.broadcast())
+      .stream;
+
+  /// One write to an ITS FIFO or credits characteristic, with response as
+  /// Appendix 13 requires.
+  Future<void> writeIts(String uuid, List<int> value) async {
+    final char = _itsChars[uuid];
+    if (char == null) {
+      throw BleCharacteristicException(
+        message: 'ITS karakteristiği yok: $uuid',
+      );
+    }
+    await char.write(value);
   }
 
   void _onPacket(List<int> packet) {
@@ -334,8 +452,16 @@ class VuAppConnectionService implements BleConnectionRepository {
   Future<void> _teardown() async {
     await _txSub?.cancel();
     _txSub = null;
+    for (final sub in _itsSubs) {
+      await sub.cancel();
+    }
+    _itsSubs.clear();
+    _itsChars.clear();
+    _rawServices = const [];
     await _connStateSub?.cancel();
     _connStateSub = null;
+    await _bondWatch?.cancel();
+    _bondWatch = null;
     try {
       await _device?.disconnect();
     } catch (_) {}
@@ -348,6 +474,9 @@ class VuAppConnectionService implements BleConnectionRepository {
   Future<void> dispose() async {
     await disconnect();
     await _messages.close();
+    for (final ctrl in _itsPackets.values) {
+      await ctrl.close();
+    }
     await _stateController.close();
     await _logController.close();
   }

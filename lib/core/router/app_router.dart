@@ -6,7 +6,7 @@ import '../widgets/main_layout.dart';
 import '../../features/about/about_page.dart';
 import '../../features/alerts/alerts_page.dart';
 import '../../features/analysis/analysis_page.dart';
-import '../../features/auth/login_page.dart';
+import '../../features/onboarding/tachograph_select_page.dart';
 import '../../features/dashboard/dashboard_page.dart';
 import '../../features/dashboard/driver_mode_page.dart';
 import '../../features/ddd_files/ddd_file_detail_page.dart';
@@ -37,10 +37,18 @@ final goRouter = GoRouter(
           const NoTransitionPage(child: SplashPage()),
     ),
     GoRoute(
-      path: '/login',
+      path: '/select-device',
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) =>
-          const NoTransitionPage(child: LoginPage()),
+          const NoTransitionPage(child: TachographSelectPage()),
+    ),
+    // The connection screen as the step after choosing a tachograph; the
+    // same screen is also pushed over the app as /bluetooth-scan.
+    GoRoute(
+      path: '/connect',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: BluetoothScanPage(standalone: true)),
     ),
     ShellRoute(
       navigatorKey: _shellNavigatorKey,

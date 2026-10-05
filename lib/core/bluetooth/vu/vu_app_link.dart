@@ -28,6 +28,30 @@ class VuAppUuids {
   static const String macPrefix = '00:03:73';
 }
 
+/// The two regulated ITS services (Appendix 13): Annex 7 download and Annex 8
+/// diagnostics. Each has a FIFO the messages travel on and a credits
+/// characteristic for flow control, both indicating. Same values as
+/// AvuItsTester's VuUuids.kt.
+class VuItsUuids {
+  VuItsUuids._();
+
+  static const String downloadService = 'eef90782-55dd-4388-b80b-695aba7a69b5';
+  static const String downloadFifo = '29d3a479-1592-47df-80a4-afa742d369bb';
+  static const String downloadCredits = 'db9c4128-bff3-41fe-a306-fb6f9a8aeb2d';
+
+  static const String diagnosticsService =
+      'fa213def-aef4-475c-bcea-0a8d69073efc';
+  static const String diagnosticsFifo = 'e413960c-75ba-4ca9-8a67-99bc052a1b13';
+  static const String diagnosticsCredits =
+      'e168d1a6-304f-42b4-ab96-4cd1d4efebd9';
+
+  /// Service to its FIFO and credits, in subscription order.
+  static const Map<String, List<String>> characteristics = {
+    downloadService: [downloadFifo, downloadCredits],
+    diagnosticsService: [diagnosticsFifo, diagnosticsCredits],
+  };
+}
+
 /// The `[total][sequence]` header in front of every packet.
 ///
 /// `total` is the packet count of the message in the first packet and 0 in

@@ -17,6 +17,7 @@ import '../bluetooth/services/vu_app_connection_service.dart';
 import '../bluetooth/vu/vu_app_link.dart';
 import '../exceptions/ble_connection_exception.dart';
 import '../models/ddd_file.dart';
+import '../models/tachograph_type.dart';
 import '../providers/app_state.dart';
 import 'background_keepalive_service.dart';
 import 'ddd_download_service.dart';
@@ -280,23 +281,41 @@ class AppBluetoothService {
   /// own steps time out sooner; this only catches one that never returns.
   static const Duration _vuConnectTimeout = Duration(seconds: 150);
 
-  /// A vehicle unit is reached over its BLE app service; the Classic path is
-  /// left only for the K-line dongle until the download moves to ITS.
-  BleConnectionRepository _connectionFor(AppBluetoothDevice device) {
+  /// Both tachograph kinds are reached over the BLE app service, framed as
+  /// the one chosen on the launch screen wants (see VuLinkProfile). The
+  /// Classic path is left only for the old K-line dongle until the download
+  /// moves to ITS.
+  BleConnectionRepository _connectionFor(
+    AppBluetoothDevice device,
+    AppState appState, {
+    required bool allowTypeMismatch,
+  }) {
     if (device.type == AppBluetoothType.le) {
-      return VuAppConnectionService(onPhase: (p) => linkPhase.value = p);
+      final type = appState.tachographType ?? TachographType.atc8256;
+      return VuAppConnectionService(
+        profile: type.link,
+        onPhase: (p) => linkPhase.value = p,
+        checkProfile: !allowTypeMismatch,
+      );
     }
     return createConnectionService(BtTransport.classic);
   }
 
+  /// Whether a read cycle on [conn] opens with StartDiagnosticSession.
+  static bool _sendsDiagnosticSession(BleConnectionRepository conn) =>
+      conn is! VuAppConnectionService || conn.profile.sendsDiagnosticSession;
+
   Duration _connectTimeoutFor(BleConnectionRepository conn) =>
       conn is VuAppConnectionService ? _vuConnectTimeout : _connectTimeout;
 
+  /// Throws VuProfileMismatchException when the device turns out to be the
+  /// other kind of tachograph, unless [allowTypeMismatch].
   Future<void> connectToDevice(
     AppBluetoothDevice device,
     AppState appState,
-    Function(bool) onConnectionChange,
-  ) async {
+    Function(bool) onConnectionChange, {
+    bool allowTypeMismatch = false,
+  }) async {
     if (!await ensurePermissions()) {
       throw const BleConnectionException(
         message:
@@ -308,7 +327,11 @@ class AppBluetoothService {
     // and its GATT connection alive behind the new one.
     await disconnect();
 
-    final conn = _connectionFor(device);
+    final conn = _connectionFor(
+      device,
+      appState,
+      allowTypeMismatch: allowTypeMismatch,
+    );
     _wrapKLineForDongle = device.id.toUpperCase() == dongleDeviceId;
     _connectionLogSubscription?.cancel();
     _connectionLogSubscription = conn.logs.listen(
@@ -606,15 +629,17 @@ class AppBluetoothService {
   /// unit's protocols and the second answer, when it is not dropped on the
   /// unit's side, arrives after the first has already been taken.
   ///
-  /// Requests are rewritten to FMT 0x80 with a length byte, which the unit's
-  /// router needs, and responses are rewritten the same way, which the
-  /// parsers in kline_protocol.dart expect. The wire prefix is a dongle
-  /// matter and never sent here.
+  /// How a request goes out follows the link profile: rewritten to FMT 0x80
+  /// with a length byte for the ATC's router, or left as it is for a K-line
+  /// tachograph behind a dongle, with the dongle's prefix byte in front.
+  /// Responses are always rewritten to the long form, which the parsers in
+  /// kline_protocol.dart expect.
   ({SendAndReceive sendAndReceive, StreamSubscription rxSub})
   _buildVuAppTransport(
     VuAppConnectionService conn, {
     bool Function()? shouldAbort,
   }) {
+    final profile = conn.profile;
     final mailbox = VuMessageMailbox();
     final rxSub = conn
         .notifyStream(VuAppConnectionService.kwpChannel)
@@ -627,75 +652,96 @@ class AppBluetoothService {
     var unansweredInARow = 0;
     const giveUpAfterUnanswered = 3;
 
-    Future<List<int>> exchange(List<int> cmd, int waitMs, String label) async {
+    Future<List<int>> exchange(
+      List<int> cmd,
+      int waitMs,
+      String label,
+      int? prefixOverride,
+    ) async {
       if (shouldAbort?.call() ?? false) return const [];
       if (unansweredInARow >= giveUpAfterUnanswered) return const [];
 
-      final request = KwpFrame.withLengthByte(cmd) ?? cmd;
-      final requestSid = KwpFrame.serviceId(request);
-      final resolvedLabel = _rdbiLabel(request, label) ?? label;
+      // The long form is what the service identifier is read from either
+      // way; whether it is also what goes out is the profile's call.
+      final longForm = KwpFrame.withLengthByte(cmd) ?? cmd;
+      final requestSid = KwpFrame.serviceId(longForm);
+      final resolvedLabel = _rdbiLabel(longForm, label) ?? label;
+      final frame = profile.rewriteToLengthByteForm ? longForm : cmd;
+      final prefix = profile.wirePrefix == null
+          ? null
+          : (prefixOverride ?? profile.wirePrefix);
+      final wire = prefix == null ? frame : <int>[prefix, ...frame];
       final wait = Duration(
         milliseconds: math.max(waitMs, _vuMinResponseWait.inMilliseconds),
       );
 
       // Anything still queued answered an earlier request.
       mailbox.clear();
-      _log('BLE TX [$resolvedLabel]: ${_hex(request)}');
+      _log('BLE TX [$resolvedLabel]: ${_hex(wire)}');
       try {
-        await conn.writeCharacteristic(
-          VuAppConnectionService.kwpChannel,
-          request,
-        );
+        await conn.writeCharacteristic(VuAppConnectionService.kwpChannel, wire);
       } catch (e) {
         _log('BLE [$resolvedLabel]: gönderilemedi ($e)');
         return const [];
       }
 
-      var pendingRetries = 0;
-      while (true) {
-        final raw = await mailbox.take(wait);
-        if (raw == null) {
-          unansweredInARow++;
-          _log(
-            'BLE [$resolvedLabel]: ${wait.inMilliseconds} ms içinde yanıt yok'
-            '${unansweredInARow >= giveUpAfterUnanswered ? ' — bu döngüdeki kalan istekler atlanıyor' : ''}',
-          );
-          return const [];
-        }
-        unansweredInARow = 0;
+      try {
+        var pendingRetries = 0;
+        while (true) {
+          final received = await mailbox.take(wait);
+          if (received == null) {
+            unansweredInARow++;
+            _log(
+              'BLE [$resolvedLabel]: ${wait.inMilliseconds} ms içinde yanıt yok'
+              '${unansweredInARow >= giveUpAfterUnanswered ? ' — bu döngüdeki kalan istekler atlanıyor' : ''}',
+            );
+            return const [];
+          }
+          unansweredInARow = 0;
 
-        final response = KwpFrame.withLengthByte(raw);
-        if (response == null) {
-          _log(
-            'BLE [$resolvedLabel]: KWP2000 çerçevesi değil, atlandı: '
-            '${_hex(raw)}',
-          );
-          continue;
-        }
-        if (requestSid != null &&
-            !KwpFrame.isResponseTo(requestSid, response)) {
-          _log(
-            'BLE [$resolvedLabel]: başka isteğin yanıtı, atlandı: '
-            '${_hex(raw)}',
-          );
-          continue;
-        }
-        if (!KwpFrame.checksumValid(raw)) {
-          _log('BLE [$resolvedLabel]: checksum tutmuyor: ${_hex(raw)}');
-        }
+          // A dongle that echoes its prefix in front of the answer.
+          final raw =
+              prefix != null && received.isNotEmpty && received[0] == prefix
+              ? received.sublist(1)
+              : received;
 
-        if (KwpFrame.negativeCode(response) == KwpFrame.responsePending &&
-            pendingRetries < _vuMaxPendingRetries) {
-          pendingRetries++;
-          _log(
-            'BLE [$resolvedLabel]: RESPONSE PENDING (0x78) — bekleniyor '
-            '($pendingRetries/$_vuMaxPendingRetries)',
-          );
-          continue;
-        }
+          final response = KwpFrame.withLengthByte(raw);
+          if (response == null) {
+            _log(
+              'BLE [$resolvedLabel]: KWP2000 çerçevesi değil, atlandı: '
+              '${_hex(received)}',
+            );
+            continue;
+          }
+          if (requestSid != null &&
+              !KwpFrame.isResponseTo(requestSid, response)) {
+            _log(
+              'BLE [$resolvedLabel]: başka isteğin yanıtı, atlandı: '
+              '${_hex(received)}',
+            );
+            continue;
+          }
+          if (!KwpFrame.checksumValid(raw)) {
+            _log('BLE [$resolvedLabel]: checksum tutmuyor: ${_hex(received)}');
+          }
 
-        _log('BLE RX [$resolvedLabel]: ${_hex(raw)}');
-        return response;
+          if (KwpFrame.negativeCode(response) == KwpFrame.responsePending &&
+              pendingRetries < _vuMaxPendingRetries) {
+            pendingRetries++;
+            _log(
+              'BLE [$resolvedLabel]: RESPONSE PENDING (0x78) — bekleniyor '
+              '($pendingRetries/$_vuMaxPendingRetries)',
+            );
+            continue;
+          }
+
+          _log('BLE RX [$resolvedLabel]: ${_hex(received)}');
+          return response;
+        }
+      } finally {
+        if (profile.interMessageDelay > Duration.zero) {
+          await Future.delayed(profile.interMessageDelay);
+        }
       }
     }
 
@@ -705,7 +751,9 @@ class AppBluetoothService {
       String label = '',
       int? prefixOverride,
     }) {
-      final result = _vuRequestChain.then((_) => exchange(cmd, waitMs, label));
+      final result = _vuRequestChain.then(
+        (_) => exchange(cmd, waitMs, label, prefixOverride),
+      );
       _vuRequestChain = result.then((_) {}, onError: (_) {});
       return result;
     }
@@ -858,11 +906,12 @@ class AppBluetoothService {
         label: 'StartComm',
       );
 
-      // Over the vehicle unit's app service StartDiagnosticSession is routed
-      // to the Annex 7 download protocol only, and the reads that follow go
-      // to the calibration protocol, which needs no session over Bluetooth.
-      // Opening a download session to read a speed would be noise at best.
-      if (conn is! VuAppConnectionService) {
+      // Over the ATC's app service StartDiagnosticSession is routed to the
+      // Annex 7 download protocol only, and the reads that follow go to the
+      // calibration protocol, which needs no session over Bluetooth - opening
+      // a download session to read a speed would be noise at best. A K-line
+      // tachograph (the STC behind its dongle) does want one.
+      if (_sendsDiagnosticSession(conn)) {
         await sendAndReceive(
           KLineFrame.sessionStandard,
           waitMs: 600,
@@ -2098,7 +2147,7 @@ class AppBluetoothService {
         label: 'SpeedOnly-StartComm',
       );
       // See _performTachographHandshake for why the app service skips it.
-      if (conn is! VuAppConnectionService) {
+      if (_sendsDiagnosticSession(conn)) {
         await sendAndReceive(
           KLineFrame.sessionStandard,
           waitMs: 400,
@@ -2216,7 +2265,7 @@ class AppBluetoothService {
       );
 
       // See _performTachographHandshake for why the app service skips it.
-      if (conn is! VuAppConnectionService) {
+      if (_sendsDiagnosticSession(conn)) {
         await sendAndReceive(
           KLineFrame.sessionStandard,
           waitMs: 400,
