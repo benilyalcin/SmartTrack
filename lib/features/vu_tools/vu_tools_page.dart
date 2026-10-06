@@ -33,19 +33,21 @@ class VuToolsPage extends StatelessWidget {
           ),
         ],
         // On an ATC the downloaded files are reached from Veri indirme; the
-        // STC 8255 downloads through its dongle from the files page itself.
+        // STC 8255 keeps them here.
         if (!its)
           _ToolCard(
             icon: Icons.folder_outlined,
-            title: 'Veri indirme ve dosyalar',
-            subtitle: 'Dongle üzerinden indir; kaydedilen .ddd dosyaları',
+            title: 'İndirilen dosyalar',
+            subtitle: 'Kaydedilen .ddd dosyaları: aç, paylaş, sil',
             onTap: () => context.go('/ddd-files'),
           ),
         if (its)
-          const _ToolCard(
+          _ToolCard(
             icon: Icons.tune_outlined,
             title: 'Kalibrasyon',
-            subtitle: 'Yakında',
+            subtitle:
+                'Diagnostik kanalında Ek-8 istekleri ve çözülmüş yanıtlar',
+            onTap: () => context.go('/vu/calibration'),
           ),
       ],
     );

@@ -6,6 +6,7 @@ import '../../features/about/about_page.dart';
 import '../../features/alerts/alerts_page.dart';
 import '../../features/analysis/analysis_page.dart';
 import '../../features/onboarding/tachograph_select_page.dart';
+import '../../features/its_calibration/its_calibration_page.dart';
 import '../../features/its_download/its_download_page.dart';
 import '../../features/rhmi/rhmi_page.dart';
 import '../../features/vu_tools/vu_tools_page.dart';
@@ -83,6 +84,11 @@ final goRouter = GoRouter(
               path: 'download',
               pageBuilder: (context, state) =>
                   const NoTransitionPage(child: ItsDownloadPage()),
+            ),
+            GoRoute(
+              path: 'calibration',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: ItsCalibrationPage()),
             ),
           ],
         ),

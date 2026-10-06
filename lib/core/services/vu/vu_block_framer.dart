@@ -14,6 +14,10 @@ class VuBlockRange {
   int get length => end - start;
 }
 
+// TODO(gen2): Generation 1 only. Gen2 v1 (TREP 0x21-0x25) and v2
+// (0x31-0x35, detailed speed 0x24) blocks are RecordArrays and are not
+// recognised, so an ATC 8256 download parses to nothing in the app. See
+// docs/TODO_VU_Gen2_Parsing.md.
 class VuBlockFramer {
   VuBlockFramer._();
 
