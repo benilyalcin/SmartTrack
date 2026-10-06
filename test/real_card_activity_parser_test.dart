@@ -49,10 +49,11 @@ List<int> _dailyRecord(
   ];
 }
 
+/// Both pointers give where a record starts: the oldest, and the newest.
 Uint8List _driverActivityEf(List<List<int>> records) {
   const oldest = 0;
   final circular = records.expand((r) => r).toList();
-  final newest = circular.length;
+  final newest = records.isEmpty ? 0 : circular.length - records.last.length;
   return Uint8List.fromList([
     (oldest >> 8) & 0xFF,
     oldest & 0xFF,
@@ -292,42 +293,34 @@ void main() {
         final headDate = DateTime.utc(2025, 1, 8, 12);
         final staleDate = DateTime.utc(2024, 6, 1, 12);
 
-        final headEntryBytes = _changeInfo(
-          slot: 0,
-          crew: false,
-          activityBits: 0,
-          minutes: 0,
-        );
-        const headRecordLength = 12 + 2;
-        const headCounter = 5;
-        final headBodyFrom4 = [
-          (headRecordLength >> 8) & 0xFF,
-          headRecordLength & 0xFF,
-          ..._epochBytes(headDate),
-          (headCounter >> 8) & 0xFF,
-          headCounter & 0xFF,
-          0x00,
-          0x64,
-          ...headEntryBytes,
-        ];
-        const newest = headRecordLength - 2;
-
-        final staleBytes = _dailyRecord(staleDate, [
-          _changeInfo(slot: 0, crew: false, activityBits: 0, minutes: 0),
-        ]);
+        // A 54-byte ring: the oldest record at 30, the newest at 44 running
+        // off the end and on at 0, and an overwritten record left at 6.
         final tailBytes = _dailyRecord(tailDate, [
           _changeInfo(slot: 0, crew: false, activityBits: 1, minutes: 360),
         ], counter: 3);
-        final oldest = (2 + headRecordLength + staleBytes.length) - 4;
+        final headBytes = _dailyRecord(headDate, [
+          _changeInfo(slot: 0, crew: false, activityBits: 0, minutes: 0),
+          _changeInfo(slot: 0, crew: false, activityBits: 3, minutes: 600),
+        ], counter: 5);
+        final staleBytes = _dailyRecord(staleDate, [
+          _changeInfo(slot: 0, crew: false, activityBits: 0, minutes: 0),
+        ]);
+        const ringLength = 54;
+        const oldest = 30;
+        const newest = 44;
+        final ring = List<int>.filled(ringLength, 0);
+        ring.setRange(6, 6 + staleBytes.length, staleBytes);
+        ring.setRange(oldest, oldest + tailBytes.length, tailBytes);
+        for (var i = 0; i < headBytes.length; i++) {
+          ring[(newest + i) % ringLength] = headBytes[i];
+        }
 
         final ef = Uint8List.fromList([
           (oldest >> 8) & 0xFF,
           oldest & 0xFF,
           (newest >> 8) & 0xFF,
           newest & 0xFF,
-          ...headBodyFrom4,
-          ...staleBytes,
-          ...tailBytes,
+          ...ring,
         ]);
 
         final segments = RealCardActivityParser.parse(ef);

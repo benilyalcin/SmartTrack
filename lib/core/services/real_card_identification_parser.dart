@@ -186,10 +186,15 @@ class RealCardEventFaultParser {
 class RealCardVehicleUsedParser {
   RealCardVehicleUsedParser._();
 
-  static const _recordSize = 31;
+  /// CardVehicleRecord: 31 bytes on Gen1; Gen2 appends the VIN, 48.
+  static const gen1RecordSize = 31;
+  static const gen2RecordSize = 48;
   static const _headerLen = 2;
 
-  static String latestVehicleRegistration(Uint8List efBlock) {
+  static String latestVehicleRegistration(
+    Uint8List efBlock, {
+    int recordSize = gen1RecordSize,
+  }) {
     if (efBlock.length <= _headerLen) return '';
     final body = Uint8List.sublistView(efBlock, _headerLen);
 
@@ -197,8 +202,8 @@ class RealCardVehicleUsedParser {
     DateTime? bestLastUse;
     for (
       var offset = 0;
-      offset + _recordSize <= body.length;
-      offset += _recordSize
+      offset + recordSize <= body.length;
+      offset += recordSize
     ) {
       final lastUse = _parseTimeReal(body, offset + 10);
       if (lastUse == null) continue;
@@ -212,15 +217,18 @@ class RealCardVehicleUsedParser {
     return best;
   }
 
-  static List<VehicleUsageRecord> allRecords(Uint8List efBlock) {
+  static List<VehicleUsageRecord> allRecords(
+    Uint8List efBlock, {
+    int recordSize = gen1RecordSize,
+  }) {
     if (efBlock.length <= _headerLen) return const [];
     final body = Uint8List.sublistView(efBlock, _headerLen);
 
     final result = <VehicleUsageRecord>[];
     for (
       var offset = 0;
-      offset + _recordSize <= body.length;
-      offset += _recordSize
+      offset + recordSize <= body.length;
+      offset += recordSize
     ) {
       final odometerBegin =
           (body[offset] << 16) | (body[offset + 1] << 8) | body[offset + 2];

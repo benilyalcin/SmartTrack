@@ -11,15 +11,49 @@ class RealCardFileScanner {
   static const int _efDriverActivity = 0x0504;
   static const int _efVehiclesUsed = 0x0505;
 
+  /// The Gen1 application's copy of [fid].
   static Uint8List? findBlock(Uint8List data, int fid) => _findBlock(data, fid);
 
+  /// The Gen2 application's copy of [fid], on a Gen2 card. A Gen2 card keeps
+  /// both applications: Gen2 units write the Gen2 one, Gen1 units the Gen1
+  /// one, so a full picture needs both.
+  static Uint8List? findGen2Block(Uint8List data, int fid) =>
+      _walk(data)?[(fid, _gen2Data)];
+
+  static const int _gen1Data = 0x00;
+  static const int _gen2Data = 0x02;
+
+  /// A card download is a run of elementary files: FID (2), type (1),
+  /// length (2), data. Types 0 and 1 are the Gen1 application's data and
+  /// signature, 2 and 3 the Gen2 one's (Annex 1C Appendix 7, 3.3). Null
+  /// when the file is not such a run end to end.
+  static Map<(int, int), Uint8List>? _walk(Uint8List data) {
+    final files = <(int, int), Uint8List>{};
+    var p = 0;
+    while (p + 5 <= data.length) {
+      final type = data[p + 2];
+      final length = (data[p + 3] << 8) | data[p + 4];
+      if (type > 3 || p + 5 + length > data.length) return null;
+      files.putIfAbsent((
+        (data[p] << 8) | data[p + 1],
+        type,
+      ), () => Uint8List.sublistView(data, p + 5, p + 5 + length));
+      p += 5 + length;
+    }
+    return p == data.length ? files : null;
+  }
+
   static Uint8List? _findBlock(Uint8List data, int fid) {
+    final files = _walk(data);
+    if (files != null) return files[(fid, _gen1Data)];
+
+    // Not a clean run of files: search for the header instead.
     final hi = (fid >> 8) & 0xFF;
     final lo = fid & 0xFF;
     for (var offset = 0; offset + 5 <= data.length; offset++) {
       if (data[offset] != hi ||
           data[offset + 1] != lo ||
-          data[offset + 2] != 0x00)
+          data[offset + 2] != _gen1Data)
         continue;
       final length = (data[offset + 3] << 8) | data[offset + 4];
       final dataStart = offset + 5;
@@ -54,83 +88,66 @@ class RealCardActivityParser {
 
   static const _maxDailyRecords = 400;
 
+  /// CardDriverActivity: the oldest and the newest day record's offsets
+  /// (each where that record *starts*), then a ring buffer of day records -
+  /// previous length (2), this length (2), date, presence counter, distance,
+  /// ActivityChangeInfo words. A record can run off the end of the buffer
+  /// and continue at its start.
   static List<TachographActivity> parse(Uint8List efDriverActivity) {
-    if (efDriverActivity.length < 4) return const [];
+    if (efDriverActivity.length < 4 + 12) return const [];
 
     final oldest = (efDriverActivity[0] << 8) | efDriverActivity[1];
     final newest = (efDriverActivity[2] << 8) | efDriverActivity[3];
-    final circularLength = efDriverActivity.length - 4;
-    if (oldest < 0 || oldest > circularLength) return const [];
-
-    final raw = <_RawRecord>[];
-    if (oldest <= newest) {
-      _walkRawRecords(efDriverActivity, 4 + oldest, 4 + newest, raw);
-    } else {
-      _walkRawRecords(efDriverActivity, 4 + oldest, 4 + circularLength, raw);
-      _walkRawRecords(efDriverActivity, 2, 4 + newest, raw);
-    }
+    final ring = Uint8List.sublistView(efDriverActivity, 4);
+    if (oldest >= ring.length || newest >= ring.length) return const [];
 
     final result = <TachographActivity>[];
-    for (final r in raw) {
-      final dayStart = DateTime(r.date.year, r.date.month, r.date.day);
-      result.addAll(_decodeRecord(efDriverActivity, dayStart, r));
+    var offset = oldest;
+    for (var read = 0; read < _maxDailyRecords; read++) {
+      final length =
+          (ring[(offset + 2) % ring.length] << 8) |
+          ring[(offset + 3) % ring.length];
+      if (length < 12 || (length - 12).isOdd || length > ring.length) break;
+      final record = Uint8List.fromList([
+        for (var i = 0; i < length; i++) ring[(offset + i) % ring.length],
+      ]);
+      final date = _parseTimeReal(record, 4);
+      if (date == null ||
+          date.year < _minValidYear ||
+          date.year > _maxValidYear) {
+        break;
+      }
+
+      result.addAll(
+        _decodeRecord(
+          record,
+          DateTime(date.year, date.month, date.day),
+          (record[8] << 8) | record[9],
+        ),
+      );
+      if (offset == newest) break;
+      offset = (offset + length) % ring.length;
     }
 
     result.sort((a, b) => a.startTime.compareTo(b.startTime));
     return result;
   }
 
-  static void _walkRawRecords(
-    Uint8List data,
-    int startOffset,
-    int stopOffsetExclusive,
-    List<_RawRecord> out,
-  ) {
-    var offset = startOffset;
-    var recordsRead = 0;
-    while (recordsRead < _maxDailyRecords &&
-        offset + 12 <= data.length &&
-        offset < stopOffsetExclusive) {
-      final recordLength = (data[offset + 2] << 8) | data[offset + 3];
-      final date = _parseTimeReal(data, offset + 4);
-      final presenceCounter = (data[offset + 8] << 8) | data[offset + 9];
-
-      final headerPlausible =
-          recordLength >= 12 &&
-          (recordLength - 12) % 2 == 0 &&
-          offset + recordLength <= data.length &&
-          date != null &&
-          date.year >= _minValidYear &&
-          date.year <= _maxValidYear;
-      if (!headerPlausible) break;
-
-      out.add(
-        _RawRecord(
-          offset: offset,
-          recordLength: recordLength,
-          date: date,
-          presenceCounter: presenceCounter,
-        ),
-      );
-      offset += recordLength;
-      recordsRead++;
-    }
-  }
-
+  /// One day [record], from its first byte.
   static List<TachographActivity> _decodeRecord(
-    Uint8List data,
+    Uint8List record,
     DateTime dayStart,
-    _RawRecord record,
+    int presenceCounter,
   ) {
-    final entryCount = (record.recordLength - 12) ~/ 2;
+    final entryCount = (record.length - 12) ~/ 2;
     final times = <int>[];
     final types = <ActivityType>[];
     final slots = <DriverSlot>[];
     final crews = <bool>[];
 
     for (var i = 0; i < entryCount; i++) {
-      final entryOffset = record.offset + 12 + i * 2;
-      final entryRaw = (data[entryOffset] << 8) | data[entryOffset + 1];
+      final entryOffset = 12 + i * 2;
+      final entryRaw = (record[entryOffset] << 8) | record[entryOffset + 1];
 
       final slotBit = (entryRaw >> 15) & 0x1;
       final crewBit = (entryRaw >> 14) & 0x1;
@@ -166,7 +183,7 @@ class RealCardActivityParser {
           endTime: segEnd,
           slot: slots[i],
           isCrew: crews[i],
-          recordPresenceCounter: record.presenceCounter,
+          recordPresenceCounter: presenceCounter,
         ),
       );
     }
@@ -197,18 +214,4 @@ class RealCardActivityParser {
     if (seconds <= 0) return null;
     return DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
   }
-}
-
-class _RawRecord {
-  const _RawRecord({
-    required this.offset,
-    required this.recordLength,
-    required this.date,
-    required this.presenceCounter,
-  });
-
-  final int offset;
-  final int recordLength;
-  final DateTime date;
-  final int presenceCounter;
 }

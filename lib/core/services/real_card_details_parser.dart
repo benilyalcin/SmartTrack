@@ -16,21 +16,23 @@ class RealCardDetailsParser {
   static const int _efSpecificConditions = 0x0522;
   static const int _efVehiclesUsed = 0x0505;
 
+  /// On a Gen2 card a single record is taken from the Gen2 application when
+  /// it has one, and lists are merged from both (see
+  /// [RealCardFileScanner.findGen2Block]).
   static CardFileDetails parse(Uint8List rawBytes) {
-    final downloadBlock = RealCardFileScanner.findBlock(
-      rawBytes,
-      _efCardDownload,
-    );
+    Uint8List? gen1(int fid) => RealCardFileScanner.findBlock(rawBytes, fid);
+    Uint8List? gen2(int fid) =>
+        RealCardFileScanner.findGen2Block(rawBytes, fid);
+    Uint8List? either(int fid) => gen2(fid) ?? gen1(fid);
+
+    final downloadBlock = either(_efCardDownload);
     final lastDownloadDate = downloadBlock != null && downloadBlock.length >= 4
         ? _timeReal(downloadBlock, 0)
         : null;
 
     var authority = '';
     var licenceNumber = '';
-    final licenceBlock = RealCardFileScanner.findBlock(
-      rawBytes,
-      _efDrivingLicenceInfo,
-    );
+    final licenceBlock = either(_efDrivingLicenceInfo);
     if (licenceBlock != null && licenceBlock.length >= 53) {
       authority = _ia5(licenceBlock, 1, 35);
       licenceNumber = _ia5(licenceBlock, 37, 16);
@@ -38,17 +40,14 @@ class RealCardDetailsParser {
 
     DateTime? sessionOpenTime;
     var currentVehicle = '';
-    final usageBlock = RealCardFileScanner.findBlock(rawBytes, _efCurrentUsage);
+    final usageBlock = either(_efCurrentUsage);
     if (usageBlock != null && usageBlock.length >= 19) {
       sessionOpenTime = _timeReal(usageBlock, 0);
       currentVehicle = _ia5(usageBlock, 6, 13);
     }
 
     ControlActivityRecord? control;
-    final controlBlock = RealCardFileScanner.findBlock(
-      rawBytes,
-      _efControlActivityData,
-    );
+    final controlBlock = either(_efControlActivityData);
     if (controlBlock != null && controlBlock.length >= 46) {
       final controlTime = _timeReal(controlBlock, 1);
 
@@ -56,7 +55,8 @@ class RealCardDetailsParser {
         control = ControlActivityRecord(
           controlType: controlBlock[0],
           controlTime: controlTime,
-          controlCardNumber: _ia5(controlBlock, 5, 18),
+          // FullCardNumber: card type and issuing state, then the number.
+          controlCardNumber: _ia5(controlBlock, 7, 16),
           controlVehicleRegistration: _ia5(controlBlock, 25, 13),
           downloadPeriodBegin: _timeReal(controlBlock, 38),
           downloadPeriodEnd: _timeReal(controlBlock, 42),
@@ -64,22 +64,38 @@ class RealCardDetailsParser {
       }
     }
 
-    var vehicleRecords = const <VehicleUsageRecord>[];
-    final vehiclesBlock = RealCardFileScanner.findBlock(
-      rawBytes,
-      _efVehiclesUsed,
-    );
-    if (vehiclesBlock != null) {
-      vehicleRecords = RealCardVehicleUsedParser.allRecords(vehiclesBlock);
-    }
+    final seenVehicles = <(String, DateTime?)>{};
+    final vehicleRecords =
+        [
+          for (final (block, size) in [
+            (gen2(_efVehiclesUsed), RealCardVehicleUsedParser.gen2RecordSize),
+            (gen1(_efVehiclesUsed), RealCardVehicleUsedParser.gen1RecordSize),
+          ])
+            if (block != null)
+              for (final v in RealCardVehicleUsedParser.allRecords(
+                block,
+                recordSize: size,
+              ))
+                if (seenVehicles.add((v.vehicleRegistration, v.firstUse))) v,
+        ]..sort(
+          (a, b) =>
+              (b.firstUse ?? DateTime(0)).compareTo(a.firstUse ?? DateTime(0)),
+        );
 
+    // Gen1: a one-byte pointer, then 10-byte PlaceRecords. Gen2: a two-byte
+    // pointer, and each record adds a GNSS position (21 bytes).
+    final seenPlaces = <(DateTime, int)>{};
     final places = <PlaceRecord>[];
-    final placesBlock = RealCardFileScanner.findBlock(rawBytes, _efPlaces);
-    if (placesBlock != null && placesBlock.length > 1) {
-      final body = Uint8List.sublistView(placesBlock, 1);
-      for (var offset = 0; offset + 10 <= body.length; offset += 10) {
+    for (final (block, header, size) in [
+      (gen2(_efPlaces), 2, 21),
+      (gen1(_efPlaces), 1, 10),
+    ]) {
+      if (block == null || block.length <= header) continue;
+      final body = Uint8List.sublistView(block, header);
+      for (var offset = 0; offset + size <= body.length; offset += size) {
         final entryTime = _timeReal(body, offset);
         if (entryTime == null) continue;
+        if (!seenPlaces.add((entryTime, body[offset + 4]))) continue;
         places.add(
           PlaceRecord(
             entryTime: entryTime,
@@ -93,24 +109,27 @@ class RealCardDetailsParser {
           ),
         );
       }
-      places.sort((a, b) => b.entryTime!.compareTo(a.entryTime!));
     }
+    places.sort((a, b) => b.entryTime!.compareTo(a.entryTime!));
 
+    // Gen2 puts a two-byte pointer before the 5-byte records.
+    final seenConditions = <(DateTime, int)>{};
     final specificConditions = <SpecificConditionRecord>[];
-    final scBlock = RealCardFileScanner.findBlock(
-      rawBytes,
-      _efSpecificConditions,
-    );
-    if (scBlock != null) {
-      for (var offset = 0; offset + 5 <= scBlock.length; offset += 5) {
-        final time = _timeReal(scBlock, offset);
+    for (final (block, header) in [
+      (gen2(_efSpecificConditions), 2),
+      (gen1(_efSpecificConditions), 0),
+    ]) {
+      if (block == null) continue;
+      for (var offset = header; offset + 5 <= block.length; offset += 5) {
+        final time = _timeReal(block, offset);
         if (time == null) continue;
+        if (!seenConditions.add((time, block[offset + 4]))) continue;
         specificConditions.add(
-          SpecificConditionRecord(time: time, type: scBlock[offset + 4]),
+          SpecificConditionRecord(time: time, type: block[offset + 4]),
         );
       }
-      specificConditions.sort((a, b) => a.time!.compareTo(b.time!));
     }
+    specificConditions.sort((a, b) => a.time!.compareTo(b.time!));
 
     return CardFileDetails(
       lastDownloadDate: lastDownloadDate,

@@ -318,16 +318,34 @@ class DddFileParser {
       }
     }
 
+    // A Gen2 card carries both applications: the Gen2 one holds what Gen2
+    // units wrote, the Gen1 one what Gen1 units wrote. Single records come
+    // from Gen2 when it has them; lists are merged.
+    Uint8List? gen2(int fid) =>
+        RealCardFileScanner.findGen2Block(rawBytes, fid);
+
+    final gen2Activities = switch (gen2(TachoTags.efDriverActivity)) {
+      final block? => RealCardActivityParser.parse(block),
+      null => const <TachographActivity>[],
+    };
+    activityLog.addAll(gen2Activities);
     final realActivityBlock = RealCardFileScanner.findDriverActivityBlock(
       rawBytes,
     );
     if (realActivityBlock != null) {
-      activityLog.addAll(RealCardActivityParser.parse(realActivityBlock));
+      // A day both applications recorded is taken from Gen2.
+      DateTime day(DateTime t) => DateTime(t.year, t.month, t.day);
+      final gen2Days = {for (final a in gen2Activities) day(a.startTime)};
+      activityLog.addAll(
+        RealCardActivityParser.parse(
+          realActivityBlock,
+        ).where((a) => !gen2Days.contains(day(a.startTime))),
+      );
     }
 
-    final realIdentificationBlock = RealCardFileScanner.findIdentificationBlock(
-      rawBytes,
-    );
+    final realIdentificationBlock =
+        gen2(TachoTags.efIdentification) ??
+        RealCardFileScanner.findIdentificationBlock(rawBytes);
     final identity = realIdentificationBlock != null
         ? RealCardIdentificationParser.parse(realIdentificationBlock)
         : null;
@@ -343,30 +361,51 @@ class DddFileParser {
       cardIssueDate ??= identity.cardIssueDate;
     }
 
-    final realEventsBlock = RealCardFileScanner.findEventsBlock(rawBytes);
-    final realFaultsBlock = RealCardFileScanner.findFaultsBlock(rawBytes);
-    if (realEventsBlock != null || realFaultsBlock != null) {
-      events.clear();
-      faults.clear();
+    // Both applications' records, each once.
+    List<TachoEvent> merged(int fid, Uint8List? gen1, bool isFault) {
+      final seen = <(int, DateTime)>{};
+      return [
+        for (final block in [gen2(fid), gen1])
+          if (block != null)
+            for (final e in RealCardEventFaultParser.parse(
+              block,
+              isFault: isFault,
+            ))
+              if (seen.add((e.code, e.timestamp))) e,
+      ];
     }
-    if (realEventsBlock != null) {
-      events.addAll(
-        RealCardEventFaultParser.parse(realEventsBlock, isFault: false),
-      );
-    }
-    if (realFaultsBlock != null) {
-      faults.addAll(
-        RealCardEventFaultParser.parse(realFaultsBlock, isFault: true),
-      );
+
+    final realEvents = merged(
+      TachoTags.efEventsData,
+      RealCardFileScanner.findEventsBlock(rawBytes),
+      false,
+    );
+    final realFaults = merged(
+      TachoTags.efFaultsData,
+      RealCardFileScanner.findFaultsBlock(rawBytes),
+      true,
+    );
+    if (realEvents.isNotEmpty || realFaults.isNotEmpty) {
+      events
+        ..clear()
+        ..addAll(realEvents);
+      faults
+        ..clear()
+        ..addAll(realFaults);
     }
 
     if (vehicleReg.isEmpty) {
-      final realVehiclesUsedBlock = RealCardFileScanner.findVehiclesUsedBlock(
-        rawBytes,
-      );
-      if (realVehiclesUsedBlock != null) {
+      final gen2Vehicles = gen2(TachoTags.efVehiclesUsed);
+      final gen1Vehicles = RealCardFileScanner.findVehiclesUsedBlock(rawBytes);
+      if (gen2Vehicles != null) {
         vehicleReg = RealCardVehicleUsedParser.latestVehicleRegistration(
-          realVehiclesUsedBlock,
+          gen2Vehicles,
+          recordSize: RealCardVehicleUsedParser.gen2RecordSize,
+        );
+      }
+      if (vehicleReg.isEmpty && gen1Vehicles != null) {
+        vehicleReg = RealCardVehicleUsedParser.latestVehicleRegistration(
+          gen1Vehicles,
         );
       }
     }
