@@ -132,16 +132,9 @@ class MainLayout extends StatelessWidget {
     return realName.isNotEmpty ? realName : '-';
   }
 
-  /// The tabs, in order. The tachograph tools tab (Remote HMI, download,
-  /// calibration) is for an ATC 8256 only; the Log tab exists only in a
-  /// developer build.
-  static List<_NavTab> _tabsFor(BuildContext context) {
-    final hasIts = AppStateProvider.of(context).tachographType?.hasIts ?? false;
-    return [
-      for (final tab in _tabs)
-        if (tab.path != '/vu' || hasIts) tab,
-    ];
-  }
+  /// The tabs, in order. The Tachograph tab holds the unit's tools and the
+  /// downloaded files; which tools it lists follows the tachograph type.
+  static List<_NavTab> _tabsFor(BuildContext context) => _tabs;
 
   static const List<_NavTab> _tabs = [
     _NavTab(
@@ -168,7 +161,6 @@ class MainLayout extends StatelessWidget {
       Icons.analytics_outlined,
       Icons.analytics,
     ),
-    _NavTab('/ddd-files', 'nav.dddFiles', Icons.folder_outlined, Icons.folder),
     _NavTab('/vu', 'nav.vu', Icons.handyman_outlined, Icons.handyman),
     _NavTab(
       '/settings',
@@ -214,7 +206,9 @@ class MainLayout extends StatelessWidget {
   }
 
   int _calculateSelectedIndex(BuildContext context) {
-    final String location = GoRouterState.of(context).uri.path;
+    // The files pages are reached from the Tachograph tab, so they light it.
+    final path = GoRouterState.of(context).uri.path;
+    final String location = path.startsWith('/ddd-files') ? '/vu' : path;
     final index = _tabsFor(
       context,
     ).indexWhere((tab) => location.startsWith(tab.path));

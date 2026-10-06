@@ -7,7 +7,7 @@ class AppLocalizations {
     'nav.alerts': {'TR': 'Uyarılar', 'EN': 'Alerts', 'DE': 'Warnungen'},
     'nav.timeline': {'TR': 'Çizelge', 'EN': 'Timeline', 'DE': 'Zeitleiste'},
     'nav.dddFiles': {'TR': 'Dosyalar', 'EN': 'Files', 'DE': 'Dateien'},
-    'nav.vu': {'TR': 'Takograf', 'EN': 'Tachograph', 'DE': 'Fahrtenschreiber'},
+    'nav.vu': {'TR': 'ITS', 'EN': 'ITS', 'DE': 'ITS'},
     'nav.settings': {'TR': 'Ayarlar', 'EN': 'Settings', 'DE': 'Einstellungen'},
 
     'bt.errorTitle': {
@@ -2757,11 +2757,7 @@ class AppLocalizations {
       'DE': 'In jedem Fall',
     },
     'analysis.sevColRange': {'TR': 'Süre', 'EN': 'Time', 'DE': 'Zeit'},
-    'analysis.sevColSeverity': {
-      'TR': 'Seviye',
-      'EN': 'Level',
-      'DE': 'Stufe',
-    },
+    'analysis.sevColSeverity': {'TR': 'Seviye', 'EN': 'Level', 'DE': 'Stufe'},
     'analysis.sevColFine': {'TR': 'Ceza', 'EN': 'Fine', 'DE': 'Bußgeld'},
     'analysis.unitHourShort': {'TR': 'sa', 'EN': 'h', 'DE': 'Std.'},
     'analysis.unitMinuteShort': {'TR': 'dk', 'EN': 'min', 'DE': 'Min.'},

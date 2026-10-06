@@ -43,7 +43,11 @@ class ItsDownloadResult {
     this.vuBytes,
     this.steps = const [],
     this.problem,
+    this.period,
   });
+
+  /// The unit's downloadable period, read out of a generation 2 overview.
+  final DownloadablePeriod? period;
 
   /// The card's file as the card parser reads it: the payload alone.
   final Uint8List? cardBytes;
@@ -107,6 +111,7 @@ class ItsDownloadService {
     final problems = <String>[];
     Uint8List? cardBytes;
     Uint8List? vuBytes;
+    DownloadablePeriod? period;
 
     try {
       if (request.card) {
@@ -145,7 +150,7 @@ class ItsDownloadService {
           );
           sessionSteps.add('Genel bakış: ${overview.describe()}');
           append(VuTransfer.overview, overview.payload);
-          final period = request.generation == DownloadGeneration.gen1
+          period = request.generation == DownloadGeneration.gen1
               ? null
               : Appendix7.parseDownloadablePeriod(overview.payload);
 
@@ -197,6 +202,7 @@ class ItsDownloadService {
       vuBytes: vuBytes,
       steps: steps,
       problem: problems.isEmpty ? null : problems.join('\n'),
+      period: period,
     );
   }
 

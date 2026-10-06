@@ -9,9 +9,6 @@ import '../../core/models/ddd_file.dart';
 import '../../core/providers/app_state.dart';
 import '../../core/services/bluetooth_service.dart';
 import '../../core/services/ddd_file_repository.dart';
-import '../../core/bluetooth/vu/its_link.dart';
-import '../../core/services/its/appendix7.dart';
-import '../../core/services/its/its_download_service.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/responsive.dart';
@@ -27,7 +24,6 @@ typedef RealDownloadOptions = ({
   bool includeEventsFaults,
   bool includeDetailedSpeed,
   bool includeTechnicalData,
-  DownloadGeneration generation,
 });
 
 class DddFilesPage extends StatefulWidget {
@@ -238,36 +234,22 @@ class _DddFilesPageState extends State<DddFilesPage> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (sheetContext) => _RealDownloadOptionsSheet(
-        onPickActivityRange: _pickActivityRange,
-        showGeneration:
-            AppStateProvider.of(context).tachographType?.hasIts ?? false,
-      ),
+      builder: (sheetContext) =>
+          _RealDownloadOptionsSheet(onPickActivityRange: _pickActivityRange),
     );
   }
 
   Future<void> _startRealDddDownload(AppState appState) async {
-    // An ATC downloads over its ITS download channel on the connection it
-    // already has; there is no dongle to find.
-    final its = appState.tachographType?.hasIts ?? false;
-    final link = AppBluetoothService.instance.itsDownload;
-    if (its && link == null) {
-      showAppSnackBar(
-        context,
-        _t('ddd.itsNotConnected'),
-        type: AppSnackBarType.error,
-      );
+    // An ATC downloads on its own screen, over the ITS download channel of
+    // the connection it already has.
+    if (appState.tachographType?.hasIts ?? false) {
+      context.go('/vu/download');
       return;
     }
 
     final options = await _showRealDownloadOptionsSheet();
     if (options == null || !mounted) return;
     if (!options.includeCard && !options.includeVehicleUnit) return;
-
-    if (its && link != null) {
-      await _downloadOverIts(appState, link, options);
-      return;
-    }
 
     final kind = options.includeCard && options.includeVehicleUnit
         ? DddFetchKind.both
@@ -317,71 +299,6 @@ class _DddFilesPageState extends State<DddFilesPage> {
         context,
         'İndirildi ve ayrıştırıldı.',
         type: AppSnackBarType.success,
-      );
-    } catch (e) {
-      if (mounted) {
-        dialog.close();
-        showAppSnackBar(
-          context,
-          'İndirilemedi: $e',
-          type: AppSnackBarType.error,
-        );
-      }
-    }
-  }
-
-  /// One ITS session per kind - card, vehicle unit - saved the way the
-  /// dongle's downloads are, so the list, the parsers and the analysis take
-  /// them as they are.
-  Future<void> _downloadOverIts(
-    AppState appState,
-    ItsLink link,
-    RealDownloadOptions options,
-  ) async {
-    final dialog = _showLoadingDialog(_t('ddd.itsOpening'));
-    try {
-      final result = await ItsDownloadService.instance.download(
-        link,
-        ItsDownloadRequest(
-          card: options.includeCard,
-          vehicleUnit: options.includeVehicleUnit,
-          activities: options.activityRange != null,
-          eventsAndFaults: options.includeEventsFaults,
-          detailedSpeed: options.includeDetailedSpeed,
-          technicalData: options.includeTechnicalData,
-          activitiesFrom: options.activityRange?.start,
-          activitiesTo: options.activityRange?.end,
-          generation: options.generation,
-        ),
-        onProgress: dialog.setMessage,
-      );
-      if (!mounted) return;
-
-      if (result.cardBytes == null && result.vuBytes == null) {
-        dialog.close();
-        showAppSnackBar(
-          context,
-          result.problem ?? _t('ddd.itsNothing'),
-          type: AppSnackBarType.error,
-        );
-        return;
-      }
-
-      dialog.setMessage(_t('ddd.itsSaving'));
-      await appState.saveRealDddBytes(
-        cardBytes: result.cardBytes,
-        vuBytes: result.vuBytes,
-      );
-      if (!mounted) return;
-      dialog.close();
-      showAppSnackBar(
-        context,
-        result.problem == null
-            ? _t('ddd.itsDone')
-            : '${_t('ddd.itsPartial')}\n${result.problem}',
-        type: result.problem == null
-            ? AppSnackBarType.success
-            : AppSnackBarType.info,
       );
     } catch (e) {
       if (mounted) {
@@ -924,16 +841,9 @@ class _DddFilesPageState extends State<DddFilesPage> {
 }
 
 class _RealDownloadOptionsSheet extends StatefulWidget {
-  const _RealDownloadOptionsSheet({
-    required this.onPickActivityRange,
-    this.showGeneration = false,
-  });
+  const _RealDownloadOptionsSheet({required this.onPickActivityRange});
 
   final Future<DateTimeRange?> Function() onPickActivityRange;
-
-  /// Offer the generation to download in: an ATC answers in any of the
-  /// three, and only generation 1 is read by the app itself.
-  final bool showGeneration;
 
   @override
   State<_RealDownloadOptionsSheet> createState() =>
@@ -947,7 +857,6 @@ class _RealDownloadOptionsSheetState extends State<_RealDownloadOptionsSheet> {
   bool _includeEventsFaults = true;
   bool _includeDetailedSpeed = true;
   bool _includeTechnicalData = true;
-  DownloadGeneration _generation = DownloadGeneration.gen1;
 
   @override
   void initState() {
@@ -1031,37 +940,6 @@ class _RealDownloadOptionsSheetState extends State<_RealDownloadOptionsSheet> {
                 value: _includeCard,
                 onChanged: (v) => setState(() => _includeCard = v),
               ),
-              if (widget.showGeneration && _includeVehicleUnit) ...[
-                const SizedBox(height: 16),
-                Text(
-                  'Nesil',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SegmentedButton<DownloadGeneration>(
-                  segments: [
-                    for (final g in DownloadGeneration.values)
-                      ButtonSegment(value: g, label: Text(g.label)),
-                  ],
-                  selected: {_generation},
-                  onSelectionChanged: (s) =>
-                      setState(() => _generation = s.first),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _generation == DownloadGeneration.gen1
-                      ? 'Uygulama Gen 1 dosyasını kendisi okur.'
-                      : 'Gen 2 dosyası kaydedilir ve paylaşılabilir; '
-                            'uygulama içinde ayrıştırılmaz.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -1076,7 +954,6 @@ class _RealDownloadOptionsSheetState extends State<_RealDownloadOptionsSheet> {
                           includeEventsFaults: _includeEventsFaults,
                           includeDetailedSpeed: _includeDetailedSpeed,
                           includeTechnicalData: _includeTechnicalData,
-                          generation: _generation,
                         ))
                       : null,
                   icon: const Icon(Icons.download_rounded),
