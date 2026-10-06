@@ -1264,16 +1264,20 @@ class AppLocalizations {
       'EN': 'Fetch both at once',
       'DE': 'Beide auf einmal abrufen',
     },
-    'ddd.cardBadge': {'TR': 'KART', 'EN': 'CARD', 'DE': 'KARTE'},
+    'ddd.cardBadge': {
+      'TR': 'CARD DOWNLOAD',
+      'EN': 'CARD DOWNLOAD',
+      'DE': 'CARD DOWNLOAD',
+    },
     'ddd.vehicleUnitBadge': {
-      'TR': 'TAKOGRAF',
-      'EN': 'TACHOGRAPH',
-      'DE': 'FAHRTENSCHREIBER',
+      'TR': 'VU DOWNLOAD',
+      'EN': 'VU DOWNLOAD',
+      'DE': 'VU DOWNLOAD',
     },
     'ddd.bothBadge': {
-      'TR': 'KART+TAKOGRAF',
-      'EN': 'CARD+TACHOGRAPH',
-      'DE': 'KARTE+FAHRTENSCHREIBER',
+      'TR': 'VU + CARD DOWNLOAD',
+      'EN': 'VU + CARD DOWNLOAD',
+      'DE': 'VU + CARD DOWNLOAD',
     },
     'ddd.driveUploading': {
       'TR': 'Drive\'a yükleniyor...',

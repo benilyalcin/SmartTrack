@@ -286,8 +286,7 @@ class _ItsDownloadPageState extends State<ItsDownloadPage> {
                 Text(
                   'Nesil, transfer istek parametresinin (TRTP) içinde gider. '
                   'Kart indirmenin her nesilde tek değeri vardır. Uygulama '
-                  'Gen 1 dosyasını kendisi okur; Gen 2 dosyası saklanır ve '
-                  'paylaşılır.',
+                  'her neslin dosyasını okur.',
                   style: small,
                 ),
                 const SizedBox(height: 8),
@@ -434,17 +433,25 @@ class _ItsDownloadPageState extends State<ItsDownloadPage> {
             _Card(
               title: 'Dosyalar',
               children: [
-                Text(
-                  'İndirilen dosyalar uygulamanın dosya listesine kaydedilir; '
-                  'oradan açılır, paylaşılır.',
-                  style: small,
-                ),
+                // The two things a download gives: the unit's data and the
+                // card's, newest first; a tap opens the file.
+                for (final (title, kind) in const [
+                  ('VU download', 'vehicleUnit'),
+                  ('Card download', 'card'),
+                ]) ...[
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  ..._filesOf(context, kind),
+                  const SizedBox(height: 8),
+                ],
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
                     onPressed: () => context.go('/ddd-files'),
                     icon: const Icon(Icons.folder_outlined),
-                    label: const Text('İndirilen dosyalar'),
+                    label: const Text('Tüm dosyalar'),
                   ),
                 ),
               ],
@@ -454,6 +461,43 @@ class _ItsDownloadPageState extends State<ItsDownloadPage> {
       },
     );
   }
+}
+
+/// The last few saved files of one kind ('vehicleUnit' or 'card'; a
+/// combined download counts as both), as rows that open the file.
+List<Widget> _filesOf(BuildContext context, String kind) {
+  final files = AppStateProvider.of(context).dddFiles
+      .where((f) => f.downloadKind == kind || f.downloadKind == 'both')
+      .take(3)
+      .toList();
+  final small = Theme.of(context).textTheme.bodySmall;
+  if (files.isEmpty) return [Text('Henüz yok.', style: small)];
+
+  String two(int v) => v.toString().padLeft(2, '0');
+  return [
+    for (final f in files)
+      ListTile(
+        dense: true,
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(
+          kind == 'card' ? Icons.badge_outlined : Icons.local_shipping_outlined,
+        ),
+        title: Text(
+          f.cardHolderName.isEmpty ? f.cardType : f.cardHolderName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          '${two(f.downloadedAt.day)}.${two(f.downloadedAt.month)}.'
+          '${f.downloadedAt.year} ${two(f.downloadedAt.hour)}:'
+          '${two(f.downloadedAt.minute)} · '
+          '${(f.fileSizeBytes / 1024).toStringAsFixed(1)} KB',
+          style: small,
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push('/ddd-files/${f.id}'),
+      ),
+  ];
 }
 
 class _Card extends StatelessWidget {

@@ -43,7 +43,8 @@ class VuFieldCodecs {
 
   static String decodeCodepageText(int codepage, Uint8List bytes) {
     String text;
-    if (codepage == 6) {
+    // 9 is ISO 8859-9 (Turkish), what Gen2 units write.
+    if (codepage == 6 || codepage == 9) {
       final buffer = StringBuffer();
       for (final b in bytes) {
         switch (b) {

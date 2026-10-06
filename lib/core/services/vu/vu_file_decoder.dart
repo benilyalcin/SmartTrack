@@ -5,6 +5,7 @@ import 'vu_activity_decoder.dart';
 import 'vu_block_framer.dart';
 import 'vu_events_decoder.dart';
 import 'vu_field_codecs.dart';
+import 'vu_gen2_decoder.dart';
 import 'vu_overview_decoder.dart';
 import 'vu_speed_decoder.dart';
 import 'vu_technical_decoder.dart';
@@ -13,6 +14,8 @@ class VuFileDecoder {
   VuFileDecoder._();
 
   static VehicleUnitData decode(Uint8List data) {
+    if (VuGen2Decoder.handles(data)) return VuGen2Decoder.decode(data);
+
     final ranges = VuBlockFramer.locateBlocks(data);
 
     Uint8List? firstBlock(int trep) {
@@ -58,8 +61,8 @@ class VuFileDecoder {
         ? VuTechnicalDecoder.decode(technicalBlock)
         : null;
 
-    final identificationTexts = _buildIdentificationTexts(
-      overviewBlock,
+    final identificationTexts = buildIdentificationTexts(
+      overviewBlock != null ? _scanNameFields(overviewBlock) : const [],
       technicalResult?.technicalData,
       technicalResult?.calibrationRecords ?? const [],
       dailyActivities,
@@ -79,16 +82,14 @@ class VuFileDecoder {
     );
   }
 
-  static List<IdentifiedText> _buildIdentificationTexts(
-    Uint8List? overviewBlock,
+  /// The names found in a download, each labelled with where it came from
+  /// when that is known: manufacturer, workshop, or a card holder.
+  static List<IdentifiedText> buildIdentificationTexts(
+    List<String> texts,
     VuTechnicalData? technicalData,
     List<VuCalibrationRecord> calibrationRecords,
     List<VuDailyActivity> dailyActivities,
   ) {
-    final texts = overviewBlock != null
-        ? _scanNameFields(overviewBlock)
-        : const <String>[];
-
     final sourceLabels = <String, String>{};
     if (technicalData != null) {
       sourceLabels[technicalData.manufacturerName] =

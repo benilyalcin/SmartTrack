@@ -142,55 +142,9 @@ class VuActivityDecoder {
     if (!reader.canRead(noOfActivityChanges * 2)) return null;
 
     final dayStart = DateTime(date.year, date.month, date.day);
-    final minutesList = <int>[];
-    final types = <ActivityType>[];
-    final slots = <DriverSlot>[];
-    final crews = <bool>[];
-    final cardInsertedFlags = <bool>[];
-    for (var i = 0; i < noOfActivityChanges; i++) {
-      final raw = reader.readUint16();
-      final minutes = raw & 0x7FF;
-      if (minutes > 1439) continue;
-      final slotBit = (raw >> 15) & 1;
-      final crewBit = (raw >> 14) & 1;
-
-      final cardStatusBit = (raw >> 13) & 1;
-      final workType = (raw >> 11) & 0x3;
-      minutesList.add(minutes);
-      types.add(_activityTypeFromWorkType(workType));
-      slots.add(slotBit == 0 ? DriverSlot.driver : DriverSlot.coDriver);
-      crews.add(crewBit == 1);
-      cardInsertedFlags.add(cardStatusBit == 0);
-    }
-
-    final activities = <TachographActivity>[];
-    for (final targetSlot in DriverSlot.values) {
-      final indices = [
-        for (var i = 0; i < minutesList.length; i++)
-          if (slots[i] == targetSlot) i,
-      ];
-
-      if (targetSlot == DriverSlot.coDriver && indices.length < 2) continue;
-      for (var k = 0; k < indices.length; k++) {
-        final i = indices[k];
-        final segStart = dayStart.add(Duration(minutes: minutesList[i]));
-        final segEnd = k + 1 < indices.length
-            ? dayStart.add(Duration(minutes: minutesList[indices[k + 1]]))
-            : dayStart.add(const Duration(days: 1));
-        if (!segEnd.isAfter(segStart)) continue;
-        activities.add(
-          TachographActivity(
-            type: types[i],
-            startTime: segStart,
-            endTime: segEnd,
-            slot: slots[i],
-            isCrew: crews[i],
-            cardInserted: cardInsertedFlags[i],
-          ),
-        );
-      }
-    }
-    activities.sort((a, b) => a.startTime.compareTo(b.startTime));
+    final activities = buildActivities(dayStart, [
+      for (var i = 0; i < noOfActivityChanges; i++) reader.readUint16(),
+    ]);
 
     if (!reader.canRead(1)) return null;
     final noOfPlaces = reader.readUint8();
@@ -244,6 +198,63 @@ class VuActivityDecoder {
       ),
       recordLength: reader.position - offset,
     );
+  }
+
+  /// A day's ActivityChangeInfo words as activity segments, per slot. The
+  /// encoding is the same in every generation, so Gen2 uses this too.
+  static List<TachographActivity> buildActivities(
+    DateTime dayStart,
+    List<int> changes,
+  ) {
+    final minutesList = <int>[];
+    final types = <ActivityType>[];
+    final slots = <DriverSlot>[];
+    final crews = <bool>[];
+    final cardInsertedFlags = <bool>[];
+    for (final raw in changes) {
+      final minutes = raw & 0x7FF;
+      if (minutes > 1439) continue;
+      final slotBit = (raw >> 15) & 1;
+      final crewBit = (raw >> 14) & 1;
+
+      final cardStatusBit = (raw >> 13) & 1;
+      final workType = (raw >> 11) & 0x3;
+      minutesList.add(minutes);
+      types.add(_activityTypeFromWorkType(workType));
+      slots.add(slotBit == 0 ? DriverSlot.driver : DriverSlot.coDriver);
+      crews.add(crewBit == 1);
+      cardInsertedFlags.add(cardStatusBit == 0);
+    }
+
+    final activities = <TachographActivity>[];
+    for (final targetSlot in DriverSlot.values) {
+      final indices = [
+        for (var i = 0; i < minutesList.length; i++)
+          if (slots[i] == targetSlot) i,
+      ];
+
+      if (targetSlot == DriverSlot.coDriver && indices.length < 2) continue;
+      for (var k = 0; k < indices.length; k++) {
+        final i = indices[k];
+        final segStart = dayStart.add(Duration(minutes: minutesList[i]));
+        final segEnd = k + 1 < indices.length
+            ? dayStart.add(Duration(minutes: minutesList[indices[k + 1]]))
+            : dayStart.add(const Duration(days: 1));
+        if (!segEnd.isAfter(segStart)) continue;
+        activities.add(
+          TachographActivity(
+            type: types[i],
+            startTime: segStart,
+            endTime: segEnd,
+            slot: slots[i],
+            isCrew: crews[i],
+            cardInserted: cardInsertedFlags[i],
+          ),
+        );
+      }
+    }
+    activities.sort((a, b) => a.startTime.compareTo(b.startTime));
+    return activities;
   }
 
   static ActivityType _activityTypeFromWorkType(int workType) {
