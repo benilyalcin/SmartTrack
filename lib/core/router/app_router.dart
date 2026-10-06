@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../config/dev_flags.dart';
 import '../widgets/main_layout.dart';
 import '../../features/about/about_page.dart';
 import '../../features/alerts/alerts_page.dart';
 import '../../features/analysis/analysis_page.dart';
 import '../../features/onboarding/tachograph_select_page.dart';
+import '../../features/rhmi/rhmi_page.dart';
+import '../../features/vu_tools/vu_tools_page.dart';
 import '../../features/dashboard/dashboard_page.dart';
 import '../../features/dashboard/driver_mode_page.dart';
 import '../../features/ddd_files/ddd_file_detail_page.dart';
@@ -66,12 +67,19 @@ final goRouter = GoRouter(
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: AlertsPage()),
         ),
-        if (kDeveloperBuild)
-          GoRoute(
-            path: '/dev-log',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: KLineLogPage(embedded: true)),
-          ),
+        // The ATC 8256's tools: one tab, each tool a page under it.
+        GoRoute(
+          path: '/vu',
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: VuToolsPage()),
+          routes: [
+            GoRoute(
+              path: 'rhmi',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: RhmiPage()),
+            ),
+          ],
+        ),
         GoRoute(
           path: '/timeline',
           pageBuilder: (context, state) =>

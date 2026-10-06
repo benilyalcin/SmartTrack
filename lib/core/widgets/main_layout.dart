@@ -105,8 +105,19 @@ class MainLayout extends StatelessWidget {
         ],
       ),
       actions: [
+        // Developer builds only; the full-screen log with its share button.
+        if (kDeveloperBuild)
+          IconButton(
+            tooltip: 'Log',
+            onPressed: () => context.push('/kline-log'),
+            icon: Icon(
+              Icons.terminal,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
         if (appState.isBluetoothConnected)
           _RefreshDataButton(appState: appState, lang: lang),
+        _ConnectionButton(appState: appState, lang: lang),
         _NotificationBell(appState: appState, lang: lang),
         const SizedBox(width: 8),
       ],
@@ -121,7 +132,17 @@ class MainLayout extends StatelessWidget {
     return realName.isNotEmpty ? realName : '-';
   }
 
-  /// The tabs, in order. The Log tab exists only in a developer build.
+  /// The tabs, in order. The tachograph tools tab (Remote HMI, download,
+  /// calibration) is for an ATC 8256 only; the Log tab exists only in a
+  /// developer build.
+  static List<_NavTab> _tabsFor(BuildContext context) {
+    final hasIts = AppStateProvider.of(context).tachographType?.hasIts ?? false;
+    return [
+      for (final tab in _tabs)
+        if (tab.path != '/vu' || hasIts) tab,
+    ];
+  }
+
   static const List<_NavTab> _tabs = [
     _NavTab(
       '/dashboard',
@@ -148,14 +169,13 @@ class MainLayout extends StatelessWidget {
       Icons.analytics,
     ),
     _NavTab('/ddd-files', 'nav.dddFiles', Icons.folder_outlined, Icons.folder),
+    _NavTab('/vu', 'nav.vu', Icons.handyman_outlined, Icons.handyman),
     _NavTab(
       '/settings',
       'nav.settings',
       Icons.settings_outlined,
       Icons.settings,
     ),
-    if (kDeveloperBuild)
-      _NavTab('/dev-log', null, Icons.terminal_outlined, Icons.terminal),
   ];
 
   Widget _buildBottomNav(BuildContext context, String lang) {
@@ -165,7 +185,7 @@ class MainLayout extends StatelessWidget {
       selectedIndex: _calculateSelectedIndex(context),
       onDestinationSelected: (int index) => _onItemTapped(index, context),
       destinations: [
-        for (final tab in _tabs)
+        for (final tab in _tabsFor(context))
           NavigationDestination(
             icon: Icon(tab.icon),
             selectedIcon: Icon(tab.selectedIcon),
@@ -183,7 +203,7 @@ class MainLayout extends StatelessWidget {
       onDestinationSelected: (int index) => _onItemTapped(index, context),
       labelType: NavigationRailLabelType.all,
       destinations: [
-        for (final tab in _tabs)
+        for (final tab in _tabsFor(context))
           NavigationRailDestination(
             icon: Icon(tab.icon),
             selectedIcon: Icon(tab.selectedIcon),
@@ -195,12 +215,14 @@ class MainLayout extends StatelessWidget {
 
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.path;
-    final index = _tabs.indexWhere((tab) => location.startsWith(tab.path));
+    final index = _tabsFor(
+      context,
+    ).indexWhere((tab) => location.startsWith(tab.path));
     return index < 0 ? 0 : index;
   }
 
   void _onItemTapped(int index, BuildContext context) {
-    context.go(_tabs[index].path);
+    context.go(_tabsFor(context)[index].path);
   }
 }
 
@@ -240,6 +262,65 @@ class _RefreshDataButton extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2, color: color),
               )
             : Icon(Icons.refresh, color: color),
+      ),
+    );
+  }
+}
+
+/// Where the link is managed from anywhere in the app: connected, a tap asks
+/// to disconnect; not connected, a tap opens the connection screen. Leaving
+/// the app does not end the link - this does.
+class _ConnectionButton extends StatelessWidget {
+  final AppState appState;
+  final String lang;
+
+  const _ConnectionButton({required this.appState, required this.lang});
+
+  String _t(String key) => AppLocalizations.getText(lang, key);
+
+  Future<void> _disconnect(BuildContext context) async {
+    final device = appState.connectedDeviceName ?? '-';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(_t('conn.disconnectTitle')),
+        content: Text(_t('conn.disconnectBody').replaceAll('{device}', device)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(_t('conn.cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(_t('conn.disconnect')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await AppBluetoothService.instance.disconnect();
+    appState.setBluetoothConnected(false);
+    if (!context.mounted) return;
+    showAppSnackBar(
+      context,
+      _t('conn.disconnected'),
+      type: AppSnackBarType.info,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final connected = appState.isBluetoothConnected;
+    return IconButton(
+      tooltip: _t(connected ? 'conn.connectedTooltip' : 'conn.connectTooltip'),
+      onPressed: connected
+          ? () => _disconnect(context)
+          : () => context.push('/bluetooth-scan'),
+      icon: Icon(
+        connected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
+        color: connected ? scheme.primary : scheme.outline,
       ),
     );
   }

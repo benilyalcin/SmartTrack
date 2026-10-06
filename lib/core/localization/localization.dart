@@ -7,6 +7,7 @@ class AppLocalizations {
     'nav.alerts': {'TR': 'Uyarılar', 'EN': 'Alerts', 'DE': 'Warnungen'},
     'nav.timeline': {'TR': 'Çizelge', 'EN': 'Timeline', 'DE': 'Zeitleiste'},
     'nav.dddFiles': {'TR': 'Dosyalar', 'EN': 'Files', 'DE': 'Dateien'},
+    'nav.vu': {'TR': 'Takograf', 'EN': 'Tachograph', 'DE': 'Fahrtenschreiber'},
     'nav.settings': {'TR': 'Ayarlar', 'EN': 'Settings', 'DE': 'Einstellungen'},
 
     'bt.errorTitle': {
@@ -347,6 +348,71 @@ class AppLocalizations {
       'DE': 'ATC-8256 · Live-Fahrdaten, ITS-Datendownload und Diagnose',
     },
     'connect.title': {'TR': 'Bağlan', 'EN': 'Connect', 'DE': 'Verbinden'},
+    'conn.connectTooltip': {
+      'TR': 'Takografa bağlan',
+      'EN': 'Connect to the tachograph',
+      'DE': 'Mit dem Fahrtenschreiber verbinden',
+    },
+    'conn.connectedTooltip': {
+      'TR': 'Bağlı — bağlantıyı kesmek için dokunun',
+      'EN': 'Connected — tap to disconnect',
+      'DE': 'Verbunden — zum Trennen tippen',
+    },
+    'conn.disconnectTitle': {
+      'TR': 'Bağlantı kesilsin mi?',
+      'EN': 'Disconnect?',
+      'DE': 'Verbindung trennen?',
+    },
+    'conn.disconnectBody': {
+      'TR':
+          '{device} ile bağlantı kapatılacak. Veriler yeniden bağlanana kadar güncellenmez.',
+      'EN':
+          'The connection to {device} will be closed. Data will not update until you connect again.',
+      'DE':
+          'Die Verbindung zu {device} wird getrennt. Die Daten werden bis zur erneuten Verbindung nicht aktualisiert.',
+    },
+    'conn.disconnect': {
+      'TR': 'Bağlantıyı kes',
+      'EN': 'Disconnect',
+      'DE': 'Trennen',
+    },
+    'conn.cancel': {'TR': 'Vazgeç', 'EN': 'Cancel', 'DE': 'Abbrechen'},
+    'conn.disconnected': {
+      'TR': 'Takograf bağlantısı kesildi',
+      'EN': 'Disconnected from the tachograph',
+      'DE': 'Vom Fahrtenschreiber getrennt',
+    },
+    'ddd.itsNotConnected': {
+      'TR': 'ITS indirme için önce takografa (ATC 8256) bağlanın.',
+      'EN': 'Connect to the tachograph (ATC 8256) first to download over ITS.',
+      'DE':
+          'Zuerst mit dem Fahrtenschreiber (ATC 8256) verbinden, um über ITS herunterzuladen.',
+    },
+    'ddd.itsOpening': {
+      'TR': 'İndirme kanalı açılıyor…',
+      'EN': 'Opening the download channel…',
+      'DE': 'Download-Kanal wird geöffnet…',
+    },
+    'ddd.itsSaving': {
+      'TR': 'Kaydediliyor…',
+      'EN': 'Saving…',
+      'DE': 'Wird gespeichert…',
+    },
+    'ddd.itsNothing': {
+      'TR': 'Takograf veri göndermedi.',
+      'EN': 'The tachograph sent no data.',
+      'DE': 'Der Fahrtenschreiber hat keine Daten gesendet.',
+    },
+    'ddd.itsDone': {
+      'TR': 'İndirildi ve kaydedildi.',
+      'EN': 'Downloaded and saved.',
+      'DE': 'Heruntergeladen und gespeichert.',
+    },
+    'ddd.itsPartial': {
+      'TR': 'Kaydedildi, ama bir kısmı alınamadı:',
+      'EN': 'Saved, but some of it could not be downloaded:',
+      'DE': 'Gespeichert, aber ein Teil konnte nicht heruntergeladen werden:',
+    },
     'connect.mismatchTitle': {
       'TR': 'Takograf tipi uyuşmuyor',
       'EN': 'Tachograph type does not match',

@@ -14,6 +14,7 @@ import '../bluetooth/config/bluetooth_config.dart';
 import '../bluetooth/repositories/ble_connection_repository.dart';
 import '../bluetooth/repositories/ble_scanner_repository.dart';
 import '../bluetooth/services/vu_app_connection_service.dart';
+import '../bluetooth/vu/its_link.dart';
 import '../bluetooth/vu/vu_app_link.dart';
 import '../exceptions/ble_connection_exception.dart';
 import '../models/ddd_file.dart';
@@ -71,6 +72,28 @@ class AppBluetoothService {
 
   BleConnectionRepository? _activeConnection;
   String? _activeDeviceId;
+
+  ItsLink? _itsDownload;
+  ItsLink? _itsDiagnostics;
+
+  /// The ITS download channel of a connected ATC 8256; null otherwise.
+  ItsLink? get itsDownload => _itsDownload;
+
+  /// The ITS diagnostics channel (Remote HMI) of a connected ATC 8256.
+  ItsLink? get itsDiagnostics => _itsDiagnostics;
+
+  /// The name of the connected unit, for the disconnect prompt.
+  String? get activeDeviceId => _activeDeviceId;
+
+  void _disposeItsLinks() {
+    final links = [_itsDownload, _itsDiagnostics];
+    _itsDownload = null;
+    _itsDiagnostics = null;
+    for (final link in links) {
+      if (link != null) unawaited(link.dispose());
+    }
+  }
+
   StreamSubscription<BleConnectionState>? _connectionStateSubscription;
   StreamSubscription? _connectionLogSubscription;
   Timer? _liveRefreshTimer;
@@ -347,6 +370,10 @@ class AppBluetoothService {
             ),
           );
       _activeConnection = conn;
+      if (conn is VuAppConnectionService && conn.profile.subscribeIts) {
+        _itsDownload = ItsLink.download(conn);
+        _itsDiagnostics = ItsLink.diagnostics(conn);
+      }
       _activeDeviceId = device.id;
       onConnectionChange(true);
 
@@ -2118,6 +2145,7 @@ class AppBluetoothService {
     final dead = _activeConnection;
     _activeConnection = null;
     _activeDeviceId = null;
+    _disposeItsLinks();
     if (dead != null) {
       unawaited(
         dead.dispose().catchError((Object e) {
@@ -3296,6 +3324,7 @@ class AppBluetoothService {
     final conn = _activeConnection;
     _activeConnection = null;
     _activeDeviceId = null;
+    _disposeItsLinks();
     if (conn != null) {
       try {
         await conn.dispose();
