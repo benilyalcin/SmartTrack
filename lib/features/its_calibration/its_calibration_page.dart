@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/bluetooth/vu/its_link.dart';
 import '../../core/services/bluetooth_service.dart';
 import '../../core/services/its/diag_decoder.dart';
+import '../../core/widgets/app_snackbar.dart';
 
 /// Requests worth a button, named the way the unit's own parameter table
 /// (ParameterSearch.cpp) names them - AvuItsTester's ConsoleScreen presets.
@@ -82,19 +83,32 @@ class _ItsCalibrationPageState extends State<ItsCalibrationPage> {
           _busy = false;
           _message = 'Diagnostik kanalı açılamadı.';
         });
+        showAppSnackBar(
+          context,
+          'İstek gönderilmedi: diagnostik kanalı açılamadı.',
+          type: AppSnackBarType.error,
+        );
       }
       return;
     }
     final answer = await link.request(bytes);
     if (!mounted) return;
+    final result = answer == null ? null : DiagDecoder.decode(answer);
     setState(() {
       _busy = false;
-      if (answer == null) {
-        _message = 'Yanıt yok.';
-      } else {
-        _result = DiagDecoder.decode(answer);
-      }
+      _result = result;
+      if (result == null) _message = 'Yanıt yok.';
     });
+    showAppSnackBar(
+      context,
+      result == null
+          ? 'Yanıt yok: takograf isteği cevaplamadı.'
+          : '${result.positive ? 'Olumlu' : 'Reddedildi'} · '
+                '${result.title}: ${result.value}',
+      type: result?.positive ?? false
+          ? AppSnackBarType.success
+          : AppSnackBarType.error,
+    );
   }
 
   @override

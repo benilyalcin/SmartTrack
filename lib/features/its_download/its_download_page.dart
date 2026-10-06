@@ -6,6 +6,7 @@ import '../../core/providers/app_state.dart';
 import '../../core/services/bluetooth_service.dart';
 import '../../core/services/its/appendix7.dart';
 import '../../core/services/its/its_download_service.dart';
+import '../../core/widgets/app_snackbar.dart';
 
 /// Annex 7 data download over the ITS download service - AvuItsTester's
 /// DownloadScreen, section for section.
@@ -116,6 +117,17 @@ class _ItsDownloadPageState extends State<ItsDownloadPage> {
           : '$bytes bayt, ${result.steps.length} transfer'
                 '${result.problem == null ? '' : '\n${result.problem}'}';
     });
+    showAppSnackBar(
+      context,
+      bytes == 0
+          ? 'İndirme başarısız: ${result.problem ?? 'takograf veri göndermedi.'}'
+          : result.problem == null
+          ? '$bytes bayt indirildi ve kaydedildi.'
+          : '$bytes bayt kaydedildi, eksik: ${result.problem}',
+      type: bytes > 0 && result.problem == null
+          ? AppSnackBarType.success
+          : AppSnackBarType.error,
+    );
   }
 
   Future<void> _pick(bool from) async {

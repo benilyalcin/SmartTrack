@@ -33,6 +33,22 @@ class RhmiController extends ChangeNotifier {
   static const Duration _clockMaxAge = Duration(minutes: 1);
 
   String? busy;
+
+  /// Every finished action, for the notice above the bottom bar: the unit
+  /// does what was asked without saying so on the phone, so this does.
+  final StreamController<RhmiOutcome> _outcomes =
+      StreamController<RhmiOutcome>.broadcast();
+  Stream<RhmiOutcome> get outcomes => _outcomes.stream;
+
+  /// Set when the unit answered the current action negatively.
+  bool _refused = false;
+
+  void _report(String text, RhmiOutcomeKind kind) {
+    message = text;
+    notifyListeners();
+    _outcomes.add(RhmiOutcome(text, kind));
+  }
+
   String? message;
 
   /// Clients whose identifier the unit confirmed with F214 on this link.
@@ -85,13 +101,13 @@ class RhmiController extends ChangeNotifier {
   Future<void> _run(String what, Future<String> Function(ItsLink) block) async {
     final link = _link;
     if (link == null) {
-      message = 'Bir ATC 8256\'ya bağlı değil.';
-      notifyListeners();
+      _report("Bir ATC 8256'ya bağlı değil.", RhmiOutcomeKind.notSent);
       return;
     }
     if (busy != null) return;
 
     busy = what;
+    _refused = false;
     message = null;
     notifyListeners();
 
@@ -109,9 +125,21 @@ class RhmiController extends ChangeNotifier {
     }
     debugPrint('RHMI: $what -> $outcome');
     busy = null;
-    message = outcome;
-    notifyListeners();
+    _report(
+      outcome,
+      _refused || _failed(outcome)
+          ? RhmiOutcomeKind.refused
+          : RhmiOutcomeKind.done,
+    );
   }
+
+  /// The outcomes that are neither the unit's yes nor its no - nothing came
+  /// back, or the channel would not open.
+  static bool _failed(String outcome) =>
+      outcome.startsWith('Yanıt yok') ||
+      outcome.startsWith('Başarısız') ||
+      outcome.contains('açılamadı') ||
+      outcome.contains('okunamadı');
 
   /// The same, for requests that need an identifier to sign with.
   Future<void> _signed(
@@ -125,15 +153,16 @@ class RhmiController extends ChangeNotifier {
         ? null
         : await RhmiPairingStore.instance.get(device, asClient ?? client);
     if (pairing == null) {
-      message = '${Rhmi.clientName(asClient ?? client)} eşleştirilmemiş.';
-      notifyListeners();
+      _report(
+        '${Rhmi.clientName(asClient ?? client)} eşleştirilmemiş.',
+        RhmiOutcomeKind.notSent,
+      );
       return;
     }
     if (needsSession) {
       final notOpen = _sessionNotOpen();
       if (notOpen != null) {
-        message = notOpen;
-        notifyListeners();
+        _report(notOpen, RhmiOutcomeKind.notSent);
         return;
       }
     }
@@ -187,6 +216,7 @@ class RhmiController extends ChangeNotifier {
       '0x${v.toRadixString(16).padLeft(2, '0').toUpperCase()}';
 
   String _negative(List<int> r) {
+    _refused = true;
     final nrc = _nrc(r);
     final base =
         'Reddedildi: ${RdbiResponseParser.describeNrc(nrc)} (${_hex2(nrc)})';
@@ -597,28 +627,28 @@ class RhmiController extends ChangeNotifier {
         entryType == Rhmi.placeBegin ? 'Başlangıç yeri' : 'Bitiş yeri',
         Rhmi.ridEntryOfPlace,
         [Rhmi.cardSlotNumber(slot), entryType, country, region],
-        'Yer kaydedildi (VU ve yuva $slot kartı).',
+        "Yer VU'da ve yuva $slot kartında kaydedildi.",
       );
 
   Future<void> enterSpecificCondition(int type) => _userEntry(
     'Özel durum',
     Rhmi.ridEntryOfSpecificCondition,
     [type],
-    'Özel durum kaydedildi.',
+    "Özel durum VU'da ve takılı kartlarda kaydedildi.",
   );
 
   Future<void> setActivity(int slot, int activity) => _userEntry(
     'Aktivite',
     Rhmi.ridSetActivity,
     [Rhmi.cardSlotNumber(slot), activity],
-    'Aktivite değiştirildi (tuşa basılmış gibi).',
+    "Aktivite değiştirildi; VU'da ve kartta kaydedildi.",
   );
 
   Future<void> loadUnload(int operation) => _userEntry(
     'Yükleme/boşaltma',
     Rhmi.ridLoadUnload,
     [operation],
-    'İşlem kaydedildi.',
+    "Yükleme/boşaltma VU'da kaydedildi.",
   );
 
   Future<void> _userEntry(
@@ -883,4 +913,22 @@ class RhmiController extends ChangeNotifier {
     String two(int v) => v.toString().padLeft(2, '0');
     return '${two(d.day)}.${two(d.month)}.${d.year}';
   }
+}
+
+enum RhmiOutcomeKind {
+  /// The unit accepted and did it.
+  done,
+
+  /// The unit refused, or never answered.
+  refused,
+
+  /// Not sent: not paired, or no session open.
+  notSent,
+}
+
+/// What one action came to, for the notice above the bottom bar.
+class RhmiOutcome {
+  const RhmiOutcome(this.text, this.kind);
+  final String text;
+  final RhmiOutcomeKind kind;
 }

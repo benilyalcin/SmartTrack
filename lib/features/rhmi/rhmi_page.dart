@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -5,6 +7,7 @@ import '../../core/providers/app_state.dart';
 import '../../core/services/rhmi/manual_entry.dart';
 import '../../core/services/rhmi/rhmi.dart';
 import '../../core/services/rhmi/rhmi_controller.dart';
+import '../../core/widgets/app_snackbar.dart';
 
 /// Remote HMI for an ATC 8256: what the unit's own keys and menus do,
 /// from the phone. One status card on top - the session everything else
@@ -21,17 +24,36 @@ class _RhmiPageState extends State<RhmiPage> {
   bool _tokenDialogOpen = false;
   int _slot = 1;
 
+  StreamSubscription<RhmiOutcome>? _outcomes;
+
   @override
   void initState() {
     super.initState();
     _c.syncDevice();
     _c.addListener(_onChange);
+    _outcomes = _c.outcomes.listen(_onOutcome);
   }
 
   @override
   void dispose() {
+    _outcomes?.cancel();
     _c.removeListener(_onChange);
     super.dispose();
+  }
+
+  /// Every request's outcome as a notice above the bottom bar, so an entry
+  /// made here is seen to land on the unit (or why it did not).
+  void _onOutcome(RhmiOutcome o) {
+    if (!mounted) return;
+    showAppSnackBar(
+      context,
+      o.text,
+      type: switch (o.kind) {
+        RhmiOutcomeKind.done => AppSnackBarType.success,
+        RhmiOutcomeKind.refused => AppSnackBarType.error,
+        RhmiOutcomeKind.notSent => AppSnackBarType.info,
+      },
+    );
   }
 
   void _onChange() {
@@ -126,7 +148,7 @@ class _RhmiPageState extends State<RhmiPage> {
         ),
         _Section(
           icon: Icons.touch_app_outlined,
-          title: 'Aktivite ve girişler',
+          title: 'Live Entries',
           children: [_liveEntries(open)],
         ),
         _Section(
