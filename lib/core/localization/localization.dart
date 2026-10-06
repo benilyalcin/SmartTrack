@@ -314,19 +314,6 @@ class AppLocalizations {
       'DE':
           'Aktiviert Zwei-Finger-Zoom (Vergrößern/Verkleinern) im App-Inhalt.',
     },
-    'settings.autoFetchDdd': {
-      'TR': 'Otomatik .ddd İndirme',
-      'EN': 'Automatic .ddd Download',
-      'DE': 'Automatischer .ddd-Download',
-    },
-    'settings.autoFetchDddDesc': {
-      'TR':
-          'Bağlantı kesilip yeniden bağlanınca boşluğu doldurmak için takograftan otomatik veri istenir — kapalıyken doğrudan size sorulur.',
-      'EN':
-          'On reconnect, automatically requests data from the tachograph to fill the gap — when off, you\'re asked directly instead.',
-      'DE':
-          'Beim erneuten Verbinden werden automatisch Daten vom Fahrtenschreiber angefordert, um die Lücke zu schließen — bei Deaktivierung werden Sie stattdessen direkt gefragt.',
-    },
     'select.title': {
       'TR': 'Takograf Seçin',
       'EN': 'Choose Your Tachograph',

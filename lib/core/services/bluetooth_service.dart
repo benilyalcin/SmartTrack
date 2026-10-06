@@ -1977,21 +1977,6 @@ class AppBluetoothService {
         reason: gotData ? null : (failureReason ?? 'Cihazdan veri alınamadı'),
       );
 
-      DddFile? dddOutcome;
-      if (appState.autoFetchDddOnReconnect) {
-        trace('DDD-Download', true, 'BAŞLADI');
-        dddOutcome = await appState.downloadDddForCurrentCard(
-          sendAndReceive: sendAndReceive,
-        );
-        trace(
-          'DDD-Download',
-          dddOutcome != null,
-          dddOutcome != null ? 'TAMAMLANDI' : 'BAŞARISIZ/VERİ YOK',
-        );
-      } else {
-        trace('DDD-Download', true, 'ATLANDI (ayar kapalı)');
-      }
-
       if (gotData) {
         appState.checkForRealGap(
           currentWorkingStateCode: workingStateCode,

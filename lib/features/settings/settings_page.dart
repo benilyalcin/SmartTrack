@@ -605,49 +605,6 @@ class _SettingsPageState extends State<SettingsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
-                Icons.sync_outlined,
-                color: Theme.of(context).colorScheme.outline,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _t('settings.autoFetchDdd'),
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _t('settings.autoFetchDddDesc'),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Switch(
-                value: appState.autoFetchDddOnReconnect,
-                onChanged: (value) =>
-                    appState.setAutoFetchDddOnReconnect(value),
-                activeTrackColor: Theme.of(context).colorScheme.primary,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
                 Icons.update,
                 color: Theme.of(context).colorScheme.outline,
                 size: 20,

@@ -58,7 +58,6 @@ class AppState extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
   bool _freeScreenMode = false;
 
-  bool _autoFetchDddOnReconnect = true;
   int _liveRefreshSeconds = 60;
   TachographType? _tachographType;
   AppRole _activeRole = AppRole.driver;
@@ -178,10 +177,6 @@ class AppState extends ChangeNotifier {
     }
     if (prefs.containsKey('freeScreenMode')) {
       _freeScreenMode = prefs.getBool('freeScreenMode') ?? false;
-    }
-    if (prefs.containsKey('autoFetchDddOnReconnect')) {
-      _autoFetchDddOnReconnect =
-          prefs.getBool('autoFetchDddOnReconnect') ?? true;
     }
     final storedRefresh = prefs.getInt('liveRefreshSeconds');
     if (storedRefresh != null && liveRefreshChoices.contains(storedRefresh)) {
@@ -550,16 +545,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     SharedPreferences.getInstance().then((prefs) {
       prefs.setInt('liveRefreshSeconds', seconds);
-    });
-  }
-
-  bool get autoFetchDddOnReconnect => _autoFetchDddOnReconnect;
-  void setAutoFetchDddOnReconnect(bool enabled) {
-    if (_autoFetchDddOnReconnect == enabled) return;
-    _autoFetchDddOnReconnect = enabled;
-    notifyListeners();
-    SharedPreferences.getInstance().then((prefs) {
-      prefs.setBool('autoFetchDddOnReconnect', enabled);
     });
   }
 
