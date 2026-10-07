@@ -65,6 +65,12 @@ class VuAppConnectionService implements BleConnectionRepository {
   /// gives up at 30 s, so waiting longer only delays the error.
   static const int _bondTimeoutSeconds = 30;
 
+  /// How long [_bond] gives the pairing the unit asks for on connect to show
+  /// up before asking for one itself. By then discovery and the MTU exchange
+  /// are done, so a pairing Android started on the unit's request is
+  /// normally under way already.
+  static const Duration _unitPairingGrace = Duration(seconds: 3);
+
   /// Long enough to cover a pairing that starts during discovery (see
   /// [_discoverAcrossPairing]).
   static const int _discoverTimeoutSeconds = 45;
@@ -200,6 +206,8 @@ class VuAppConnectionService implements BleConnectionRepository {
     _bondWatch?.cancel();
     if (!Platform.isAndroid) return;
     _bondWatch = device.bondState.listen((state) {
+      // Every change, so a log shows who started each pairing and when.
+      _log('Bağ durumu: ${state.name} (aşama: ${_phase.name}).', LogLevel.info);
       if (state == BluetoothBondState.bonding) {
         _pairingSeen = true;
         if (_phase != VuLinkPhase.bonding) {
@@ -300,16 +308,40 @@ class VuAppConnectionService implements BleConnectionRepository {
 
   /// The app characteristics need an authenticated link, and a CCCD written
   /// before bonding is refused - so on Android the bond comes first.
+  ///
+  /// The unit sends a Security Request as soon as a central connects, and
+  /// Android pairs on that by itself. A createBond that lands while that
+  /// pairing is still on its way is a second pairing request, and the unit
+  /// pairs twice, with a new code on its display each time. So the unit's
+  /// pairing is waited for, and one is asked for here only if none starts.
   Future<void> _bond(BluetoothDevice device) async {
     if (!Platform.isAndroid) return;
 
-    final state = await device.bondState.first;
+    var state = await device.bondState.first;
     if (state == BluetoothBondState.bonded) return;
 
     _setPhase(VuLinkPhase.bonding);
-    _log('Eşleşme başlatılıyor (Numeric Comparison).', LogLevel.info);
     try {
-      await device.createBond(timeout: _bondTimeoutSeconds);
+      if (state == BluetoothBondState.none) {
+        state = await device.bondState
+            .firstWhere((s) => s != BluetoothBondState.none)
+            .timeout(
+              _unitPairingGrace,
+              onTimeout: () => BluetoothBondState.none,
+            );
+      }
+      if (state == BluetoothBondState.bonding) {
+        _log('Takografın başlattığı eşleşme bekleniyor.', LogLevel.info);
+        state = await device.bondState
+            .firstWhere((s) => s != BluetoothBondState.bonding)
+            .timeout(const Duration(seconds: _bondTimeoutSeconds));
+        if (state != BluetoothBondState.bonded) {
+          throw StateError('Eşleşme sonucu: ${state.name}');
+        }
+      } else if (state == BluetoothBondState.none) {
+        _log('Eşleşme başlatılıyor (Numeric Comparison).', LogLevel.info);
+        await device.createBond(timeout: _bondTimeoutSeconds);
+      }
     } catch (e) {
       throw BleConnectionException(
         message:
