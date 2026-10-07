@@ -1,0 +1,58 @@
+name: iOS build (unsigned .ipa)
+
+# Builds an unsigned SmartTrack.ipa on a GitHub macOS runner, to be signed
+# and installed from Windows with Sideloadly or AltStore.
+#
+# Cost guards - this must never run into paid minutes:
+# - Runs only when started by hand (Actions > iOS build > Run workflow),
+#   never on push or pull request.
+# - A standard macos-15 runner only. Standard runners are free and unlimited
+#   on public repositories; larger runners (-large, -xlarge) are billed even
+#   there, so none is used.
+# - The job is skipped before a runner is assigned if the repository is
+#   ever made private, where macOS minutes count 10x against the quota.
+# - One build at a time, at most 30 minutes, and the .ipa is kept 7 days.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build
+  cancel-in-progress: true
+
+jobs:
+  build-ios:
+    if: ${{ !github.event.repository.private }}
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS (no code signing)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package .ipa
+        run: |
+          mkdir -p build/ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ipa/Payload/
+          cd build/ipa
+          zip -qry SmartTrack.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SmartTrack-ios-${{ github.run_number }}
+          path: build/ipa/SmartTrack.ipa
+          retention-days: 7
+          if-no-files-found: error

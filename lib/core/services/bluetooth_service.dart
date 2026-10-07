@@ -142,7 +142,13 @@ class AppBluetoothService {
   /// manifest declares the scan `neverForLocation` and vehicle units are found
   /// by name, so location is asked for - Android 11 and older still want it
   /// for any BLE scan - but a refusal does not block the connection.
+  ///
+  /// Both are Android permissions: on iOS permission_handler answers them
+  /// with permanentlyDenied, which would stop every scan before it starts.
+  /// There CoreBluetooth asks the user itself the first time it is used.
   Future<bool> ensurePermissions() async {
+    if (Platform.isIOS) return true;
+
     final statuses = await [
       ph.Permission.bluetoothScan,
       ph.Permission.bluetoothConnect,
