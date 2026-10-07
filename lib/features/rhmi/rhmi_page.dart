@@ -59,9 +59,6 @@ class _RhmiPageState extends State<RhmiPage> {
   void _onChange() {
     if (!mounted) return;
     setState(() {});
-    if (_c.awaitingToken != null && !_tokenDialogOpen) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _askToken());
-    }
   }
 
   Future<void> _askToken() async {
@@ -104,6 +101,15 @@ class _RhmiPageState extends State<RhmiPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Asked from every build rather than once when the controller changes: a
+    // pairing gets a single notification, and if the dialog could not open
+    // after that one frame the token had nowhere to go. A wrong code keeps
+    // the pairing waiting, so this also brings the dialog back for another
+    // try.
+    if (_c.awaitingToken != null && !_tokenDialogOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _askToken());
+    }
+
     // One of the tools under the Tachograph tab; back goes to the list.
     return Scaffold(
       appBar: AppBar(
@@ -210,6 +216,13 @@ class _RhmiPageState extends State<RhmiPage> {
               onPressed: enabled && !verified ? _c.pairClient : null,
               child: const Text('Eşleştir'),
             ),
+            // The way back to the code while a pairing waits for it, should
+            // the dialog not be on screen.
+            if (_c.awaitingToken != null)
+              FilledButton.tonal(
+                onPressed: () => _askToken(),
+                child: const Text('Kodu gir'),
+              ),
             OutlinedButton(
               onPressed: enabled && paired ? _c.verifySessionId : null,
               child: const Text('Doğrula'),

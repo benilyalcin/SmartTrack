@@ -17,8 +17,13 @@ enum ItsChannelStatus { closed, opening, open, refused }
 /// header and checksum are added here, and answers come back in the long
 /// form the parsers in kline_protocol.dart read.
 class ItsLink {
-  ItsLink._(this.conn, this.label, this.fifoUuid, this.creditsUuid)
-    : channel = ItsChannel(label) {
+  ItsLink._(
+    this.conn,
+    this.label,
+    this.fifoUuid,
+    this.creditsUuid, {
+    this.logPackets = false,
+  }) : channel = ItsChannel(label) {
     _fifoSub = conn.itsPackets(fifoUuid).listen(_onFifo);
     _creditsSub = conn.itsPackets(creditsUuid).listen(_onCredits);
   }
@@ -37,6 +42,7 @@ class ItsLink {
     'ITS-DIAG',
     VuItsUuids.diagnosticsFifo,
     VuItsUuids.diagnosticsCredits,
+    logPackets: true,
   );
 
   final VuAppConnectionService conn;
@@ -44,6 +50,12 @@ class ItsLink {
   final String fifoUuid;
   final String creditsUuid;
   final ItsChannel channel;
+
+  /// Log every FIFO packet as it arrives, before reassembly. On for
+  /// diagnostics, where traffic is one short request and answer at a time,
+  /// so a log shows whether an answer that never completed reached the phone
+  /// at all; off for the download, whose packets run into the thousands.
+  final bool logPackets;
 
   final ValueNotifier<ItsChannelStatus> status = ValueNotifier(
     ItsChannelStatus.closed,
@@ -206,6 +218,7 @@ class ItsLink {
   }
 
   void _onFifo(List<int> packet) {
+    if (logPackets) _log('FIFO paketi ${packet.length} bayt: ${_hex(packet)}');
     final result = channel.onFifoIndication(packet);
     final topUp = result.creditTopUp;
     if (topUp != null) _write(creditsUuid, [topUp]);
