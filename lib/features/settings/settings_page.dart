@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/widgets/bluetooth_warning_banner.dart';
 import '../../core/widgets/card_slot_warning_banner.dart';
+import 'widgets/language_selector.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -36,12 +37,14 @@ class _SettingsPageState extends State<SettingsPage> {
   String _formatRelativeTime(DateTime dt) {
     final diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 1) return _t('settings.justNow');
-    if (diff.inMinutes < 60)
+    if (diff.inMinutes < 60) {
       return _t(
         'settings.minutesAgo',
       ).replaceFirst('{count}', '${diff.inMinutes}');
-    if (diff.inHours < 24)
+    }
+    if (diff.inHours < 24) {
       return _t('settings.hoursAgo').replaceFirst('{count}', '${diff.inHours}');
+    }
     return _t('settings.daysAgo').replaceFirst('{count}', '${diff.inDays}');
   }
 
@@ -473,35 +476,28 @@ class _SettingsPageState extends State<SettingsPage> {
 
           Row(
             children: [
-              Icon(
-                Icons.language,
-                color: Theme.of(context).colorScheme.outline,
-                size: 20,
+              Tooltip(
+                message: _t('settings.langSelect'),
+                child: Icon(
+                  Icons.language,
+                  color: Theme.of(context).colorScheme.outline,
+                  size: 20,
+                ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                _t('settings.langSelect'),
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Semantics(
+                  label: _t('settings.langSelect'),
+                  child: LanguageSelector(
+                    selectedLanguage: appState.selectedLanguage,
+                    onChanged: appState.setLanguage,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
 
-          Row(
-            children: [
-              _buildLangButton(context, appState, 'TR'),
-              const SizedBox(width: 8),
-              _buildLangButton(context, appState, 'EN'),
-              const SizedBox(width: 8),
-              _buildLangButton(context, appState, 'DE'),
-            ],
-          ),
-
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           Divider(color: Theme.of(context).colorScheme.outlineVariant),
           const SizedBox(height: 16),
 
@@ -705,47 +701,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLangButton(
-    BuildContext context,
-    AppState appState,
-    String lang,
-  ) {
-    final isSelected = appState.selectedLanguage == lang;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          appState.setLanguage(lang);
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? Theme.of(context).colorScheme.primary
-                : Colors.transparent,
-            border: Border.all(
-              color: isSelected
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.outlineVariant,
-            ),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            lang,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: isSelected
-                  ? Theme.of(context).colorScheme.onPrimary
-                  : Theme.of(context).colorScheme.primary,
-            ),
           ),
         ),
       ),

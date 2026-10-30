@@ -1,5 +1,69 @@
+import 'package:flutter/foundation.dart';
+
+import 'translations/es.dart';
+import 'translations/pl.dart';
+import 'translations/ro.dart';
+import 'translations/ru.dart';
+import 'translations/uk.dart';
+
 class AppLocalizations {
   AppLocalizations._();
+
+  /// Every language the app speaks, in the order the picker shows them.
+  /// The codes are upper-case ISO 639-1 ('UK' is Ukrainian).
+  static const List<String> languages = [
+    'TR',
+    'EN',
+    'DE',
+    'RU',
+    'PL',
+    'RO',
+    'ES',
+    'UK',
+  ];
+
+  /// Each language's name in itself, for the picker.
+  static const Map<String, String> languageNames = {
+    'TR': 'Türkçe',
+    'EN': 'English',
+    'DE': 'Deutsch',
+    'RU': 'Русский',
+    'PL': 'Polski',
+    'RO': 'Română',
+    'ES': 'Español',
+    'UK': 'Українська',
+  };
+
+  /// The languages added after Turkish, English and German, each in a file of
+  /// its own under translations/ so the main map below stays as it is.
+  static const Map<String, Map<String, String>> _moreLanguages = {
+    'RU': ruTranslations,
+    'PL': plTranslations,
+    'RO': roTranslations,
+    'ES': esTranslations,
+    'UK': ukTranslations,
+  };
+
+  /// The language the app is showing, kept up to date by AppState, for text
+  /// made where no BuildContext reaches: services, controllers, exceptions.
+  static String current = 'TR';
+
+  /// [getText] in [current], with every `{name}` in [args] filled in.
+  static String text(String key, [Map<String, Object?> args = const {}]) =>
+      fill(getText(current, key), args);
+
+  /// Fills `{name}` placeholders of an already looked-up text.
+  static String fill(String template, Map<String, Object?> args) {
+    var out = template;
+    args.forEach((name, value) => out = out.replaceAll('{$name}', '$value'));
+    return out;
+  }
+
+  @visibleForTesting
+  static Iterable<String> get keys => _translations.keys;
+
+  @visibleForTesting
+  static Map<String, String>? moreLanguage(String lang) => _moreLanguages[lang];
 
   static const Map<String, Map<String, String>> _translations = {
     'nav.dashboard': {'TR': 'Panel', 'EN': 'Dashboard', 'DE': 'Dashboard'},
@@ -669,19 +733,6 @@ class AppLocalizations {
       'EN': 'Violation Time',
       'DE': 'Verstoßzeit',
     },
-    'timeline.liveOnlyDataNote': {
-      'TR':
-          'Bu sayfa yalnızca takograftan canlı okunan gerçek verilerle beslenir — .ddd dosyasından (gerçek veya simüle) bağımsızdır.',
-      'EN':
-          'This page is fed only by real, live-read tachograph data — independent of the .ddd file (real or simulated).',
-      'DE':
-          'Diese Seite wird ausschließlich mit echten, live vom Fahrtenschreiber gelesenen Daten gespeist — unabhängig von der .ddd-Datei (echt oder simuliert).',
-    },
-    'timeline.showingFileNote': {
-      'TR': '{file} dosyasının verisi gösteriliyor — canlı veri değil.',
-      'EN': 'Showing data from {file} — not live data.',
-      'DE': 'Daten aus {file} werden angezeigt — keine Live-Daten.',
-    },
     'timeline.time': {'TR': 'Zaman', 'EN': 'Time', 'DE': 'Zeit'},
     'timeline.status': {'TR': 'Durum', 'EN': 'Status', 'DE': 'Status'},
     'timeline.duration': {'TR': 'Süre', 'EN': 'Duration', 'DE': 'Dauer'},
@@ -1263,6 +1314,31 @@ class AppLocalizations {
       'TR': 'İkisini birden al',
       'EN': 'Fetch both at once',
       'DE': 'Beide auf einmal abrufen',
+    },
+    'ddd.dongleNotPaired': {
+      'TR':
+          'Eşleştirilmiş STC dongle’ı bulunamadı. Önce telefonun Bluetooth ayarlarından eşleştirin.',
+      'EN':
+          'No paired STC dongle was found. Pair it in the phone’s Bluetooth settings first.',
+      'DE':
+          'Kein gekoppelter STC-Dongle gefunden. Koppeln Sie ihn zuerst in den Bluetooth-Einstellungen des Telefons.',
+    },
+    'ddd.bluetoothPermissionRequired': {
+      'TR': 'İndirmek için Bluetooth ve yakındaki cihazlar izni gerekli.',
+      'EN': 'Bluetooth and nearby devices permission is required to download.',
+      'DE':
+          'Zum Herunterladen sind Bluetooth- und Geräte-in-der-Nähe-Berechtigungen erforderlich.',
+    },
+    'ddd.downloadNoData': {
+      'TR': 'Takograf seçilen veri için dosya göndermedi.',
+      'EN': 'The tachograph did not send a file for the selected data.',
+      'DE':
+          'Der Tachograph hat für die ausgewählten Daten keine Datei gesendet.',
+    },
+    'ddd.downloadFailed': {
+      'TR': 'Dongle üzerinden indirme başarısız: {error}',
+      'EN': 'Dongle download failed: {error}',
+      'DE': 'Download über den Dongle fehlgeschlagen: {error}',
     },
     'ddd.cardBadge': {
       'TR': 'CARD DOWNLOAD',
@@ -1901,6 +1977,45 @@ class AppLocalizations {
       'TR': 'Aktivite Seçin',
       'EN': 'Select Activity',
       'DE': 'Aktivität auswählen',
+    },
+    'gap.splitHint': {
+      'TR':
+          'Bu sürede farklı şeyler yaptıysanız aralığı bölün ve her parçaya kendi aktivitesini seçin. Parçaların sınırını değiştirmek için tarih ve saate dokunun.',
+      'EN':
+          'If you did different things during this time, split the range and choose an activity for each part. Tap a date and time to move the boundary between parts.',
+      'DE':
+          'Wenn Sie in dieser Zeit Verschiedenes gemacht haben, teilen Sie den Zeitraum und wählen Sie für jeden Teil eine Aktivität. Tippen Sie auf Datum und Uhrzeit, um die Grenze zwischen den Teilen zu verschieben.',
+    },
+    'gap.split': {
+      'TR': 'Aralığı böl',
+      'EN': 'Split range',
+      'DE': 'Zeitraum teilen',
+    },
+    'gap.removePart': {
+      'TR': 'Bu parçayı kaldır',
+      'EN': 'Remove this part',
+      'DE': 'Diesen Teil entfernen',
+    },
+    'gap.save': {'TR': 'Kaydet', 'EN': 'Save', 'DE': 'Speichern'},
+    'gap.chooseEach': {
+      'TR': 'Her parça için bir aktivite seçin.',
+      'EN': 'Choose an activity for each part.',
+      'DE': 'Wählen Sie für jeden Teil eine Aktivität.',
+    },
+    'gap.outOfRange': {
+      'TR': 'Sınır {from} ile {to} arasında olmalı.',
+      'EN': 'The boundary has to fall between {from} and {to}.',
+      'DE': 'Die Grenze muss zwischen {from} und {to} liegen.',
+    },
+    'gap.duration': {
+      'TR': '{h} sa {m} dk',
+      'EN': '{h} h {m} min',
+      'DE': '{h} Std. {m} Min.',
+    },
+    'gap.progress': {
+      'TR': 'Kayıtsız aralık {n} / {total}',
+      'EN': 'Unrecorded range {n} of {total}',
+      'DE': 'Zeitraum ohne Aufzeichnung {n} von {total}',
     },
 
     'violation.continuousDrivingExceeded': {
@@ -3075,98 +3190,3191 @@ class AppLocalizations {
       'EN': 'Other tachograph warning',
       'DE': 'Sonstige Fahrtenschreiber-Warnung',
     },
+    'scan.removeBondTitle': {
+      'TR': 'Eşleşme kaldırılsın mı?',
+      'EN': 'Remove pairing?',
+      'DE': 'Kopplung entfernen?',
+    },
+    'scan.removeBondBody': {
+      'TR':
+          '{device} bu telefonun eşleşmiş cihazlarından silinecek. Sonraki bağlantıda takograf ekranındaki kodu yeniden onaylamanız gerekir.',
+      'EN':
+          '{device} will be removed from this phone\'s paired devices. On the next connection you will have to confirm the code on the tachograph display again.',
+      'DE':
+          '{device} wird aus den gekoppelten Geräten dieses Telefons entfernt. Bei der nächsten Verbindung müssen Sie den Code auf dem Tachographen-Display erneut bestätigen.',
+    },
+    'scan.removeBondConfirm': {
+      'TR': 'Kaldır',
+      'EN': 'Remove',
+      'DE': 'Entfernen',
+    },
+    'scan.bondRemoved': {
+      'TR': '{device}: eşleşme kaldırıldı.',
+      'EN': '{device}: pairing removed.',
+      'DE': '{device}: Kopplung entfernt.',
+    },
+    'scan.bondRemoveFailed': {
+      'TR': '{device}: eşleşme kaldırılamadı ({error}).',
+      'EN': '{device}: the pairing could not be removed ({error}).',
+      'DE': '{device}: Kopplung konnte nicht entfernt werden ({error}).',
+    },
+    'scan.timeout': {
+      'TR': 'Cihaz yanıt vermiyor (zaman aşımı)',
+      'EN': 'The device is not responding (timed out)',
+      'DE': 'Das Gerät antwortet nicht (Zeitüberschreitung)',
+    },
+    'scan.connectFailed': {
+      'TR': 'Bağlanılamadı ({error})',
+      'EN': 'Could not connect ({error})',
+      'DE': 'Verbindung fehlgeschlagen ({error})',
+    },
+    'scan.signalExcellent': {
+      'TR': 'Mükemmel Sinyal',
+      'EN': 'Excellent Signal',
+      'DE': 'Ausgezeichnetes Signal',
+    },
+    'scan.signalStrong': {
+      'TR': 'Güçlü Sinyal',
+      'EN': 'Strong Signal',
+      'DE': 'Starkes Signal',
+    },
+    'scan.signalMedium': {
+      'TR': 'Orta Sinyal',
+      'EN': 'Medium Signal',
+      'DE': 'Mittleres Signal',
+    },
+    'scan.signalWeak': {
+      'TR': 'Zayıf Sinyal',
+      'EN': 'Weak Signal',
+      'DE': 'Schwaches Signal',
+    },
+    'scan.rescan': {
+      'TR': 'Yeniden Ara',
+      'EN': 'Scan Again',
+      'DE': 'Erneut suchen',
+    },
+    'scan.scanning': {
+      'TR': 'Cihazlar taranıyor...',
+      'EN': 'Scanning for devices...',
+      'DE': 'Geräte werden gesucht...',
+    },
+    'scan.scanningHint': {
+      'TR': 'Bluetooth kapsama alanındaki aygıtlar aranıyor',
+      'EN': 'Looking for devices within Bluetooth range',
+      'DE': 'Suche nach Geräten in Bluetooth-Reichweite',
+    },
+    'scan.noneFound': {
+      'TR': 'Cihaz bulunamadı',
+      'EN': 'No devices found',
+      'DE': 'Keine Geräte gefunden',
+    },
+    'scan.noneFoundHint': {
+      'TR': 'Tekrar taramak için yukarıdaki simgeye dokunun',
+      'EN': 'Tap the icon above to scan again',
+      'DE': 'Tippen Sie auf das Symbol oben, um erneut zu suchen',
+    },
+    'scan.done': {
+      'TR': 'Tarama tamamlandı',
+      'EN': 'Scan complete',
+      'DE': 'Suche abgeschlossen',
+    },
+    'scan.foundCount': {
+      'TR': 'Bulunan cihaz: {count}',
+      'EN': 'Devices found: {count}',
+      'DE': 'Gefundene Geräte: {count}',
+    },
+    'scan.nearDevices': {
+      'TR': 'Yakındaki Cihazlar',
+      'EN': 'Nearby Devices',
+      'DE': 'Geräte in der Nähe',
+    },
+    'scan.allDevices': {
+      'TR': 'Tüm Cihazlar',
+      'EN': 'All Devices',
+      'DE': 'Alle Geräte',
+    },
+    'scan.clearFilter': {
+      'TR': 'Filtreyi Kaldır',
+      'EN': 'Clear Filter',
+      'DE': 'Filter entfernen',
+    },
+    'scan.filter': {'TR': 'Filtrele', 'EN': 'Filter', 'DE': 'Filtern'},
+    'scan.searching': {
+      'TR': 'Aranıyor...',
+      'EN': 'Searching...',
+      'DE': 'Suche läuft...',
+    },
+    'scan.noneNear': {
+      'TR': 'Yakında cihaz yok',
+      'EN': 'No devices nearby',
+      'DE': 'Keine Geräte in der Nähe',
+    },
+    'scan.sectionTachographs': {
+      'TR': 'Takograflar',
+      'EN': 'Tachographs',
+      'DE': 'Tachographen',
+    },
+    'scan.sectionDongles': {
+      'TR': 'Dongle\'lar ve diğer cihazlar',
+      'EN': 'Dongles and other devices',
+      'DE': 'Dongles und andere Geräte',
+    },
+    'scan.donglesHint': {
+      'TR':
+          'Adı görünen diğer Bluetooth cihazları. Dongle\'ınızı adından tanıyabilirsiniz.',
+      'EN':
+          'Other Bluetooth devices that show a name. You can recognise your dongle by its name.',
+      'DE':
+          'Andere Bluetooth-Geräte mit sichtbarem Namen. Ihren Dongle erkennen Sie an seinem Namen.',
+    },
+    'scan.tagTachograph': {
+      'TR': 'TAKOGRAF',
+      'EN': 'TACHOGRAPH',
+      'DE': 'TACHOGRAPH',
+    },
+    'scan.tagDongle': {'TR': 'DONGLE', 'EN': 'DONGLE', 'DE': 'DONGLE'},
+    'scan.tagPaired': {'TR': 'EŞLEŞTİ', 'EN': 'PAIRED', 'DE': 'GEKOPPELT'},
+    'scan.removeBondTooltip': {
+      'TR': 'Eşleşmeyi kaldır',
+      'EN': 'Remove pairing',
+      'DE': 'Kopplung entfernen',
+    },
+    'scan.connect': {'TR': 'Bağlan', 'EN': 'Connect', 'DE': 'Verbinden'},
+    'scan.phaseConnecting': {
+      'TR': 'Bağlanılıyor...',
+      'EN': 'Connecting...',
+      'DE': 'Verbindung wird hergestellt...',
+    },
+    'scan.phaseDiscovering': {
+      'TR': 'Servisler aranıyor...',
+      'EN': 'Looking for services...',
+      'DE': 'Dienste werden gesucht...',
+    },
+    'scan.phaseBonding': {
+      'TR':
+          'Takograf ekranındaki 6 haneli kod telefondakiyle aynıysa iki tarafta da onaylayın (25 sn).',
+      'EN':
+          'If the 6-digit code on the tachograph display matches the one on the phone, confirm it on both (25 s).',
+      'DE':
+          'Wenn der 6-stellige Code auf dem Tachographen-Display mit dem auf dem Telefon übereinstimmt, bestätigen Sie ihn auf beiden Seiten (25 s).',
+    },
+    'scan.phaseSubscribing': {
+      'TR': 'Veri kanalı açılıyor...',
+      'EN': 'Opening the data channel...',
+      'DE': 'Datenkanal wird geöffnet...',
+    },
+    'scan.phaseReading': {
+      'TR': 'Takograf verileri okunuyor...',
+      'EN': 'Reading tachograph data...',
+      'DE': 'Tachographendaten werden gelesen...',
+    },
+    'scan.permissionDenied': {
+      'TR':
+          'Bluetooth taraması için gerekli izin verilmedi. Lütfen uygulama ayarlarından "Yakındaki cihazlar" iznini verin.',
+      'EN':
+          'The permission needed for Bluetooth scanning was not granted. Please allow "Nearby devices" in the app settings.',
+      'DE':
+          'Die für die Bluetooth-Suche nötige Berechtigung wurde nicht erteilt. Bitte erlauben Sie „Geräte in der Nähe“ in den App-Einstellungen.',
+    },
+    'scan.openSettings': {
+      'TR': 'Ayarları Aç',
+      'EN': 'Open Settings',
+      'DE': 'Einstellungen öffnen',
+    },
+    'scan.helpFooter': {
+      'TR':
+          'Takografınızı listede göremiyor musunuz? Bluetooth yalnızca kontak açıkken yayın yapar; takograf "TACHOGRAPH-" ile başlayan adıyla görünür. Dongle\'lar kendi adlarıyla alttaki bölümde listelenir.',
+      'EN':
+          'Can\'t see your tachograph in the list? It only broadcasts over Bluetooth with the ignition on, and appears under a name starting with "TACHOGRAPH-". Dongles are listed under their own names in the section below.',
+      'DE':
+          'Sie sehen Ihren Tachographen nicht in der Liste? Er sendet nur bei eingeschalteter Zündung über Bluetooth und erscheint mit einem Namen, der mit „TACHOGRAPH-“ beginnt. Dongles stehen mit ihrem eigenen Namen im Abschnitt darunter.',
+    },
+    'bt.unknownDevice': {
+      'TR': 'Bilinmeyen Cihaz ({id})',
+      'EN': 'Unknown Device ({id})',
+      'DE': 'Unbekanntes Gerät ({id})',
+    },
+    'bt.removeBondIos': {
+      'TR':
+          'Eşleşme yalnızca Android\'de uygulamadan kaldırılabilir; iOS\'ta Ayarlar > Bluetooth üzerinden kaldırın.',
+      'EN':
+          'Pairings can be removed from the app only on Android; on iOS remove it in Settings > Bluetooth.',
+      'DE':
+          'Kopplungen lassen sich nur unter Android in der App entfernen; unter iOS entfernen Sie sie unter Einstellungen > Bluetooth.',
+    },
+    'link.noAppService': {
+      'TR':
+          'Cihazda SmartTrack uygulama servisi bulunamadı. Takografın ya da dongle\'ın yazılımı bu servisi desteklemiyor olabilir.',
+      'EN':
+          'The SmartTrack app service was not found on the device. The tachograph\'s or dongle\'s software may not support it.',
+      'DE':
+          'Der SmartTrack-App-Dienst wurde auf dem Gerät nicht gefunden. Die Software des Tachographen oder Dongles unterstützt ihn möglicherweise nicht.',
+    },
+    'link.bondFailed': {
+      'TR':
+          'Eşleşme tamamlanmadı. Takograf ekranındaki 6 haneli kodu telefondakiyle karşılaştırıp 25 saniye içinde iki tarafta da onaylayın.',
+      'EN':
+          'Pairing was not completed. Compare the 6-digit code on the tachograph display with the one on the phone and confirm it on both within 25 seconds.',
+      'DE':
+          'Die Kopplung wurde nicht abgeschlossen. Vergleichen Sie den 6-stelligen Code auf dem Tachographen-Display mit dem auf dem Telefon und bestätigen Sie ihn innerhalb von 25 Sekunden auf beiden Seiten.',
+    },
+    'link.connectFailedDetail': {
+      'TR':
+          'Takografa bağlanılamadı: {detail}. Kontağın açık ve cihazın menzilde olduğundan emin olun.',
+      'EN':
+          'Could not connect to the tachograph: {detail}. Make sure the ignition is on and the device is in range.',
+      'DE':
+          'Verbindung zum Tachographen fehlgeschlagen: {detail}. Stellen Sie sicher, dass die Zündung eingeschaltet und das Gerät in Reichweite ist.',
+    },
+    'link.timeout': {
+      'TR':
+          'Takograf yanıt vermiyor (zaman aşımı). Kontağın açık olduğundan emin olun; kontak kapalıyken Bluetooth yayını yapılmaz.',
+      'EN':
+          'The tachograph is not responding (timed out). Make sure the ignition is on; it does not broadcast over Bluetooth with the ignition off.',
+      'DE':
+          'Der Tachograph antwortet nicht (Zeitüberschreitung). Stellen Sie sicher, dass die Zündung eingeschaltet ist; bei ausgeschalteter Zündung sendet er nicht über Bluetooth.',
+    },
+    'link.connectFailed': {
+      'TR': 'Takografa bağlanılamadı ({error}).',
+      'EN': 'Could not connect to the tachograph ({error}).',
+      'DE': 'Verbindung zum Tachographen fehlgeschlagen ({error}).',
+    },
+    'link.noItsCharacteristic': {
+      'TR': 'ITS karakteristiği yok: {uuid}',
+      'EN': 'No ITS characteristic: {uuid}',
+      'DE': 'Keine ITS-Charakteristik: {uuid}',
+    },
+    'link.notReady': {
+      'TR': 'Bağlantı hazır değil.',
+      'EN': 'The connection is not ready.',
+      'DE': 'Die Verbindung ist nicht bereit.',
+    },
+    'link.writeFailed': {
+      'TR': 'Yazma başarısız.',
+      'EN': 'Write failed.',
+      'DE': 'Schreiben fehlgeschlagen.',
+    },
+    'link.unreadable': {
+      'TR': '{uuid} okunamaz.',
+      'EN': '{uuid} cannot be read.',
+      'DE': '{uuid} kann nicht gelesen werden.',
+    },
+    'link.unknownChannel': {
+      'TR': 'Bilinmeyen kanal: {uuid} (yalnızca {channel})',
+      'EN': 'Unknown channel: {uuid} (only {channel})',
+      'DE': 'Unbekannter Kanal: {uuid} (nur {channel})',
+    },
+    'its.toolRhmiTitle': {
+      'TR': 'Uzaktan kumanda',
+      'EN': 'Remote control',
+      'DE': 'Fernbedienung',
+    },
+    'its.toolRhmiSubtitle': {
+      'TR':
+          'Aktivite, yer, özel durum, uyarılar, çıktı, kart çıkarma ve manuel giriş',
+      'EN':
+          'Activity, place, specific condition, warnings, printout, card withdrawal and manual entry',
+      'DE':
+          'Aktivität, Ort, besondere Bedingung, Warnungen, Ausdruck, Kartenentnahme und manuelle Eingabe',
+    },
+    'its.toolDownloadTitle': {
+      'TR': 'Veri indirme',
+      'EN': 'Data download',
+      'DE': 'Datendownload',
+    },
+    'its.toolDownloadSubtitle': {
+      'TR': 'Sürücü kartı ve araç ünitesi verisini ITS üzerinden indir',
+      'EN': 'Download driver card and vehicle unit data over ITS',
+      'DE': 'Fahrerkarten- und Fahrzeugeinheitsdaten über ITS herunterladen',
+    },
+    'its.toolFilesTitle': {
+      'TR': 'İndirilen dosyalar',
+      'EN': 'Downloaded files',
+      'DE': 'Heruntergeladene Dateien',
+    },
+    'its.toolFilesSubtitle': {
+      'TR': 'Kaydedilen .ddd dosyaları: aç, paylaş, sil',
+      'EN': 'Saved .ddd files: open, share, delete',
+      'DE': 'Gespeicherte .ddd-Dateien: öffnen, teilen, löschen',
+    },
+    'its.toolAdvancedTitle': {
+      'TR': 'Gelişmiş',
+      'EN': 'Advanced',
+      'DE': 'Erweitert',
+    },
+    'its.toolAdvancedSubtitle': {
+      'TR': 'İndirme nesli ve kalibrasyon (servis)',
+      'EN': 'Download generation and calibration (workshop)',
+      'DE': 'Download-Generation und Kalibrierung (Werkstatt)',
+    },
+    'its.advGenerationTitle': {
+      'TR': 'İndirme nesli',
+      'EN': 'Download generation',
+      'DE': 'Download-Generation',
+    },
+    'its.advGenerationBody': {
+      'TR':
+          'Takograf verisinin hangi biçimde indirileceği. Gen 2 v2 takografın tuttuğu her şeyi getirir; Gen 1 ve Gen 2 v1 yalnız eski biçimi okuyan programlar için gerekir. Kart indirmeyi etkilemez.',
+      'EN':
+          'The format the tachograph data is downloaded in. Gen 2 v2 brings everything the tachograph records; Gen 1 and Gen 2 v1 are only needed for programs that read the older formats. It does not affect a card download.',
+      'DE':
+          'Das Format, in dem die Tachographendaten heruntergeladen werden. Gen 2 v2 liefert alles, was der Tachograph aufzeichnet; Gen 1 und Gen 2 v1 sind nur für Programme nötig, die die älteren Formate lesen. Ein Kartendownload ist davon nicht betroffen.',
+    },
+    'its.advRecommended': {
+      'TR': 'Önerilen ayar.',
+      'EN': 'Recommended setting.',
+      'DE': 'Empfohlene Einstellung.',
+    },
+    'its.advNotRecommended': {
+      'TR': 'Önerilen Gen 2 v2. Bu ayar uygulama kapanınca Gen 2 v2\'ye döner.',
+      'EN':
+          'Gen 2 v2 is recommended. This setting returns to Gen 2 v2 when the app closes.',
+      'DE':
+          'Empfohlen ist Gen 2 v2. Diese Einstellung kehrt beim Schließen der App zu Gen 2 v2 zurück.',
+    },
+    'its.trtpNote': {
+      'TR':
+          'Genel bakış TRTP {overview}, aktiviteler {activities} olarak gider.',
+      'EN':
+          'The overview goes out as TRTP {overview}, activities as {activities}.',
+      'DE':
+          'Die Übersicht wird als TRTP {overview} angefordert, Aktivitäten als {activities}.',
+    },
+    'its.advCalibrationSubtitle': {
+      'TR':
+          'Servis içindir: diagnostik kanalında Ek-8 istekleri ve çözülmüş yanıtlar',
+      'EN':
+          'For workshops: Annex 8 requests on the diagnostics channel and their decoded answers',
+      'DE':
+          'Für Werkstätten: Anhang-8-Anfragen auf dem Diagnosekanal und ihre entschlüsselten Antworten',
+    },
+    'its.calibrationTitle': {
+      'TR': 'Kalibrasyon',
+      'EN': 'Calibration',
+      'DE': 'Kalibrierung',
+    },
+    'its.openingSession': {
+      'TR': 'Oturum açılıyor',
+      'EN': 'Opening the session',
+      'DE': 'Sitzung wird geöffnet',
+    },
+    'its.savedTo': {
+      'TR': 'Dosyalar · {name}',
+      'EN': 'Files · {name}',
+      'DE': 'Dateien · {name}',
+    },
+    'its.noDataSession': {
+      'TR': 'Oturum çalıştı ama takograf hiç veri göndermedi.',
+      'EN': 'The session ran, but the tachograph sent no data at all.',
+      'DE': 'Die Sitzung lief, aber der Tachograph hat keine Daten gesendet.',
+    },
+    'its.resultSummary': {
+      'TR': '{bytes} bayt, {count} transfer',
+      'EN': '{bytes} bytes, {count} transfers',
+      'DE': '{bytes} Byte, {count} Übertragungen',
+    },
+    'its.downloadFailed': {
+      'TR': 'İndirme başarısız: {problem}',
+      'EN': 'Download failed: {problem}',
+      'DE': 'Download fehlgeschlagen: {problem}',
+    },
+    'its.downloadedSaved': {
+      'TR': '{bytes} bayt indirildi ve kaydedildi.',
+      'EN': '{bytes} bytes downloaded and saved.',
+      'DE': '{bytes} Byte heruntergeladen und gespeichert.',
+    },
+    'its.savedPartial': {
+      'TR': '{bytes} bayt kaydedildi, eksik: {problem}',
+      'EN': '{bytes} bytes saved, missing: {problem}',
+      'DE': '{bytes} Byte gespeichert, fehlend: {problem}',
+    },
+    'its.pickFrom': {
+      'TR': 'Başlangıç (UTC)',
+      'EN': 'Start (UTC)',
+      'DE': 'Beginn (UTC)',
+    },
+    'its.pickTo': {'TR': 'Bitiş (UTC)', 'EN': 'End (UTC)', 'DE': 'Ende (UTC)'},
+    'its.transferOverview': {
+      'TR': 'Genel bakış',
+      'EN': 'Overview',
+      'DE': 'Übersicht',
+    },
+    'its.transferActivities': {
+      'TR': 'Aktiviteler',
+      'EN': 'Activities',
+      'DE': 'Aktivitäten',
+    },
+    'its.transferEvents': {
+      'TR': 'Olaylar ve arızalar',
+      'EN': 'Events and faults',
+      'DE': 'Ereignisse und Störungen',
+    },
+    'its.transferSpeed': {
+      'TR': 'Detaylı hız',
+      'EN': 'Detailed speed',
+      'DE': 'Detaillierte Geschwindigkeit',
+    },
+    'its.transferTechnical': {
+      'TR': 'Teknik veri',
+      'EN': 'Technical data',
+      'DE': 'Technische Daten',
+    },
+    'its.transferCard': {
+      'TR': 'Kart indirme',
+      'EN': 'Card download',
+      'DE': 'Kartendownload',
+    },
+    'its.channelCard': {'TR': 'Kanal', 'EN': 'Channel', 'DE': 'Kanal'},
+    'its.channelHint': {
+      'TR':
+          'Kanalı açmak takografa 16 credit verir. 0xFF reddi ön konektörün bu arayüzü kullandığı ya da takılı kartların ITS\'e izin vermediği anlamına gelir.',
+      'EN':
+          'Opening the channel gives the tachograph 16 credits. A 0xFF refusal means the front connector is using this interface or the inserted cards do not allow ITS.',
+      'DE':
+          'Das Öffnen des Kanals gibt dem Tachographen 16 Credits. Eine 0xFF-Ablehnung bedeutet, dass der Frontstecker diese Schnittstelle nutzt oder die gesteckten Karten ITS nicht erlauben.',
+    },
+    'its.downloadOpen': {
+      'TR': 'İndirme: açık ({credits} credit)',
+      'EN': 'Download: open ({credits} credits)',
+      'DE': 'Download: offen ({credits} Credits)',
+    },
+    'its.downloadOpening': {
+      'TR': 'İndirme: açılıyor…',
+      'EN': 'Download: opening…',
+      'DE': 'Download: wird geöffnet…',
+    },
+    'its.downloadRefused': {
+      'TR': 'İndirme: reddedildi (0xFF)',
+      'EN': 'Download: refused (0xFF)',
+      'DE': 'Download: abgelehnt (0xFF)',
+    },
+    'its.downloadClosed': {
+      'TR': 'İndirme: kapalı',
+      'EN': 'Download: closed',
+      'DE': 'Download: geschlossen',
+    },
+    'its.close': {'TR': 'Kapat', 'EN': 'Close', 'DE': 'Schließen'},
+    'its.open': {'TR': 'Aç', 'EN': 'Open', 'DE': 'Öffnen'},
+    'its.sessionCard': {'TR': 'Oturum', 'EN': 'Session', 'DE': 'Sitzung'},
+    'its.sessionHint': {
+      'TR':
+          'Bir basış bir indirme oturumudur: StartCommunication, transferler, TransferExit ve StopCommunication, hepsi tek dosyada. Genel bakış her zaman ilk gider ve çıkarılamaz: takograf sertifikalarını taşır.',
+      'EN':
+          'One press is one download session: StartCommunication, the transfers, TransferExit and StopCommunication, all in one file. The overview always goes first and cannot be left out: it carries the tachograph certificates.',
+      'DE':
+          'Ein Tippen ist eine Download-Sitzung: StartCommunication, die Übertragungen, TransferExit und StopCommunication, alles in einer Datei. Die Übersicht kommt immer zuerst und kann nicht weggelassen werden: Sie enthält die Zertifikate des Tachographen.',
+    },
+    'its.overviewNotWithCard': {
+      'TR': 'kartla değil',
+      'EN': 'not with a card',
+      'DE': 'nicht mit Karte',
+    },
+    'its.overviewAlways': {'TR': 'her zaman', 'EN': 'always', 'DE': 'immer'},
+    'its.cardOwnSession': {
+      'TR':
+          'Kart indirme kendi oturumu ve kendi dosyasıdır: kartın verisi, kartın sertifikalarıyla.',
+      'EN':
+          'A card download is a session and a file of its own: the card\'s data, with the card\'s certificates.',
+      'DE':
+          'Ein Kartendownload ist eine eigene Sitzung und eine eigene Datei: die Kartendaten mit den Zertifikaten der Karte.',
+    },
+    'its.activitiesCard': {
+      'TR': 'Aktiviteler, gün gün',
+      'EN': 'Activities, day by day',
+      'DE': 'Aktivitäten, Tag für Tag',
+    },
+    'its.activitiesHint': {
+      'TR':
+          'Her istek tek bir takvim gününü adlandırır; bir dönem aynı oturumda gün gün istenir, en eskiden başlayarak. İki uç da dahil.',
+      'EN':
+          'Each request names one calendar day, so a period is asked for day by day in the same session, oldest first. Both ends are included.',
+      'DE':
+          'Jede Anfrage nennt einen Kalendertag; ein Zeitraum wird daher in derselben Sitzung Tag für Tag angefordert, beginnend mit dem ältesten. Beide Enden sind eingeschlossen.',
+    },
+    'its.unitHolds': {
+      'TR': 'Takograf {from} – {to} arasını tutuyor.',
+      'EN': 'The tachograph holds {from} – {to}.',
+      'DE': 'Der Tachograph enthält {from} – {to}.',
+    },
+    'its.wholePeriod': {
+      'TR': 'İndirilebilir dönemin tamamı',
+      'EN': 'The whole downloadable period',
+      'DE': 'Der gesamte herunterladbare Zeitraum',
+    },
+    'its.periodUnknown': {
+      'TR':
+          'Takografın indirilebilir dönemi ilk Gen 2 oturumundan sonra burada görünür.',
+      'EN':
+          'The tachograph\'s downloadable period appears here after the first Gen 2 session.',
+      'DE':
+          'Der herunterladbare Zeitraum des Tachographen erscheint hier nach der ersten Gen-2-Sitzung.',
+    },
+    'its.fromDate': {
+      'TR': 'Başlangıç {date}',
+      'EN': 'Start {date}',
+      'DE': 'Beginn {date}',
+    },
+    'its.toDate': {
+      'TR': 'Bitiş {date}',
+      'EN': 'End {date}',
+      'DE': 'Ende {date}',
+    },
+    'its.endBeforeStart': {
+      'TR': 'Bitiş başlangıçtan önce olamaz.',
+      'EN': 'The end cannot be before the start.',
+      'DE': 'Das Ende darf nicht vor dem Beginn liegen.',
+    },
+    'its.daysUtc': {
+      'TR': 'Günler UTC\'dir; bir oturum en fazla {days} gün ister.',
+      'EN': 'Days are UTC; one session asks for at most {days} days.',
+      'DE':
+          'Die Tage sind in UTC; eine Sitzung fordert höchstens {days} Tage an.',
+    },
+    'its.runCard': {'TR': 'Çalıştır', 'EN': 'Run', 'DE': 'Ausführen'},
+    'its.download': {'TR': 'İndir', 'EN': 'Download', 'DE': 'Herunterladen'},
+    'its.channelClosedHint': {
+      'TR': 'İndirme kanalı açık değil: yukarıdan açın.',
+      'EN': 'The download channel is not open: open it above.',
+      'DE': 'Der Download-Kanal ist nicht geöffnet: Öffnen Sie ihn oben.',
+    },
+    'its.idleStatus': {
+      'TR': 'Durum: boşta · {bytes} bayt',
+      'EN': 'Status: idle · {bytes} bytes',
+      'DE': 'Status: bereit · {bytes} Byte',
+    },
+    'its.saved': {
+      'TR': 'Kaydedildi: {name}',
+      'EN': 'Saved: {name}',
+      'DE': 'Gespeichert: {name}',
+    },
+    'its.transfersCard': {
+      'TR': 'Transferler',
+      'EN': 'Transfers',
+      'DE': 'Übertragungen',
+    },
+    'its.filesCard': {'TR': 'Dosyalar', 'EN': 'Files', 'DE': 'Dateien'},
+    'its.allFiles': {
+      'TR': 'Tüm dosyalar',
+      'EN': 'All files',
+      'DE': 'Alle Dateien',
+    },
+    'its.noneYet': {'TR': 'Henüz yok.', 'EN': 'None yet.', 'DE': 'Noch keine.'},
+    'its.progressOpening': {
+      'TR': 'İndirme kanalı açılıyor…',
+      'EN': 'Opening the download channel…',
+      'DE': 'Download-Kanal wird geöffnet…',
+    },
+    'its.channelRefused': {
+      'TR':
+          'İndirme kanalı açılamadı: takograf reddetti ya da yanıt vermedi. Ön konektörden indirme sürüyor olabilir, ya da takılı kartlar ITS\'e izin vermiyor olabilir.',
+      'EN':
+          'The download channel could not be opened: the tachograph refused or did not answer. A download over the front connector may be running, or the inserted cards may not allow ITS.',
+      'DE':
+          'Der Download-Kanal konnte nicht geöffnet werden: Der Tachograph hat abgelehnt oder nicht geantwortet. Möglicherweise läuft ein Download über den Frontstecker, oder die gesteckten Karten erlauben ITS nicht.',
+    },
+    'its.progressCard': {
+      'TR': 'Sürücü kartı indiriliyor…',
+      'EN': 'Downloading the driver card…',
+      'DE': 'Fahrerkarte wird heruntergeladen…',
+    },
+    'its.stepCard': {
+      'TR': 'Kart: {result}',
+      'EN': 'Card: {result}',
+      'DE': 'Karte: {result}',
+    },
+    'its.progressNamed': {
+      'TR': '{name} indiriliyor…',
+      'EN': 'Downloading {name}…',
+      'DE': '{name} wird heruntergeladen…',
+    },
+    'its.stepNamed': {
+      'TR': '{name}: {result}',
+      'EN': '{name}: {result}',
+      'DE': '{name}: {result}',
+    },
+    'its.progressActivities': {
+      'TR': 'Aktiviteler {day} ({n}/{total})…',
+      'EN': 'Activities {day} ({n}/{total})…',
+      'DE': 'Aktivitäten {day} ({n}/{total})…',
+    },
+    'its.stepNoAnswer': {
+      'TR': '{service} yanıtsız kaldı.',
+      'EN': '{service} got no answer.',
+      'DE': '{service} blieb ohne Antwort.',
+    },
+    'its.unitSentNoData': {
+      'TR': 'Takograf veri göndermedi.',
+      'EN': 'The tachograph sent no data.',
+      'DE': 'Der Tachograph hat keine Daten gesendet.',
+    },
+    'its.blockNoAnswer': {
+      'TR': '{n}. blok yanıtsız',
+      'EN': 'No answer to block {n}',
+      'DE': 'Keine Antwort auf Block {n}',
+    },
+    'its.blockUnreadable': {
+      'TR': '{n}. blok okunamadı',
+      'EN': 'Block {n} could not be read',
+      'DE': 'Block {n} konnte nicht gelesen werden',
+    },
+    'its.refused': {
+      'TR': '{service} reddedildi: {nrc} ({code})',
+      'EN': '{service} refused: {nrc} ({code})',
+      'DE': '{service} abgelehnt: {nrc} ({code})',
+    },
+    'its.resultBytes': {
+      'TR': '{bytes} bayt, {blocks} blok',
+      'EN': '{bytes} bytes, {blocks} blocks',
+      'DE': '{bytes} Byte, {blocks} Blöcke',
+    },
+    'its.serviceHex': {
+      'TR': 'servis {hex}',
+      'EN': 'service {hex}',
+      'DE': 'Dienst {hex}',
+    },
+    'its.explainNotAccepted': {
+      'TR':
+          'Takograf operasyonel modda yalnız sürücü kartı indirmesine izin verir; kart sahibi ITS onayı vermediyse onu da reddeder. Araç verisi için atölye, şirket ya da kontrol kartı gerekir.',
+      'EN':
+          'In operational mode the tachograph only allows a driver card download, and refuses that too if the card holder has not given ITS consent. Vehicle data needs a workshop, company or control card.',
+      'DE':
+          'Im Betriebsmodus erlaubt der Tachograph nur den Download der Fahrerkarte und lehnt auch diesen ab, wenn der Karteninhaber der ITS-Nutzung nicht zugestimmt hat. Für Fahrzeugdaten ist eine Werkstatt-, Unternehmens- oder Kontrollkarte nötig.',
+    },
+    'its.explainNoData': {
+      'TR':
+          'Gönderilecek veri yok: kart indirmesinde yuvada kart yok, ya da istenen günde kayıt yok.',
+      'EN':
+          'Nothing to send: for a card download there is no card in the slot, or there are no records for the day asked for.',
+      'DE':
+          'Keine Daten zu senden: Beim Kartendownload steckt keine Karte im Schacht, oder für den angefragten Tag gibt es keine Einträge.',
+    },
+    'its.explainSequence': {
+      'TR': 'Adımlar sırayla gitmeli; oturum baştan başlatılmalı.',
+      'EN':
+          'The steps have to run in order; start the session again from the top.',
+      'DE':
+          'Die Schritte müssen der Reihe nach laufen; starten Sie die Sitzung von vorn.',
+    },
+    'its.explainPersonal': {
+      'TR': 'Kişisel veri: sürücü ITS onayı vermemiş olabilir.',
+      'EN': 'Personal data: the driver may not have given ITS consent.',
+      'DE':
+          'Personenbezogene Daten: Der Fahrer hat der ITS-Nutzung möglicherweise nicht zugestimmt.',
+    },
+    'its.presetDefaultSession': {
+      'TR': 'Varsayılan oturum',
+      'EN': 'Default session',
+      'DE': 'Standardsitzung',
+    },
+    'its.presetUndefined': {
+      'TR': 'Tanımsız (F9FE)',
+      'EN': 'Undefined (F9FE)',
+      'DE': 'Undefiniert (F9FE)',
+    },
+    'its.presetRhmiSession': {
+      'TR': 'RHMI oturum durumu (F211)',
+      'EN': 'RHMI session status (F211)',
+      'DE': 'RHMI-Sitzungsstatus (F211)',
+    },
+    'its.calibNothingToSend': {
+      'TR': 'Gönderilecek bir şey yok: istek servis tanımlayıcısıyla başlar.',
+      'EN': 'Nothing to send: a request starts with the service identifier.',
+      'DE': 'Nichts zu senden: Eine Anfrage beginnt mit der Dienstkennung.',
+    },
+    'its.calibNotHex': {
+      'TR': 'Bu bir hex dizisi değil.',
+      'EN': 'This is not a hex string.',
+      'DE': 'Das ist keine Hex-Folge.',
+    },
+    'its.calibTooLong': {
+      'TR': 'Çok uzun: KWP2000 uzunluğu tek bayt.',
+      'EN': 'Too long: the KWP2000 length is a single byte.',
+      'DE': 'Zu lang: Die KWP2000-Länge ist ein einzelnes Byte.',
+    },
+    'its.calibChannelFailed': {
+      'TR': 'Diagnostik kanalı açılamadı.',
+      'EN': 'The diagnostics channel could not be opened.',
+      'DE': 'Der Diagnosekanal konnte nicht geöffnet werden.',
+    },
+    'its.calibNotSent': {
+      'TR': 'İstek gönderilmedi: diagnostik kanalı açılamadı.',
+      'EN': 'Request not sent: the diagnostics channel could not be opened.',
+      'DE':
+          'Anfrage nicht gesendet: Der Diagnosekanal konnte nicht geöffnet werden.',
+    },
+    'its.calibNoAnswer': {
+      'TR': 'Yanıt yok.',
+      'EN': 'No answer.',
+      'DE': 'Keine Antwort.',
+    },
+    'its.calibNoAnswerLong': {
+      'TR': 'Yanıt yok: takograf isteği cevaplamadı.',
+      'EN': 'No answer: the tachograph did not respond to the request.',
+      'DE': 'Keine Antwort: Der Tachograph hat auf die Anfrage nicht reagiert.',
+    },
+    'its.calibPositive': {'TR': 'Olumlu', 'EN': 'Positive', 'DE': 'Positiv'},
+    'its.calibRefused': {
+      'TR': 'Reddedildi',
+      'EN': 'Refused',
+      'DE': 'Abgelehnt',
+    },
+    'its.calibNegative': {'TR': 'Olumsuz', 'EN': 'Negative', 'DE': 'Negativ'},
+    'its.diagOpen': {
+      'TR': 'Diagnostik: açık ({credits} credit)',
+      'EN': 'Diagnostics: open ({credits} credits)',
+      'DE': 'Diagnose: offen ({credits} Credits)',
+    },
+    'its.diagOpening': {
+      'TR': 'Diagnostik: açılıyor…',
+      'EN': 'Diagnostics: opening…',
+      'DE': 'Diagnose: wird geöffnet…',
+    },
+    'its.diagRefused': {
+      'TR': 'Diagnostik: reddedildi (0xFF)',
+      'EN': 'Diagnostics: refused (0xFF)',
+      'DE': 'Diagnose: abgelehnt (0xFF)',
+    },
+    'its.diagClosed': {
+      'TR': 'Diagnostik: kapalı',
+      'EN': 'Diagnostics: closed',
+      'DE': 'Diagnose: geschlossen',
+    },
+    'its.calibRawTitle': {
+      'TR': 'Diagnostik kanalında ham istek',
+      'EN': 'Raw request on the diagnostics channel',
+      'DE': 'Rohanfrage auf dem Diagnosekanal',
+    },
+    'its.calibRawHint': {
+      'TR':
+          'Baytlar servis tanımlayıcısıyla başlar; 80 EE F0, uzunluk ve checksum otomatik eklenir. İmzalı RHMI istekleri Uzaktan kumanda ekranındadır.',
+      'EN':
+          'The bytes start with the service identifier; 80 EE F0, the length and the checksum are added automatically. Signed RHMI requests are on the Remote control screen.',
+      'DE':
+          'Die Bytes beginnen mit der Dienstkennung; 80 EE F0, Länge und Prüfsumme werden automatisch ergänzt. Signierte RHMI-Anfragen finden Sie auf dem Bildschirm Fernbedienung.',
+    },
+    'its.calibSend': {'TR': 'Gönder', 'EN': 'Send', 'DE': 'Senden'},
+    'its.calibPresets': {
+      'TR': 'Hazır istekler',
+      'EN': 'Ready-made requests',
+      'DE': 'Vorlagen',
+    },
+    'scan.demoTitle': {
+      'TR': 'Ekran görüntüsü için mi bağlanıyorsun?',
+      'EN': 'Connecting for a screenshot?',
+      'DE': 'Verbinden Sie sich für einen Screenshot?',
+    },
+    'scan.demoBody': {
+      'TR':
+          'Evet dersen sadece EU 2016/799 Annex 1C, Ek 8, Tablo 28\'de (ücretsiz, resmi kaynak — ISO 16844-7 değil) tanımlı alanlardan 4 tanesi okunur: VIN, tarih/saat, kilometre, izinli hız. Başka hiçbir alan sorulmaz.',
+      'EN':
+          'If you say yes, only 4 of the fields defined in EU 2016/799 Annex 1C, Appendix 8, Table 28 (free, official source, not ISO 16844-7) are read: VIN, date/time, odometer, authorised speed. No other field is asked for.',
+      'DE':
+          'Wenn Sie zustimmen, werden nur 4 der in EU 2016/799 Anhang 1C, Anlage 8, Tabelle 28 (kostenlose, amtliche Quelle, nicht ISO 16844-7) definierten Felder gelesen: VIN, Datum/Uhrzeit, Kilometerstand, zulässige Geschwindigkeit. Kein anderes Feld wird abgefragt.',
+    },
+    'scan.demoNo': {'TR': 'Hayır', 'EN': 'No', 'DE': 'Nein'},
+    'scan.demoYes': {'TR': 'Evet', 'EN': 'Yes', 'DE': 'Ja'},
+    'scan.demoDone': {
+      'TR': 'Tamamlandı — Log ekranında görebilirsin.',
+      'EN': 'Done. You can see it on the Log screen.',
+      'DE': 'Fertig. Sie sehen es auf dem Log-Bildschirm.',
+    },
+    'nation.0': {
+      'TR': 'Bilgi yok',
+      'EN': 'No information',
+      'DE': 'Keine Angabe',
+    },
+    'nation.1': {'TR': 'Avusturya', 'EN': 'Austria', 'DE': 'Österreich'},
+    'nation.2': {'TR': 'Arnavutluk', 'EN': 'Albania', 'DE': 'Albanien'},
+    'nation.3': {'TR': 'Andorra', 'EN': 'Andorra', 'DE': 'Andorra'},
+    'nation.4': {'TR': 'Ermenistan', 'EN': 'Armenia', 'DE': 'Armenien'},
+    'nation.5': {'TR': 'Azerbaycan', 'EN': 'Azerbaijan', 'DE': 'Aserbaidschan'},
+    'nation.6': {'TR': 'Belçika', 'EN': 'Belgium', 'DE': 'Belgien'},
+    'nation.7': {'TR': 'Bulgaristan', 'EN': 'Bulgaria', 'DE': 'Bulgarien'},
+    'nation.8': {
+      'TR': 'Bosna-Hersek',
+      'EN': 'Bosnia and Herzegovina',
+      'DE': 'Bosnien und Herzegowina',
+    },
+    'nation.9': {'TR': 'Belarus', 'EN': 'Belarus', 'DE': 'Belarus'},
+    'nation.10': {'TR': 'İsviçre', 'EN': 'Switzerland', 'DE': 'Schweiz'},
+    'nation.11': {'TR': 'Kıbrıs', 'EN': 'Cyprus', 'DE': 'Zypern'},
+    'nation.12': {'TR': 'Çekya', 'EN': 'Czechia', 'DE': 'Tschechien'},
+    'nation.13': {'TR': 'Almanya', 'EN': 'Germany', 'DE': 'Deutschland'},
+    'nation.14': {'TR': 'Danimarka', 'EN': 'Denmark', 'DE': 'Dänemark'},
+    'nation.15': {'TR': 'İspanya', 'EN': 'Spain', 'DE': 'Spanien'},
+    'nation.16': {'TR': 'Estonya', 'EN': 'Estonia', 'DE': 'Estland'},
+    'nation.17': {'TR': 'Fransa', 'EN': 'France', 'DE': 'Frankreich'},
+    'nation.18': {'TR': 'Finlandiya', 'EN': 'Finland', 'DE': 'Finnland'},
+    'nation.19': {
+      'TR': 'Lihtenştayn',
+      'EN': 'Liechtenstein',
+      'DE': 'Liechtenstein',
+    },
+    'nation.20': {'TR': 'Faroe Adaları', 'EN': 'Faroe Islands', 'DE': 'Färöer'},
+    'nation.21': {
+      'TR': 'Birleşik Krallık',
+      'EN': 'United Kingdom',
+      'DE': 'Vereinigtes Königreich',
+    },
+    'nation.22': {'TR': 'Gürcistan', 'EN': 'Georgia', 'DE': 'Georgien'},
+    'nation.23': {'TR': 'Yunanistan', 'EN': 'Greece', 'DE': 'Griechenland'},
+    'nation.24': {'TR': 'Macaristan', 'EN': 'Hungary', 'DE': 'Ungarn'},
+    'nation.25': {'TR': 'Hırvatistan', 'EN': 'Croatia', 'DE': 'Kroatien'},
+    'nation.26': {'TR': 'İtalya', 'EN': 'Italy', 'DE': 'Italien'},
+    'nation.27': {'TR': 'İrlanda', 'EN': 'Ireland', 'DE': 'Irland'},
+    'nation.28': {'TR': 'İzlanda', 'EN': 'Iceland', 'DE': 'Island'},
+    'nation.29': {'TR': 'Kazakistan', 'EN': 'Kazakhstan', 'DE': 'Kasachstan'},
+    'nation.30': {'TR': 'Lüksemburg', 'EN': 'Luxembourg', 'DE': 'Luxemburg'},
+    'nation.31': {'TR': 'Litvanya', 'EN': 'Lithuania', 'DE': 'Litauen'},
+    'nation.32': {'TR': 'Letonya', 'EN': 'Latvia', 'DE': 'Lettland'},
+    'nation.33': {'TR': 'Malta', 'EN': 'Malta', 'DE': 'Malta'},
+    'nation.34': {'TR': 'Monako', 'EN': 'Monaco', 'DE': 'Monaco'},
+    'nation.35': {'TR': 'Moldova', 'EN': 'Moldova', 'DE': 'Moldau'},
+    'nation.36': {
+      'TR': 'Kuzey Makedonya',
+      'EN': 'North Macedonia',
+      'DE': 'Nordmazedonien',
+    },
+    'nation.37': {'TR': 'Norveç', 'EN': 'Norway', 'DE': 'Norwegen'},
+    'nation.38': {'TR': 'Hollanda', 'EN': 'Netherlands', 'DE': 'Niederlande'},
+    'nation.39': {'TR': 'Portekiz', 'EN': 'Portugal', 'DE': 'Portugal'},
+    'nation.40': {'TR': 'Polonya', 'EN': 'Poland', 'DE': 'Polen'},
+    'nation.41': {'TR': 'Romanya', 'EN': 'Romania', 'DE': 'Rumänien'},
+    'nation.42': {'TR': 'San Marino', 'EN': 'San Marino', 'DE': 'San Marino'},
+    'nation.43': {'TR': 'Rusya', 'EN': 'Russia', 'DE': 'Russland'},
+    'nation.44': {'TR': 'İsveç', 'EN': 'Sweden', 'DE': 'Schweden'},
+    'nation.45': {'TR': 'Slovakya', 'EN': 'Slovakia', 'DE': 'Slowakei'},
+    'nation.46': {'TR': 'Slovenya', 'EN': 'Slovenia', 'DE': 'Slowenien'},
+    'nation.47': {
+      'TR': 'Türkmenistan',
+      'EN': 'Turkmenistan',
+      'DE': 'Turkmenistan',
+    },
+    'nation.48': {'TR': 'Türkiye', 'EN': 'Türkiye', 'DE': 'Türkei'},
+    'nation.49': {'TR': 'Ukrayna', 'EN': 'Ukraine', 'DE': 'Ukraine'},
+    'nation.50': {'TR': 'Vatikan', 'EN': 'Vatican City', 'DE': 'Vatikanstadt'},
+    'nation.51': {'TR': 'Yugoslavya', 'EN': 'Yugoslavia', 'DE': 'Jugoslawien'},
+    'nation.52': {'TR': 'Karadağ', 'EN': 'Montenegro', 'DE': 'Montenegro'},
+    'nation.53': {'TR': 'Sırbistan', 'EN': 'Serbia', 'DE': 'Serbien'},
+    'nation.54': {'TR': 'Özbekistan', 'EN': 'Uzbekistan', 'DE': 'Usbekistan'},
+    'nation.55': {
+      'TR': 'Tacikistan',
+      'EN': 'Tajikistan',
+      'DE': 'Tadschikistan',
+    },
+    'nation.56': {'TR': 'Kırgızistan', 'EN': 'Kyrgyzstan', 'DE': 'Kirgisistan'},
+    'nation.57': {'TR': 'İsrail', 'EN': 'Israel', 'DE': 'Israel'},
+    'nation.253': {
+      'TR': 'Avrupa Topluluğu',
+      'EN': 'European Community',
+      'DE': 'Europäische Gemeinschaft',
+    },
+    'nation.254': {
+      'TR': 'Avrupa\'nın geri kalanı',
+      'EN': 'Rest of Europe',
+      'DE': 'Übriges Europa',
+    },
+    'nation.255': {
+      'TR': 'Dünyanın geri kalanı',
+      'EN': 'Rest of the world',
+      'DE': 'Übrige Welt',
+    },
+    'nation.unknown': {
+      'TR': 'Bilinmeyen ülke (kod {code})',
+      'EN': 'Unknown country (code {code})',
+      'DE': 'Unbekanntes Land (Code {code})',
+    },
+    'rhmi.notConnected': {
+      'TR': 'Bir ATC 8256\'ya bağlı değil.',
+      'EN': 'Not connected to an ATC 8256.',
+      'DE': 'Nicht mit einem ATC 8256 verbunden.',
+    },
+    'rhmi.channelFailed': {
+      'TR':
+          'Diagnostik kanalı açılamadı: takograf reddetti ya da yanıt vermedi. Ön konektör kullanımda olabilir.',
+      'EN':
+          'The diagnostics channel could not be opened: the tachograph refused or did not answer. The front connector may be in use.',
+      'DE':
+          'Der Diagnosekanal konnte nicht geöffnet werden: Der Fahrtenschreiber hat abgelehnt oder nicht geantwortet. Der Frontstecker ist möglicherweise belegt.',
+    },
+    'rhmi.failed': {
+      'TR': 'Başarısız: {error}',
+      'EN': 'Failed: {error}',
+      'DE': 'Fehlgeschlagen: {error}',
+    },
+    'rhmi.notPaired': {
+      'TR': '{client} eşleştirilmemiş.',
+      'EN': '{client} is not paired.',
+      'DE': '{client} ist nicht gekoppelt.',
+    },
+    'rhmi.sessionPending': {
+      'TR': 'Oturum bekliyor: takograf ekranındaki soruyu yanıtlayın.',
+      'EN':
+          'The session is waiting: answer the question on the tachograph display.',
+      'DE':
+          'Die Sitzung wartet: Beantworten Sie die Frage auf dem Display des Fahrtenschreibers.',
+    },
+    'rhmi.sessionRejected': {
+      'TR': 'Bir kullanıcı oturumu reddetti. Oturumu kapatıp yeniden açın.',
+      'EN': 'A user rejected the session. Close it and open it again.',
+      'DE':
+          'Ein Benutzer hat die Sitzung abgelehnt. Schließen und erneut öffnen.',
+    },
+    'rhmi.sessionUnknown': {
+      'TR': 'Oturum durumu bilinmiyor: önce oturumu açın.',
+      'EN': 'Session state unknown: open the session first.',
+      'DE': 'Sitzungsstatus unbekannt: Öffnen Sie zuerst die Sitzung.',
+    },
+    'rhmi.sessionNotOpen': {
+      'TR': 'Oturum açık değil ({status}). Önce oturumu açın.',
+      'EN': 'The session is not open ({status}). Open the session first.',
+      'DE':
+          'Die Sitzung ist nicht offen ({status}). Öffnen Sie zuerst die Sitzung.',
+    },
+    'rhmi.refused': {
+      'TR': 'Reddedildi: {nrc} ({code})',
+      'EN': 'Refused: {nrc} ({code})',
+      'DE': 'Abgelehnt: {nrc} ({code})',
+    },
+    'rhmi.nrc35': {
+      'TR':
+          'Takograf bu telefonun kimliğini tanımıyor: eşleştirme kaybolmuş ya da yuvadaki kart değişmiş. Yeniden eşleştirin.',
+      'EN':
+          'The tachograph does not recognise this phone\'s identifier: the pairing was lost or the card in the slot changed. Pair again.',
+      'DE':
+          'Der Fahrtenschreiber erkennt die Kennung dieses Telefons nicht: Die Kopplung ging verloren oder die Karte im Steckplatz wurde gewechselt. Erneut koppeln.',
+    },
+    'rhmi.nrc37': {
+      'TR':
+          'Yanlış imzalı bir istek nedeniyle takograf 10 sn boyunca RHMI isteklerini reddediyor. Bekleyip tekrar deneyin.',
+      'EN':
+          'Because of a wrongly signed request the tachograph refuses RHMI requests for 10 s. Wait and try again.',
+      'DE':
+          'Wegen einer falsch signierten Anfrage lehnt der Fahrtenschreiber 10 s lang RHMI-Anfragen ab. Warten und erneut versuchen.',
+    },
+    'rhmi.nrc31': {
+      'TR':
+          'Genellikle saat farkı: takograf ve telefon saati {seconds} sn\'den fazla farklı olabilir.',
+      'EN':
+          'Usually a clock difference: the tachograph and phone clocks may differ by more than {seconds} s.',
+      'DE':
+          'Meist ein Uhrzeitunterschied: Fahrtenschreiber- und Telefonuhr weichen möglicherweise um mehr als {seconds} s ab.',
+    },
+    'rhmi.nrc21': {
+      'TR': 'Takografta başka bir RHMI işlemi sürüyor, tekrar deneyin.',
+      'EN': 'Another RHMI operation is running on the tachograph; try again.',
+      'DE':
+          'Am Fahrtenschreiber läuft ein anderer RHMI-Vorgang; erneut versuchen.',
+    },
+    'rhmi.busyClock': {
+      'TR': 'Takograf saati okunuyor',
+      'EN': 'Reading the tachograph clock',
+      'DE': 'Uhr des Fahrtenschreibers wird gelesen',
+    },
+    'rhmi.clockUnreadable': {
+      'TR': 'Takograf saati okunamadı.',
+      'EN': 'The tachograph clock could not be read.',
+      'DE': 'Die Uhr des Fahrtenschreibers konnte nicht gelesen werden.',
+    },
+    'rhmi.clockAheadOk': {
+      'TR': 'Takograf saati telefondan {seconds} sn ileride; tolerans içinde.',
+      'EN':
+          'The tachograph clock is {seconds} s ahead of the phone; within tolerance.',
+      'DE':
+          'Die Uhr des Fahrtenschreibers geht {seconds} s vor; innerhalb der Toleranz.',
+    },
+    'rhmi.clockBehindOk': {
+      'TR': 'Takograf saati telefondan {seconds} sn geride; tolerans içinde.',
+      'EN':
+          'The tachograph clock is {seconds} s behind the phone; within tolerance.',
+      'DE':
+          'Die Uhr des Fahrtenschreibers geht {seconds} s nach; innerhalb der Toleranz.',
+    },
+    'rhmi.clockAheadOut': {
+      'TR':
+          'Takograf saati telefondan {seconds} sn ileride; tolerans dışında. İstekler takograf saatiyle imzalanacak.',
+      'EN':
+          'The tachograph clock is {seconds} s ahead of the phone; outside tolerance. Requests will be signed with the tachograph\'s time.',
+      'DE':
+          'Die Uhr des Fahrtenschreibers geht {seconds} s vor; außerhalb der Toleranz. Anfragen werden mit der Zeit des Fahrtenschreibers signiert.',
+    },
+    'rhmi.clockBehindOut': {
+      'TR':
+          'Takograf saati telefondan {seconds} sn geride; tolerans dışında. İstekler takograf saatiyle imzalanacak.',
+      'EN':
+          'The tachograph clock is {seconds} s behind the phone; outside tolerance. Requests will be signed with the tachograph\'s time.',
+      'DE':
+          'Die Uhr des Fahrtenschreibers geht {seconds} s nach; außerhalb der Toleranz. Anfragen werden mit der Zeit des Fahrtenschreibers signiert.',
+    },
+    'rhmi.busyPairing': {
+      'TR': 'Eşleştiriliyor',
+      'EN': 'Pairing',
+      'DE': 'Kopplung läuft',
+    },
+    'rhmi.noAnswer': {
+      'TR': 'Yanıt yok.',
+      'EN': 'No answer.',
+      'DE': 'Keine Antwort.',
+    },
+    'rhmi.pairingUnreadable': {
+      'TR': 'Eşleştirme yanıtı okunamadı.',
+      'EN': 'The pairing answer could not be read.',
+      'DE': 'Die Kopplungsantwort konnte nicht gelesen werden.',
+    },
+    'rhmi.pairedPlain': {
+      'TR': 'Eşleştirildi (açık aktarım, kod gerekmedi).',
+      'EN': 'Paired (plain transfer, no code needed).',
+      'DE': 'Gekoppelt (unverschlüsselte Übertragung, kein Code nötig).',
+    },
+    'rhmi.enterToken': {
+      'TR': 'Takograf ekranındaki 8 haneli kodu girin.',
+      'EN': 'Enter the 8-digit code shown on the tachograph display.',
+      'DE':
+          'Geben Sie den 8-stelligen Code vom Display des Fahrtenschreibers ein.',
+    },
+    'rhmi.tokenDigits': {
+      'TR': 'Kod 8 rakamdan oluşur.',
+      'EN': 'The code has 8 digits.',
+      'DE': 'Der Code hat 8 Ziffern.',
+    },
+    'rhmi.tokenWrong': {
+      'TR': 'Kod yanlış (doğrulama tutmadı). Tekrar girin.',
+      'EN': 'Wrong code (the check did not match). Enter it again.',
+      'DE': 'Falscher Code (Prüfung stimmt nicht). Erneut eingeben.',
+    },
+    'rhmi.paired': {
+      'TR': '{client} eşleştirildi.',
+      'EN': '{client} paired.',
+      'DE': '{client} gekoppelt.',
+    },
+    'rhmi.pairingCancelled': {
+      'TR': 'Eşleştirme iptal edildi.',
+      'EN': 'Pairing cancelled.',
+      'DE': 'Kopplung abgebrochen.',
+    },
+    'rhmi.pairingForgotten': {
+      'TR':
+          'Kimlik bu telefondan silindi. Takograf kendi kopyasını sonraki eşleştirmeye kadar tutar.',
+      'EN':
+          'The identifier was deleted from this phone. The tachograph keeps its own copy until the next pairing.',
+      'DE':
+          'Die Kennung wurde von diesem Telefon gelöscht. Der Fahrtenschreiber behält seine Kopie bis zur nächsten Kopplung.',
+    },
+    'rhmi.busyVerify': {
+      'TR': 'Kimlik doğrulanıyor',
+      'EN': 'Verifying the identifier',
+      'DE': 'Kennung wird geprüft',
+    },
+    'rhmi.menuInUseRetry': {
+      'TR': 'Takograf menüsü kullanımda; menüden çıkıp tekrar deneyin.',
+      'EN': 'The tachograph menu is in use; leave the menu and try again.',
+      'DE':
+          'Das Menü des Fahrtenschreibers ist in Benutzung; Menü verlassen und erneut versuchen.',
+    },
+    'rhmi.verified': {
+      'TR': 'Kimlik doğrulandı: takograf aynı kimliği tutuyor.',
+      'EN': 'Identifier verified: the tachograph holds the same identifier.',
+      'DE': 'Kennung bestätigt: Der Fahrtenschreiber hat dieselbe Kennung.',
+    },
+    'rhmi.busyOpen': {
+      'TR': 'Oturum açılıyor — takograf ekranında onaylayın',
+      'EN': 'Opening the session — confirm on the tachograph display',
+      'DE':
+          'Sitzung wird geöffnet — am Display des Fahrtenschreibers bestätigen',
+    },
+    'rhmi.statusUnreadable': {
+      'TR': 'Durum okunamadı.',
+      'EN': 'The state could not be read.',
+      'DE': 'Der Status konnte nicht gelesen werden.',
+    },
+    'rhmi.waitTimeout': {
+      'TR':
+          'Bir buçuk dakikadır onay bekleniyor; takograf ekranında soru var mı?',
+      'EN':
+          'Waiting for confirmation for a minute and a half; is there a question on the tachograph display?',
+      'DE':
+          'Seit anderthalb Minuten wird auf Bestätigung gewartet; steht auf dem Display des Fahrtenschreibers eine Frage?',
+    },
+    'rhmi.status.open': {
+      'TR': 'Oturum açık.',
+      'EN': 'The session is open.',
+      'DE': 'Die Sitzung ist offen.',
+    },
+    'rhmi.status.closedOpenPossible': {
+      'TR': 'Oturum kapalı; açılabilir.',
+      'EN': 'The session is closed; it can be opened.',
+      'DE': 'Die Sitzung ist geschlossen; sie kann geöffnet werden.',
+    },
+    'rhmi.status.closedUserDecisionPending': {
+      'TR': 'Takograf ekranındaki soruyu yanıtlayın.',
+      'EN': 'Answer the question on the tachograph display.',
+      'DE': 'Beantworten Sie die Frage auf dem Display des Fahrtenschreibers.',
+    },
+    'rhmi.status.closedUserRejected': {
+      'TR':
+          'Reddedildi (ya da soru 25 sn içinde yanıtlanmadı). Kapatıp yeniden açın ve takografta Evet deyin.',
+      'EN':
+          'Rejected (or the question was not answered within 25 s). Close, open again and answer Yes on the tachograph.',
+      'DE':
+          'Abgelehnt (oder die Frage wurde nicht innerhalb von 25 s beantwortet). Schließen, erneut öffnen und am Fahrtenschreiber mit Ja antworten.',
+    },
+    'rhmi.status.closedLocalHmiIsUsed': {
+      'TR': 'Takograf menüsü kullanımda; menüden çıkıp yeniden açın.',
+      'EN': 'The tachograph menu is in use; leave the menu and open again.',
+      'DE':
+          'Das Menü des Fahrtenschreibers ist in Benutzung; Menü verlassen und erneut öffnen.',
+    },
+    'rhmi.status.closedGeneralConditionsNotMet': {
+      'TR':
+          'Geçerli bir sürücü ya da atölye kartı hazır değil; kart doğrulanınca yeniden açın.',
+      'EN':
+          'No valid driver or workshop card is ready; open again once the card is verified.',
+      'DE':
+          'Keine gültige Fahrer- oder Werkstattkarte bereit; nach Prüfung der Karte erneut öffnen.',
+    },
+    'rhmi.session.open': {'TR': 'Açık', 'EN': 'Open', 'DE': 'Offen'},
+    'rhmi.session.closedOpenPossible': {
+      'TR': 'Kapalı, açılabilir',
+      'EN': 'Closed, can be opened',
+      'DE': 'Geschlossen, kann geöffnet werden',
+    },
+    'rhmi.session.closedUserDecisionPending': {
+      'TR': 'Takograf ekranında onay bekleniyor',
+      'EN': 'Waiting for confirmation on the tachograph display',
+      'DE': 'Wartet auf Bestätigung am Display des Fahrtenschreibers',
+    },
+    'rhmi.session.closedUserRejected': {
+      'TR': 'Kapalı, bir kullanıcı reddetti',
+      'EN': 'Closed, a user rejected it',
+      'DE': 'Geschlossen, von einem Benutzer abgelehnt',
+    },
+    'rhmi.session.closedLocalHmiIsUsed': {
+      'TR': 'Kapalı, takograf menüsü kullanımda',
+      'EN': 'Closed, the tachograph menu is in use',
+      'DE': 'Geschlossen, Menü des Fahrtenschreibers in Benutzung',
+    },
+    'rhmi.session.closedGeneralConditionsNotMet': {
+      'TR': 'Kapalı, koşullar sağlanmıyor',
+      'EN': 'Closed, conditions not met',
+      'DE': 'Geschlossen, Bedingungen nicht erfüllt',
+    },
+    'rhmi.busyStatus': {
+      'TR': 'Oturum durumu okunuyor',
+      'EN': 'Reading the session state',
+      'DE': 'Sitzungsstatus wird gelesen',
+    },
+    'rhmi.busyClose': {
+      'TR': 'Oturum kapatılıyor',
+      'EN': 'Closing the session',
+      'DE': 'Sitzung wird geschlossen',
+    },
+    'rhmi.sessionClosed': {
+      'TR': 'Oturum kapatıldı.',
+      'EN': 'Session closed.',
+      'DE': 'Sitzung geschlossen.',
+    },
+    'rhmi.busyCardType': {
+      'TR': 'Kart tipi okunuyor',
+      'EN': 'Reading the card type',
+      'DE': 'Kartentyp wird gelesen',
+    },
+    'rhmi.shortAnswer': {
+      'TR': 'Yanıt kısa.',
+      'EN': 'The answer is too short.',
+      'DE': 'Die Antwort ist zu kurz.',
+    },
+    'rhmi.cardDriver': {
+      'TR': 'Sürücü kartı',
+      'EN': 'Driver card',
+      'DE': 'Fahrerkarte',
+    },
+    'rhmi.cardWorkshop': {
+      'TR': 'Atölye kartı',
+      'EN': 'Workshop card',
+      'DE': 'Werkstattkarte',
+    },
+    'rhmi.cardOther': {
+      'TR': 'Kart tipi {code}',
+      'EN': 'Card type {code}',
+      'DE': 'Kartentyp {code}',
+    },
+    'rhmi.busyPeriod': {
+      'TR': 'Manuel giriş dönemi okunuyor',
+      'EN': 'Reading the manual entry period',
+      'DE': 'Zeitraum der manuellen Eingabe wird gelesen',
+    },
+    'rhmi.periodTooShort': {
+      'TR': 'Dönem bir dakikadan kısa; girilecek bir şey yok.',
+      'EN': 'The period is shorter than a minute; there is nothing to enter.',
+      'DE': 'Der Zeitraum ist kürzer als eine Minute; nichts einzugeben.',
+    },
+    'rhmi.periodMinutes': {
+      'TR': 'Dönem {minutes} dakika.',
+      'EN': 'The period is {minutes} minutes.',
+      'DE': 'Der Zeitraum beträgt {minutes} Minuten.',
+    },
+    'rhmi.periodNotExpected': {
+      'TR':
+          'Takograf manuel giriş beklemiyor: yuva {slot} için kart takma işlemi sürmüyor. Kartı takıp takograf boşluğu sorarken tekrar deneyin.',
+      'EN':
+          'The tachograph is not expecting a manual entry: no card insertion is running for slot {slot}. Insert the card and try again while the tachograph asks about the gap.',
+      'DE':
+          'Der Fahrtenschreiber erwartet keine manuelle Eingabe: Für Steckplatz {slot} läuft kein Kartensteckvorgang. Karte stecken und erneut versuchen, während der Fahrtenschreiber nach der Lücke fragt.',
+    },
+    'rhmi.periodUnreadable': {
+      'TR': 'Dönem yanıtı okunamadı.',
+      'EN': 'The period answer could not be read.',
+      'DE': 'Die Zeitraumantwort konnte nicht gelesen werden.',
+    },
+    'rhmi.busySendEntry': {
+      'TR': 'Manuel giriş gönderiliyor',
+      'EN': 'Sending the manual entry',
+      'DE': 'Manuelle Eingabe wird gesendet',
+    },
+    'rhmi.entryNeedsActivity': {
+      'TR': 'En az bir aktivite ekleyin.',
+      'EN': 'Add at least one activity.',
+      'DE': 'Mindestens eine Tätigkeit hinzufügen.',
+    },
+    'rhmi.entryReadPeriodFirst': {
+      'TR': 'Önce dönemi okuyun.',
+      'EN': 'Read the period first.',
+      'DE': 'Lesen Sie zuerst den Zeitraum.',
+    },
+    'rhmi.entryDoesNotFit': {
+      'TR':
+          'Yeni dönem {minutes} dakika ve hazırlanan giriş sığmıyor: {reason}.',
+      'EN':
+          'The new period is {minutes} minutes and the prepared entry does not fit: {reason}.',
+      'DE':
+          'Der neue Zeitraum beträgt {minutes} Minuten und die vorbereitete Eingabe passt nicht: {reason}.',
+    },
+    'rhmi.entryAccepted': {
+      'TR': 'Kabul edildi: {activities} aktivite, {places} yer.',
+      'EN': 'Accepted: {activities} activities, {places} places.',
+      'DE': 'Angenommen: {activities} Tätigkeiten, {places} Orte.',
+    },
+    'rhmi.entryClosed': {
+      'TR':
+          'Takograf artık giriş almıyor: kart takıldıktan sonraki bir dakika geçti, ya da takograf ekranından yanıt verilmeye başlandı. Kartı çıkarıp tekrar takın ve ilk dakikada gönderin.',
+      'EN':
+          'The tachograph no longer takes entries: the minute after card insertion has passed, or someone started answering on the tachograph display. Remove and reinsert the card and send within the first minute.',
+      'DE':
+          'Der Fahrtenschreiber nimmt keine Eingaben mehr an: Die Minute nach dem Stecken der Karte ist vorbei, oder am Display wurde bereits geantwortet. Karte entnehmen, erneut stecken und in der ersten Minute senden.',
+    },
+    'rhmi.entryOutOfRange': {
+      'TR':
+          'Giriş takografın kabul etmediği bir şey içeriyor: ülkesiz yer, dönemin son dakikasında bitiş yeri, sırasız yerler ya da dönem dışında aktivite.',
+      'EN':
+          'The entry contains something the tachograph does not accept: a place without a country, an end place in the last minute of the period, places out of order or an activity outside the period.',
+      'DE':
+          'Die Eingabe enthält etwas, das der Fahrtenschreiber nicht annimmt: einen Ort ohne Land, einen Endort in der letzten Minute des Zeitraums, Orte in falscher Reihenfolge oder eine Tätigkeit außerhalb des Zeitraums.',
+    },
+    'rhmi.busyStopEntry': {
+      'TR': 'Manuel giriş bitiriliyor',
+      'EN': 'Ending the manual entry',
+      'DE': 'Manuelle Eingabe wird beendet',
+    },
+    'rhmi.entryStopped': {
+      'TR': 'Manuel giriş bitirildi.',
+      'EN': 'Manual entry ended.',
+      'DE': 'Manuelle Eingabe beendet.',
+    },
+    'rhmi.whatPlaceBegin': {
+      'TR': 'Başlangıç yeri',
+      'EN': 'Start place',
+      'DE': 'Beginnort',
+    },
+    'rhmi.whatPlaceEnd': {
+      'TR': 'Bitiş yeri',
+      'EN': 'End place',
+      'DE': 'Endort',
+    },
+    'rhmi.placeSaved': {
+      'TR': 'Yer VU\'da ve yuva {slot} kartında kaydedildi.',
+      'EN': 'Place recorded in the VU and on the card in slot {slot}.',
+      'DE': 'Ort in der VU und auf der Karte in Steckplatz {slot} gespeichert.',
+    },
+    'rhmi.whatCondition': {
+      'TR': 'Özel durum',
+      'EN': 'Specific condition',
+      'DE': 'Besondere Bedingung',
+    },
+    'rhmi.conditionSaved': {
+      'TR': 'Özel durum VU\'da ve takılı kartlarda kaydedildi.',
+      'EN': 'Specific condition recorded in the VU and on the inserted cards.',
+      'DE':
+          'Besondere Bedingung in der VU und auf den gesteckten Karten gespeichert.',
+    },
+    'rhmi.whatActivity': {
+      'TR': 'Aktivite',
+      'EN': 'Activity',
+      'DE': 'Tätigkeit',
+    },
+    'rhmi.activitySaved': {
+      'TR': 'Aktivite değiştirildi; VU\'da ve kartta kaydedildi.',
+      'EN': 'Activity changed; recorded in the VU and on the card.',
+      'DE': 'Tätigkeit geändert; in der VU und auf der Karte gespeichert.',
+    },
+    'rhmi.whatLoad': {
+      'TR': 'Yükleme/boşaltma',
+      'EN': 'Load/unload',
+      'DE': 'Beladen/Entladen',
+    },
+    'rhmi.loadSaved': {
+      'TR': 'Yükleme/boşaltma VU\'da kaydedildi.',
+      'EN': 'Load/unload recorded in the VU.',
+      'DE': 'Beladen/Entladen in der VU gespeichert.',
+    },
+    'rhmi.busySending': {
+      'TR': '{what} gönderiliyor',
+      'EN': 'Sending: {what}',
+      'DE': 'Wird gesendet: {what}',
+    },
+    'rhmi.entryNotPossible': {
+      'TR':
+          'Şu an mümkün değil: yuvada kart yok, kart takılıyor/çıkarılıyor, araç hareket halinde, ya da aynı türden bir giriş bu dakika zaten yapıldı.',
+      'EN':
+          'Not possible right now: no card in the slot, a card is being inserted/removed, the vehicle is moving, or an entry of the same kind was already made this minute.',
+      'DE':
+          'Derzeit nicht möglich: keine Karte im Steckplatz, eine Karte wird gesteckt/entnommen, das Fahrzeug fährt oder eine gleichartige Eingabe wurde in dieser Minute bereits gemacht.',
+    },
+    'rhmi.busyWithdraw': {
+      'TR': 'Kart çıkarılıyor',
+      'EN': 'Withdrawing the card',
+      'DE': 'Karte wird entnommen',
+    },
+    'rhmi.withdraw21': {
+      'TR':
+          'Şu an mümkün değil: diğer kart takılıyor/çıkarılıyor, gece yarısı işlemleri ya da yazıcı kullanımda.',
+      'EN':
+          'Not possible right now: the other card is being inserted/removed, midnight processing is running, or the printer is in use.',
+      'DE':
+          'Derzeit nicht möglich: Die andere Karte wird gesteckt/entnommen, die Mitternachtsverarbeitung läuft oder der Drucker ist in Benutzung.',
+    },
+    'rhmi.withdraw22': {
+      'TR':
+          'Mümkün değil: yuvada kart yok ya da kart işleniyor, araç hareket halinde, ya da çıktı istendiyse kağıt yok.',
+      'EN':
+          'Not possible: no card in the slot or the card is being processed, the vehicle is moving, or a printout was requested and there is no paper.',
+      'DE':
+          'Nicht möglich: keine Karte im Steckplatz oder die Karte wird verarbeitet, das Fahrzeug fährt oder es wurde ein Ausdruck angefordert und kein Papier ist da.',
+    },
+    'rhmi.withdraw31': {
+      'TR':
+          'Aralık dışı: ülke yok, bölge ülkeye uymuyor ya da saat farkı fazla.',
+      'EN':
+          'Out of range: no country, the region does not match the country, or the clock difference is too large.',
+      'DE':
+          'Außerhalb des Bereichs: kein Land, Region passt nicht zum Land oder Uhrzeitunterschied zu groß.',
+    },
+    'rhmi.withdrawn': {
+      'TR':
+          'Kart çıkarıldı; oturum kapandı. Yuva {slot} kimliği kartla gitti: sonraki takmada yeniden eşleştirin.',
+      'EN':
+          'Card withdrawn; the session closed. The slot {slot} identifier left with the card: pair again on the next insertion.',
+      'DE':
+          'Karte entnommen; Sitzung geschlossen. Die Kennung von Steckplatz {slot} ist mit der Karte weg: beim nächsten Stecken erneut koppeln.',
+    },
+    'rhmi.withdrawPending': {
+      'TR':
+          'Çıkarma kabul edildi, ama oturum üç dakikadır açık: kart henüz çıkmamış olabilir (çıktı, kağıt bitti).',
+      'EN':
+          'Withdrawal accepted, but the session has been open for three minutes: the card may not be out yet (printout, paper end).',
+      'DE':
+          'Entnahme angenommen, aber die Sitzung ist seit drei Minuten offen: Die Karte ist eventuell noch nicht draußen (Ausdruck, Papierende).',
+    },
+    'rhmi.busyWarnings': {
+      'TR': 'Uyarılar okunuyor',
+      'EN': 'Reading warnings',
+      'DE': 'Warnungen werden gelesen',
+    },
+    'rhmi.warningsUnreadable': {
+      'TR': 'Uyarılar okunamadı.',
+      'EN': 'The warnings could not be read.',
+      'DE': 'Die Warnungen konnten nicht gelesen werden.',
+    },
+    'rhmi.busyAck': {
+      'TR': 'Uyarı onaylanıyor',
+      'EN': 'Acknowledging the warning',
+      'DE': 'Warnung wird quittiert',
+    },
+    'rhmi.ack21': {
+      'TR': 'Önceki onay sürüyor, tekrar deneyin.',
+      'EN': 'The previous acknowledgement is still running; try again.',
+      'DE': 'Die vorherige Quittierung läuft noch; erneut versuchen.',
+    },
+    'rhmi.ack31': {
+      'TR': 'Uyarı artık takografta yok.',
+      'EN': 'The warning is no longer on the tachograph.',
+      'DE': 'Die Warnung ist nicht mehr im Fahrtenschreiber.',
+    },
+    'rhmi.acknowledged': {
+      'TR': 'Uyarı onaylandı.',
+      'EN': 'Warning acknowledged.',
+      'DE': 'Warnung quittiert.',
+    },
+    'rhmi.noWarnings': {
+      'TR': 'Takografta bekleyen uyarı yok.',
+      'EN': 'No warnings pending on the tachograph.',
+      'DE': 'Keine offenen Warnungen im Fahrtenschreiber.',
+    },
+    'rhmi.warningsPending': {
+      'TR': '{count} uyarı bekliyor.',
+      'EN': '{count} warnings pending.',
+      'DE': '{count} Warnungen offen.',
+    },
+    'rhmi.busyPrintDays': {
+      'TR': 'Çıktı günleri okunuyor',
+      'EN': 'Reading the printout days',
+      'DE': 'Ausdrucktage werden gelesen',
+    },
+    'rhmi.printNoDate': {
+      'TR': 'Bu çıktı tarih istemez.',
+      'EN': 'This printout needs no date.',
+      'DE': 'Dieser Ausdruck braucht kein Datum.',
+    },
+    'rhmi.printNoDays': {
+      'TR': 'Yazdırılacak gün yok.',
+      'EN': 'No days to print.',
+      'DE': 'Keine Tage zum Drucken.',
+    },
+    'rhmi.printDays': {
+      'TR': 'Günler: {from} – {to}',
+      'EN': 'Days: {from} – {to}',
+      'DE': 'Tage: {from} – {to}',
+    },
+    'rhmi.busyPrinting': {
+      'TR': 'Yazdırılıyor',
+      'EN': 'Printing',
+      'DE': 'Wird gedruckt',
+    },
+    'rhmi.printPickDay': {
+      'TR': 'Önce bir gün seçin.',
+      'EN': 'Pick a day first.',
+      'DE': 'Wählen Sie zuerst einen Tag.',
+    },
+    'rhmi.printStartedUnknown': {
+      'TR': 'Başladı, ama durum okunamadı.',
+      'EN': 'Started, but the state could not be read.',
+      'DE': 'Gestartet, aber der Status konnte nicht gelesen werden.',
+    },
+    'rhmi.printLong': {
+      'TR': 'Başladı; beş dakikadır yazdırıyor.',
+      'EN': 'Started; it has been printing for five minutes.',
+      'DE': 'Gestartet; druckt seit fünf Minuten.',
+    },
+    'rhmi.busyPrintStatus': {
+      'TR': 'Çıktı durumu okunuyor',
+      'EN': 'Reading the printout state',
+      'DE': 'Ausdruckstatus wird gelesen',
+    },
+    'rhmi.printFromUnit': {
+      'TR': 'Takografta başlatılan çıktı',
+      'EN': 'The printout started on the tachograph',
+      'DE': 'Der am Fahrtenschreiber gestartete Ausdruck',
+    },
+    'rhmi.printDone': {
+      'TR': '{what} tamamlandı.',
+      'EN': '{what}: done.',
+      'DE': '{what}: abgeschlossen.',
+    },
+    'rhmi.printAbnormal': {
+      'TR':
+          '{what} tamamlanmadı: yazıcı sıcak, düşük voltaj, kağıt bitti, iptal ya da yazıcı arızası.',
+      'EN':
+          '{what}: not completed: printer hot, low voltage, paper end, cancelled or printer fault.',
+      'DE':
+          '{what}: nicht abgeschlossen: Drucker heiß, Unterspannung, Papierende, abgebrochen oder Druckerstörung.',
+    },
+    'rhmi.printOngoing': {
+      'TR': '{what} yazdırılıyor.',
+      'EN': '{what}: printing.',
+      'DE': '{what}: wird gedruckt.',
+    },
+    'rhmi.printNone': {
+      'TR': 'Takograf açıldığından beri çıktı yok.',
+      'EN': 'No printout since the tachograph was switched on.',
+      'DE': 'Kein Ausdruck seit dem Einschalten des Fahrtenschreibers.',
+    },
+    'rhmi.printUnknownStatus': {
+      'TR': 'Bilinmeyen çıktı durumu {code} ({end}).',
+      'EN': 'Unknown printout state {code} ({end}).',
+      'DE': 'Unbekannter Ausdruckstatus {code} ({end}).',
+    },
+    'rhmi.print21': {
+      'TR': 'Takografta bir çıktı zaten sürüyor.',
+      'EN': 'A printout is already running on the tachograph.',
+      'DE': 'Am Fahrtenschreiber läuft bereits ein Ausdruck.',
+    },
+    'rhmi.print22': {
+      'TR':
+          'Şu an mümkün değil: oturum kapalı, ilgili yuvada geçerli kart yok, kart takma işlemi bitmemiş, araç hareket halinde ya da kağıt yok.',
+      'EN':
+          'Not possible right now: the session is closed, no valid card in the slot concerned, card insertion has not finished, the vehicle is moving, or there is no paper.',
+      'DE':
+          'Derzeit nicht möglich: Sitzung geschlossen, keine gültige Karte im betreffenden Steckplatz, Kartensteckvorgang nicht abgeschlossen, Fahrzeug fährt oder kein Papier.',
+    },
+    'rhmi.print31': {
+      'TR':
+          'O gün için kayıt yok, bu tip yazdırılmıyor ya da saat farkı fazla.',
+      'EN':
+          'No records for that day, this type cannot be printed, or the clock difference is too large.',
+      'DE':
+          'Keine Daten für diesen Tag, dieser Typ ist nicht druckbar oder der Uhrzeitunterschied ist zu groß.',
+    },
+    'rhmi.client.vehicle': {
+      'TR': 'Araç içi',
+      'EN': 'In-vehicle',
+      'DE': 'Im Fahrzeug',
+    },
+    'rhmi.client.slot1': {
+      'TR': 'Yuva 1 (sürücü)',
+      'EN': 'Slot 1 (driver)',
+      'DE': 'Steckplatz 1 (Fahrer)',
+    },
+    'rhmi.client.slot2': {
+      'TR': 'Yuva 2 (yardımcı sürücü)',
+      'EN': 'Slot 2 (co-driver)',
+      'DE': 'Steckplatz 2 (Beifahrer)',
+    },
+    'rhmi.client.other': {
+      'TR': 'İstemci {n}',
+      'EN': 'Client {n}',
+      'DE': 'Client {n}',
+    },
+    'rhmi.printout.1': {
+      'TR': 'Sürücü aktiviteleri (kart), günlük',
+      'EN': 'Driver activities (card), daily',
+      'DE': 'Fahrertätigkeiten (Karte), täglich',
+    },
+    'rhmi.printout.2': {
+      'TR': 'Yardımcı sürücü aktiviteleri (kart), günlük',
+      'EN': 'Co-driver activities (card), daily',
+      'DE': 'Beifahrertätigkeiten (Karte), täglich',
+    },
+    'rhmi.printout.3': {
+      'TR': 'Sürücü olay ve arızaları (kart)',
+      'EN': 'Driver events and faults (card)',
+      'DE': 'Ereignisse und Störungen Fahrer (Karte)',
+    },
+    'rhmi.printout.4': {
+      'TR': 'Yardımcı sürücü olay ve arızaları (kart)',
+      'EN': 'Co-driver events and faults (card)',
+      'DE': 'Ereignisse und Störungen Beifahrer (Karte)',
+    },
+    'rhmi.printout.5': {
+      'TR': 'Sürücü aktiviteleri (VU), günlük',
+      'EN': 'Driver activities (VU), daily',
+      'DE': 'Fahrertätigkeiten (VU), täglich',
+    },
+    'rhmi.printout.6': {
+      'TR': 'VU olay ve arızaları',
+      'EN': 'VU events and faults',
+      'DE': 'Ereignisse und Störungen VU',
+    },
+    'rhmi.printout.7': {
+      'TR': 'Teknik veri',
+      'EN': 'Technical data',
+      'DE': 'Technische Daten',
+    },
+    'rhmi.printout.8': {
+      'TR': 'Hız aşımı',
+      'EN': 'Overspeeding',
+      'DE': 'Geschwindigkeitsüberschreitung',
+    },
+    'rhmi.printout.other': {
+      'TR': 'tip {code}',
+      'EN': 'type {code}',
+      'DE': 'Typ {code}',
+    },
+    'rhmi.ef.security': {
+      'TR': 'güvenlik ihlali girişimi',
+      'EN': 'security breach attempt',
+      'DE': 'Versuch einer Sicherheitsverletzung',
+    },
+    'rhmi.ef.drivingTime': {
+      'TR': 'sürüş / dinlenme süresi uyarısı',
+      'EN': 'driving / rest time warning',
+      'DE': 'Warnung Lenk-/Ruhezeit',
+    },
+    'rhmi.ef.other': {
+      'TR': 'kod {code}',
+      'EN': 'code {code}',
+      'DE': 'Code {code}',
+    },
+    'rhmi.ef.00': {
+      'TR': 'ayrıntı yok',
+      'EN': 'no further details',
+      'DE': 'keine nähere Angabe',
+    },
+    'rhmi.ef.01': {
+      'TR': 'geçersiz kart takıldı',
+      'EN': 'invalid card inserted',
+      'DE': 'ungültige Karte gesteckt',
+    },
+    'rhmi.ef.02': {
+      'TR': 'kart çakışması',
+      'EN': 'card conflict',
+      'DE': 'Kartenkonflikt',
+    },
+    'rhmi.ef.03': {
+      'TR': 'zaman çakışması',
+      'EN': 'time overlap',
+      'DE': 'Zeitüberschneidung',
+    },
+    'rhmi.ef.04': {
+      'TR': 'uygun kart olmadan sürüş',
+      'EN': 'driving without an appropriate card',
+      'DE': 'Fahren ohne gültige Karte',
+    },
+    'rhmi.ef.05': {
+      'TR': 'sürüş sırasında kart takıldı',
+      'EN': 'card inserted while driving',
+      'DE': 'Karte während der Fahrt gesteckt',
+    },
+    'rhmi.ef.06': {
+      'TR': 'son kart oturumu düzgün kapanmadı',
+      'EN': 'last card session not closed correctly',
+      'DE': 'letzter Kartenvorgang nicht korrekt abgeschlossen',
+    },
+    'rhmi.ef.07': {
+      'TR': 'hız aşımı',
+      'EN': 'overspeeding',
+      'DE': 'Geschwindigkeitsüberschreitung',
+    },
+    'rhmi.ef.08': {
+      'TR': 'güç kesintisi',
+      'EN': 'power supply interruption',
+      'DE': 'Unterbrechung der Stromversorgung',
+    },
+    'rhmi.ef.09': {
+      'TR': 'hareket verisi hatası',
+      'EN': 'motion data error',
+      'DE': 'Bewegungsdatenfehler',
+    },
+    'rhmi.ef.0A': {
+      'TR': 'araç hareketi çakışması',
+      'EN': 'vehicle motion conflict',
+      'DE': 'Konflikt Fahrzeugbewegung',
+    },
+    'rhmi.ef.0B': {
+      'TR': 'zaman çakışması (GNSS / VU saati)',
+      'EN': 'time conflict (GNSS / VU clock)',
+      'DE': 'Zeitkonflikt (GNSS / VU-Uhr)',
+    },
+    'rhmi.ef.0C': {
+      'TR': 'uzak iletişim birimi hatası',
+      'EN': 'remote communication unit error',
+      'DE': 'Fehler der Fernkommunikationseinrichtung',
+    },
+    'rhmi.ef.0D': {
+      'TR': 'GNSS konum bilgisi yok',
+      'EN': 'no GNSS position',
+      'DE': 'keine GNSS-Positionsdaten',
+    },
+    'rhmi.ef.0E': {
+      'TR': 'harici GNSS birimi hatası',
+      'EN': 'external GNSS unit error',
+      'DE': 'Fehler der externen GNSS-Einrichtung',
+    },
+    'rhmi.ef.30': {
+      'TR': 'kayıt cihazı arızası',
+      'EN': 'recording equipment fault',
+      'DE': 'Störung des Kontrollgeräts',
+    },
+    'rhmi.ef.31': {
+      'TR': 'VU iç arızası',
+      'EN': 'VU internal fault',
+      'DE': 'interne VU-Störung',
+    },
+    'rhmi.ef.32': {
+      'TR': 'yazıcı arızası',
+      'EN': 'printer fault',
+      'DE': 'Druckerstörung',
+    },
+    'rhmi.ef.33': {
+      'TR': 'ekran arızası',
+      'EN': 'display fault',
+      'DE': 'Anzeigestörung',
+    },
+    'rhmi.ef.34': {
+      'TR': 'indirme arızası',
+      'EN': 'download fault',
+      'DE': 'Störung beim Herunterladen',
+    },
+    'rhmi.ef.35': {
+      'TR': 'sensör arızası',
+      'EN': 'sensor fault',
+      'DE': 'Sensorstörung',
+    },
+    'rhmi.ef.36': {
+      'TR': 'dahili GNSS alıcısı',
+      'EN': 'internal GNSS receiver',
+      'DE': 'interner GNSS-Empfänger',
+    },
+    'rhmi.ef.37': {
+      'TR': 'harici GNSS birimi',
+      'EN': 'external GNSS unit',
+      'DE': 'externe GNSS-Einrichtung',
+    },
+    'rhmi.ef.38': {
+      'TR': 'uzak iletişim birimi',
+      'EN': 'remote communication unit',
+      'DE': 'Fernkommunikationseinrichtung',
+    },
+    'rhmi.ef.39': {
+      'TR': 'ITS arayüzü',
+      'EN': 'ITS interface',
+      'DE': 'ITS-Schnittstelle',
+    },
+    'rhmi.ef.40': {
+      'TR': 'kart arızası',
+      'EN': 'card fault',
+      'DE': 'Kartenstörung',
+    },
+    'rhmi.ef.81': {
+      'TR': 'hız aşımı ön uyarısı',
+      'EN': 'overspeed pre-warning',
+      'DE': 'Vorwarnung Geschwindigkeitsüberschreitung',
+    },
+    'rhmi.ef.82': {
+      'TR': 'kart süresi doluyor',
+      'EN': 'card expiring',
+      'DE': 'Karte läuft ab',
+    },
+    'rhmi.ef.83': {
+      'TR': 'kalibrasyon / servis zamanı',
+      'EN': 'calibration / service due',
+      'DE': 'Kalibrierung / Service fällig',
+    },
+    'rhmi.ef.86': {
+      'TR': 'yanlış kart tipi',
+      'EN': 'wrong card type',
+      'DE': 'falscher Kartentyp',
+    },
+    'rhmi.ef.87': {
+      'TR': 'PIN bloke',
+      'EN': 'PIN blocked',
+      'DE': 'PIN gesperrt',
+    },
+    'rhmi.ef.88': {
+      'TR': 'kayıt tutarsız',
+      'EN': 'inconsistent record',
+      'DE': 'Datensatz inkonsistent',
+    },
+    'rhmi.ef.92': {
+      'TR': 'kart indirme zamanı',
+      'EN': 'card download due',
+      'DE': 'Kartendownload fällig',
+    },
+    'rhmi.ef.93': {
+      'TR': 'VU indirme zamanı',
+      'EN': 'VU download due',
+      'DE': 'VU-Download fällig',
+    },
+    'rhmi.ef.AE': {
+      'TR': 'kontakta kart yok',
+      'EN': 'no card with ignition on',
+      'DE': 'keine Karte bei eingeschalteter Zündung',
+    },
+    'rhmi.me.needActivity': {
+      'TR': 'en az bir aktivite gerekli',
+      'EN': 'at least one activity is needed',
+      'DE': 'mindestens eine Tätigkeit nötig',
+    },
+    'rhmi.me.maxActivities': {
+      'TR': 'en fazla {max} aktivite',
+      'EN': 'at most {max} activities',
+      'DE': 'höchstens {max} Tätigkeiten',
+    },
+    'rhmi.me.maxPlaces': {
+      'TR': 'en fazla {max} yer',
+      'EN': 'at most {max} places',
+      'DE': 'höchstens {max} Orte',
+    },
+    'rhmi.me.actBeforePeriod': {
+      'TR': '{n}. aktivite dönemden önce başlıyor',
+      'EN': 'activity {n} starts before the period',
+      'DE': 'Tätigkeit {n} beginnt vor dem Zeitraum',
+    },
+    'rhmi.me.actAtEnd': {
+      'TR': '{n}. aktivite dönem bitiminde ya da sonrasında',
+      'EN': 'activity {n} is at or after the end of the period',
+      'DE': 'Tätigkeit {n} liegt am oder nach dem Ende des Zeitraums',
+    },
+    'rhmi.me.actOrder': {
+      'TR': '{n}. aktivite öncekinden sonra başlamıyor',
+      'EN': 'activity {n} does not start after the previous one',
+      'DE': 'Tätigkeit {n} beginnt nicht nach der vorherigen',
+    },
+    'rhmi.me.placeBefore': {
+      'TR': '{n}. yer dönemden önce',
+      'EN': 'place {n} is before the period',
+      'DE': 'Ort {n} liegt vor dem Zeitraum',
+    },
+    'rhmi.me.placeNoCountry': {
+      'TR': '{n}. yerin ülkesi yok',
+      'EN': 'place {n} has no country',
+      'DE': 'Ort {n} hat kein Land',
+    },
+    'rhmi.me.placeAfter': {
+      'TR': '{n}. yer dönemden sonra',
+      'EN': 'place {n} is after the period',
+      'DE': 'Ort {n} liegt nach dem Zeitraum',
+    },
+    'rhmi.me.placeOrder': {
+      'TR': '{n}. yer öncekinden önce',
+      'EN': 'place {n} is before the previous one',
+      'DE': 'Ort {n} liegt vor dem vorherigen',
+    },
+    'rhmi.me.placeSameMinute': {
+      'TR': '{n}. yer öncekiyle aynı dakikada',
+      'EN': 'place {n} is in the same minute as the previous one',
+      'DE': 'Ort {n} liegt in derselben Minute wie der vorherige',
+    },
+    'rhmi.activity.rest': {
+      'TR': 'Dinlenme / mola',
+      'EN': 'Rest / break',
+      'DE': 'Ruhezeit / Pause',
+    },
+    'rhmi.activity.available': {
+      'TR': 'Hazır bulunma',
+      'EN': 'Availability',
+      'DE': 'Bereitschaft',
+    },
+    'rhmi.activity.work': {
+      'TR': 'Diğer iş',
+      'EN': 'Other work',
+      'DE': 'Andere Arbeit',
+    },
+    'rhmi.activity.unknown': {
+      'TR': 'Bilinmiyor',
+      'EN': 'Unknown',
+      'DE': 'Unbekannt',
+    },
+    'rhmi.ui.tokenTitle': {
+      'TR': 'Eşleştirme kodu',
+      'EN': 'Pairing code',
+      'DE': 'Kopplungscode',
+    },
+    'rhmi.ui.tokenHint': {
+      'TR': 'Takograf ekranındaki 8 hane',
+      'EN': 'The 8 digits on the tachograph display',
+      'DE': 'Die 8 Ziffern auf dem Display des Fahrtenschreibers',
+    },
+    'rhmi.ui.cancel': {'TR': 'İptal', 'EN': 'Cancel', 'DE': 'Abbrechen'},
+    'rhmi.ui.confirm': {'TR': 'Onayla', 'EN': 'Confirm', 'DE': 'Bestätigen'},
+    'rhmi.ui.secPairing': {
+      'TR': 'Eşleştirme',
+      'EN': 'Pairing',
+      'DE': 'Kopplung',
+    },
+    'rhmi.ui.secLive': {
+      'TR': 'Canlı girişler',
+      'EN': 'Live entries',
+      'DE': 'Live-Eingaben',
+    },
+    'rhmi.ui.secWarnings': {
+      'TR': 'Uyarılar',
+      'EN': 'Warnings',
+      'DE': 'Warnungen',
+    },
+    'rhmi.ui.secPrintout': {'TR': 'Çıktı', 'EN': 'Printout', 'DE': 'Ausdruck'},
+    'rhmi.ui.secWithdraw': {
+      'TR': 'Kart çıkarma',
+      'EN': 'Card withdrawal',
+      'DE': 'Kartenentnahme',
+    },
+    'rhmi.ui.secManual': {
+      'TR': 'Manuel giriş',
+      'EN': 'Manual entry',
+      'DE': 'Manuelle Eingabe',
+    },
+    'rhmi.ui.slot': {
+      'TR': 'Yuva {n}',
+      'EN': 'Slot {n}',
+      'DE': 'Steckplatz {n}',
+    },
+    'rhmi.ui.pairedVerified': {
+      'TR': 'Eşleşmiş ve doğrulanmış.',
+      'EN': 'Paired and verified.',
+      'DE': 'Gekoppelt und bestätigt.',
+    },
+    'rhmi.ui.pairedHere': {
+      'TR': 'Bu telefonda eşleşmiş.',
+      'EN': 'Paired on this phone.',
+      'DE': 'Auf diesem Telefon gekoppelt.',
+    },
+    'rhmi.ui.notPairedHint': {
+      'TR':
+          'Eşleşmemiş. Yuva istemcisi için o yuvada kart olmalı; araç içi istemci yalnız kalibrasyon modunda eşleşir.',
+      'EN':
+          'Not paired. A slot client needs a card in that slot; the in-vehicle client pairs only in calibration mode.',
+      'DE':
+          'Nicht gekoppelt. Ein Steckplatz-Client braucht eine Karte in diesem Steckplatz; der Fahrzeug-Client koppelt nur im Kalibriermodus.',
+    },
+    'rhmi.ui.pair': {'TR': 'Eşleştir', 'EN': 'Pair', 'DE': 'Koppeln'},
+    'rhmi.ui.enterCode': {
+      'TR': 'Kodu gir',
+      'EN': 'Enter code',
+      'DE': 'Code eingeben',
+    },
+    'rhmi.ui.verify': {'TR': 'Doğrula', 'EN': 'Verify', 'DE': 'Prüfen'},
+    'rhmi.ui.forget': {'TR': 'Unut', 'EN': 'Forget', 'DE': 'Vergessen'},
+    'rhmi.ui.rest': {'TR': 'Dinlenme', 'EN': 'Rest', 'DE': 'Ruhezeit'},
+    'rhmi.ui.placeLabel': {
+      'TR': 'Yer (günlük çalışma dönemi)',
+      'EN': 'Place (daily work period)',
+      'DE': 'Ort (tägliche Arbeitszeit)',
+    },
+    'rhmi.ui.ferryBegin': {
+      'TR': 'Feribot/tren başla',
+      'EN': 'Ferry/train start',
+      'DE': 'Fähre/Zug Beginn',
+    },
+    'rhmi.ui.ferryEnd': {
+      'TR': 'Feribot/tren bitir',
+      'EN': 'Ferry/train end',
+      'DE': 'Fähre/Zug Ende',
+    },
+    'rhmi.ui.oosBegin': {
+      'TR': 'Kapsam dışı başla',
+      'EN': 'Out of scope start',
+      'DE': 'Außerhalb des Geltungsbereichs Beginn',
+    },
+    'rhmi.ui.oosEnd': {
+      'TR': 'Kapsam dışı bitir',
+      'EN': 'Out of scope end',
+      'DE': 'Außerhalb des Geltungsbereichs Ende',
+    },
+    'rhmi.ui.loadLabel': {
+      'TR': 'Yükleme / boşaltma',
+      'EN': 'Load / unload',
+      'DE': 'Beladen / Entladen',
+    },
+    'rhmi.ui.load': {'TR': 'Yükleme', 'EN': 'Load', 'DE': 'Beladen'},
+    'rhmi.ui.unload': {'TR': 'Boşaltma', 'EN': 'Unload', 'DE': 'Entladen'},
+    'rhmi.ui.loadBoth': {'TR': 'İkisi', 'EN': 'Both', 'DE': 'Beides'},
+    'rhmi.ui.readWarnings': {
+      'TR': 'Uyarıları oku',
+      'EN': 'Read warnings',
+      'DE': 'Warnungen lesen',
+    },
+    'rhmi.ui.noWarnings': {
+      'TR': 'Bekleyen uyarı yok.',
+      'EN': 'No pending warnings.',
+      'DE': 'Keine offenen Warnungen.',
+    },
+    'rhmi.ui.session': {
+      'TR': 'Oturum: {status}',
+      'EN': 'Session: {status}',
+      'DE': 'Sitzung: {status}',
+    },
+    'rhmi.ui.sessionUnknown': {
+      'TR': 'bilinmiyor',
+      'EN': 'unknown',
+      'DE': 'unbekannt',
+    },
+    'rhmi.ui.clockOffset': {
+      'TR':
+          'Takograf saati {offset} sn; istekler takograf saatiyle imzalanıyor.',
+      'EN':
+          'Tachograph clock {offset} s; requests are signed with the tachograph\'s time.',
+      'DE':
+          'Fahrtenschreiberuhr {offset} s; Anfragen werden mit der Zeit des Fahrtenschreibers signiert.',
+    },
+    'rhmi.ui.openSession': {
+      'TR': 'Oturumu aç',
+      'EN': 'Open session',
+      'DE': 'Sitzung öffnen',
+    },
+    'rhmi.ui.closeSession': {
+      'TR': 'Oturumu kapat',
+      'EN': 'Close session',
+      'DE': 'Sitzung schließen',
+    },
+    'rhmi.ui.refresh': {
+      'TR': 'Durumu yenile',
+      'EN': 'Refresh state',
+      'DE': 'Status aktualisieren',
+    },
+    'rhmi.ui.checkClock': {
+      'TR': 'Saati kontrol et',
+      'EN': 'Check clock',
+      'DE': 'Uhr prüfen',
+    },
+    'rhmi.ui.pairFirst': {
+      'TR': 'Oturum açmak için önce eşleştirin.',
+      'EN': 'Pair first to open a session.',
+      'DE': 'Zum Öffnen einer Sitzung zuerst koppeln.',
+    },
+    'rhmi.ui.country': {'TR': 'Ülke', 'EN': 'Country', 'DE': 'Land'},
+    'rhmi.ui.region': {'TR': 'Bölge', 'EN': 'Region', 'DE': 'Region'},
+    'rhmi.ui.begin': {'TR': 'Başlangıç', 'EN': 'Start', 'DE': 'Beginn'},
+    'rhmi.ui.end': {'TR': 'Bitiş', 'EN': 'End', 'DE': 'Ende'},
+    'rhmi.ui.pickDay': {
+      'TR': 'Gün seç',
+      'EN': 'Pick a day',
+      'DE': 'Tag wählen',
+    },
+    'rhmi.ui.printType': {
+      'TR': 'Çıktı türü',
+      'EN': 'Printout type',
+      'DE': 'Ausdrucktyp',
+    },
+    'rhmi.ui.print': {'TR': 'Yazdır', 'EN': 'Print', 'DE': 'Drucken'},
+    'rhmi.ui.status': {'TR': 'Durum', 'EN': 'Status', 'DE': 'Status'},
+    'rhmi.ui.withdrawTitle': {
+      'TR': 'Kart çıkarılsın mı?',
+      'EN': 'Withdraw the card?',
+      'DE': 'Karte entnehmen?',
+    },
+    'rhmi.ui.withdrawBody': {
+      'TR':
+          '{slot}. yuvadaki kart, bitiş yeri kaydedilip çıkarılacak. Oturum kartla birlikte kapanır.',
+      'EN':
+          'The card in slot {slot} will be withdrawn after the end place is recorded. The session closes with the card.',
+      'DE':
+          'Die Karte in Steckplatz {slot} wird nach dem Speichern des Endorts entnommen. Die Sitzung schließt mit der Karte.',
+    },
+    'rhmi.ui.withdrawCancel': {
+      'TR': 'Vazgeç',
+      'EN': 'Cancel',
+      'DE': 'Abbrechen',
+    },
+    'rhmi.ui.withdrawDo': {'TR': 'Çıkar', 'EN': 'Withdraw', 'DE': 'Entnehmen'},
+    'rhmi.ui.shiftPrintout': {
+      'TR': 'Günün kart çıktısı',
+      'EN': 'Card printout of the day',
+      'DE': 'Tagesausdruck der Karte',
+    },
+    'rhmi.ui.none': {'TR': 'Yok', 'EN': 'None', 'DE': 'Keiner'},
+    'rhmi.ui.localTime': {
+      'TR': 'Yerel saat',
+      'EN': 'Local time',
+      'DE': 'Ortszeit',
+    },
+    'rhmi.ui.technical': {
+      'TR': 'Teknik veri çıktısı',
+      'EN': 'Technical data printout',
+      'DE': 'Ausdruck technischer Daten',
+    },
+    'rhmi.ui.withdrawButton': {
+      'TR': 'Kartı çıkar',
+      'EN': 'Withdraw card',
+      'DE': 'Karte entnehmen',
+    },
+    'rhmi.ui.manualHint': {
+      'TR':
+          'Kartın takılı olmadığı süreyi doldurur. Kart takıldıktan sonra yaklaşık bir dakika içinde gönderilmelidir.',
+      'EN':
+          'Fills in the time the card was not inserted. Must be sent within about a minute of inserting the card.',
+      'DE':
+          'Füllt die Zeit, in der die Karte nicht gesteckt war. Muss etwa innerhalb einer Minute nach dem Stecken der Karte gesendet werden.',
+    },
+    'rhmi.ui.cardType': {
+      'TR': 'Kart tipi',
+      'EN': 'Card type',
+      'DE': 'Kartentyp',
+    },
+    'rhmi.ui.readPeriod': {
+      'TR': 'Dönemi oku',
+      'EN': 'Read period',
+      'DE': 'Zeitraum lesen',
+    },
+    'rhmi.ui.periodFilled': {
+      'TR': 'Dönem: {usable} dakika, doldurulan: {filled} dakika',
+      'EN': 'Period: {usable} minutes, filled: {filled} minutes',
+      'DE': 'Zeitraum: {usable} Minuten, gefüllt: {filled} Minuten',
+    },
+    'rhmi.ui.activitiesLabel': {
+      'TR': 'Aktiviteler (sırayla, süreleriyle)',
+      'EN': 'Activities (in order, with durations)',
+      'DE': 'Tätigkeiten (der Reihe nach, mit Dauer)',
+    },
+    'rhmi.ui.minutes': {'TR': 'Dakika', 'EN': 'Minutes', 'DE': 'Minuten'},
+    'rhmi.ui.segment': {
+      'TR': '{activity} · {minutes} dk',
+      'EN': '{activity} · {minutes} min',
+      'DE': '{activity} · {minutes} Min.',
+    },
+    'rhmi.ui.placesLabel': {
+      'TR': 'Yerler (isteğe bağlı)',
+      'EN': 'Places (optional)',
+      'DE': 'Orte (optional)',
+    },
+    'rhmi.ui.addPlace': {
+      'TR': 'Yer ekle',
+      'EN': 'Add place',
+      'DE': 'Ort hinzufügen',
+    },
+    'rhmi.ui.placeRow': {
+      'TR': '{minute}. dk · {type} · {country}',
+      'EN': 'min {minute} · {type} · {country}',
+      'DE': 'Min. {minute} · {type} · {country}',
+    },
+    'rhmi.ui.send': {'TR': 'Gönder', 'EN': 'Send', 'DE': 'Senden'},
+    'rhmi.ui.stopEntry': {
+      'TR': 'Girişi bitir',
+      'EN': 'End entry',
+      'DE': 'Eingabe beenden',
+    },
+    'diag.serviceRefused': {
+      'TR': 'Servis {sid} reddedildi',
+      'EN': 'Service {sid} refused',
+      'DE': 'Dienst {sid} abgelehnt',
+    },
+    'diag.commStarted': {
+      'TR': 'İletişim başladı',
+      'EN': 'Communication started',
+      'DE': 'Kommunikation gestartet',
+    },
+    'diag.keyBytes': {
+      'TR': 'anahtar baytlar {bytes}',
+      'EN': 'key bytes {bytes}',
+      'DE': 'Schlüsselbytes {bytes}',
+    },
+    'diag.sessionStarted': {
+      'TR': 'Diagnostik oturum başladı',
+      'EN': 'Diagnostic session started',
+      'DE': 'Diagnosesitzung gestartet',
+    },
+    'diag.noSessionByte': {
+      'TR': 'oturum baytı yok',
+      'EN': 'no session byte',
+      'DE': 'kein Sitzungsbyte',
+    },
+    'diag.session': {
+      'TR': 'oturum {code}',
+      'EN': 'session {code}',
+      'DE': 'Sitzung {code}',
+    },
+    'diag.serviceAnswered': {
+      'TR': 'Servis {sid} yanıtladı',
+      'EN': 'Service {sid} answered',
+      'DE': 'Dienst {sid} hat geantwortet',
+    },
+    'diag.routineAnswered': {
+      'TR': 'Rutin yanıtladı',
+      'EN': 'Routine answered',
+      'DE': 'Routine hat geantwortet',
+    },
+    'diag.routineIdAnswered': {
+      'TR': 'Rutin {id} yanıtladı',
+      'EN': 'Routine {id} answered',
+      'DE': 'Routine {id} hat geantwortet',
+    },
+    'diag.rhmiStatus': {
+      'TR': 'RHMI oturum durumu (F211)',
+      'EN': 'RHMI session state (F211)',
+      'DE': 'RHMI-Sitzungsstatus (F211)',
+    },
+    'diag.state': {
+      'TR': 'durum {code}',
+      'EN': 'state {code}',
+      'DE': 'Status {code}',
+    },
+    'diag.readData': {
+      'TR': 'Okunan veri',
+      'EN': 'Data read',
+      'DE': 'Gelesene Daten',
+    },
+    'diag.identifier': {
+      'TR': 'Tanımlayıcı {id}',
+      'EN': 'Identifier {id}',
+      'DE': 'Kennung {id}',
+    },
+    'diag.noDecoder': {
+      'TR': '({id} için çözücü yok)',
+      'EN': '(no decoder for {id})',
+      'DE': '(kein Decoder für {id})',
+    },
+    'diag.driving': {'TR': 'sürüş', 'EN': 'driving', 'DE': 'Fahrt'},
+    'diag.notDriving': {
+      'TR': 'sürüş yok',
+      'EN': 'no driving',
+      'DE': 'keine Fahrt',
+    },
+    'diag.cardPresent': {
+      'TR': 'geçerli sürücü kartı takılı',
+      'EN': 'valid driver card inserted',
+      'DE': 'gültige Fahrerkarte gesteckt',
+    },
+    'diag.cardAbsent': {
+      'TR': 'geçerli sürücü kartı yok',
+      'EN': 'no valid driver card',
+      'DE': 'keine gültige Fahrerkarte',
+    },
+    'diag.overspeed': {
+      'TR': 'hız aşımı',
+      'EN': 'overspeeding',
+      'DE': 'Geschwindigkeitsüberschreitung',
+    },
+    'diag.noOverspeed': {
+      'TR': 'hız aşımı yok',
+      'EN': 'no overspeeding',
+      'DE': 'keine Geschwindigkeitsüberschreitung',
+    },
+    'diag.notSet': {
+      'TR': 'ayarlanmamış',
+      'EN': 'not set',
+      'DE': 'nicht eingestellt',
+    },
+    'diag.oosActive': {
+      'TR': 'kapsam dışı aktif',
+      'EN': 'out of scope active',
+      'DE': 'außerhalb des Geltungsbereichs aktiv',
+    },
+    'diag.oosInactive': {
+      'TR': 'kapsam dışı değil',
+      'EN': 'not out of scope',
+      'DE': 'nicht außerhalb des Geltungsbereichs',
+    },
+    'diag.utcLocal': {
+      'TR': '{time} UTC (yerel fark {offset})',
+      'EN': '{time} UTC (local offset {offset})',
+      'DE': '{time} UTC (Ortszeitdifferenz {offset})',
+    },
+    'diag.countryCode': {
+      'TR': 'ülke {code}',
+      'EN': 'country {code}',
+      'DE': 'Land {code}',
+    },
+    'diag.positionUnknown': {
+      'TR': 'konum bilinmiyor',
+      'EN': 'position unknown',
+      'DE': 'Position unbekannt',
+    },
+    'diag.noTime': {'TR': 'zaman yok', 'EN': 'no time', 'DE': 'keine Zeit'},
+    'diag.verified': {
+      'TR': 'doğrulanmış',
+      'EN': 'authenticated',
+      'DE': 'authentifiziert',
+    },
+    'diag.unverified': {
+      'TR': 'doğrulanmamış',
+      'EN': 'not authenticated',
+      'DE': 'nicht authentifiziert',
+    },
+    'diag.hm': {
+      'TR': '{h} sa {m} dk',
+      'EN': '{h} h {m} min',
+      'DE': '{h} Std. {m} Min.',
+    },
+    'diag.noData': {'TR': 'veri yok', 'EN': 'no data', 'DE': 'keine Daten'},
+    'diag.act.0': {
+      'TR': 'dinlenme / mola',
+      'EN': 'rest / break',
+      'DE': 'Ruhezeit / Pause',
+    },
+    'diag.act.1': {
+      'TR': 'hazır bulunma',
+      'EN': 'availability',
+      'DE': 'Bereitschaft',
+    },
+    'diag.act.2': {'TR': 'diğer iş', 'EN': 'other work', 'DE': 'andere Arbeit'},
+    'diag.act.3': {'TR': 'sürüş', 'EN': 'driving', 'DE': 'Lenken'},
+    'diag.act.other': {
+      'TR': 'aktivite {code}',
+      'EN': 'activity {code}',
+      'DE': 'Tätigkeit {code}',
+    },
+    'diag.slot.0': {'TR': 'kart yok', 'EN': 'no card', 'DE': 'keine Karte'},
+    'diag.slot.1': {
+      'TR': 'sürücü kartı',
+      'EN': 'driver card',
+      'DE': 'Fahrerkarte',
+    },
+    'diag.slot.2': {
+      'TR': 'atölye kartı',
+      'EN': 'workshop card',
+      'DE': 'Werkstattkarte',
+    },
+    'diag.slot.3': {
+      'TR': 'kontrol kartı',
+      'EN': 'control card',
+      'DE': 'Kontrollkarte',
+    },
+    'diag.slot.4': {
+      'TR': 'şirket kartı',
+      'EN': 'company card',
+      'DE': 'Unternehmenskarte',
+    },
+    'diag.mode.0': {'TR': 'operasyonel', 'EN': 'operational', 'DE': 'Betrieb'},
+    'diag.mode.1': {'TR': 'kontrol', 'EN': 'control', 'DE': 'Kontrolle'},
+    'diag.mode.2': {
+      'TR': 'kalibrasyon',
+      'EN': 'calibration',
+      'DE': 'Kalibrierung',
+    },
+    'diag.mode.3': {'TR': 'şirket', 'EN': 'company', 'DE': 'Unternehmen'},
+    'diag.mode.other': {
+      'TR': 'mod {code}',
+      'EN': 'mode {code}',
+      'DE': 'Modus {code}',
+    },
+    'diag.load.0': {
+      'TR': 'tanımsız',
+      'EN': 'undefined',
+      'DE': 'nicht definiert',
+    },
+    'diag.load.1': {'TR': 'yük', 'EN': 'goods', 'DE': 'Güter'},
+    'diag.load.2': {'TR': 'yolcu', 'EN': 'passengers', 'DE': 'Personen'},
+    'diag.load.other': {
+      'TR': 'yük tipi {code}',
+      'EN': 'load type {code}',
+      'DE': 'Ladungsart {code}',
+    },
+    'diag.tw.0': {
+      'TR': 'süre uyarısı yok',
+      'EN': 'no time warning',
+      'DE': 'keine Zeitwarnung',
+    },
+    'diag.tw.1': {
+      'TR': '4s15 kesintisiz sürüş',
+      'EN': '4h15 continuous driving',
+      'DE': '4h15 ununterbrochene Lenkzeit',
+    },
+    'diag.tw.2': {
+      'TR': '4s30 kesintisiz sürüşe ulaşıldı',
+      'EN': '4h30 continuous driving reached',
+      'DE': '4h30 ununterbrochene Lenkzeit erreicht',
+    },
+    'diag.tw.3': {
+      'TR': 'günlük sürüş ön uyarısı',
+      'EN': 'daily driving pre-warning',
+      'DE': 'Vorwarnung Tageslenkzeit',
+    },
+    'diag.tw.4': {
+      'TR': 'günlük sürüş sınırına ulaşıldı',
+      'EN': 'daily driving limit reached',
+      'DE': 'Tageslenkzeit erreicht',
+    },
+    'diag.tw.5': {
+      'TR': 'günlük / haftalık dinlenme ön uyarısı',
+      'EN': 'daily / weekly rest pre-warning',
+      'DE': 'Vorwarnung Tages-/Wochenruhezeit',
+    },
+    'diag.tw.6': {
+      'TR': 'günlük / haftalık dinlenme sınırı',
+      'EN': 'daily / weekly rest limit',
+      'DE': 'Grenze Tages-/Wochenruhezeit',
+    },
+    'diag.tw.7': {
+      'TR': 'haftalık sürüş ön uyarısı',
+      'EN': 'weekly driving pre-warning',
+      'DE': 'Vorwarnung Wochenlenkzeit',
+    },
+    'diag.tw.8': {
+      'TR': 'haftalık sürüş sınırına ulaşıldı',
+      'EN': 'weekly driving limit reached',
+      'DE': 'Wochenlenkzeit erreicht',
+    },
+    'diag.tw.9': {
+      'TR': 'iki haftalık sürüş ön uyarısı',
+      'EN': 'fortnightly driving pre-warning',
+      'DE': 'Vorwarnung Doppelwochenlenkzeit',
+    },
+    'diag.tw.10': {
+      'TR': 'iki haftalık sürüş sınırına ulaşıldı',
+      'EN': 'fortnightly driving limit reached',
+      'DE': 'Doppelwochenlenkzeit erreicht',
+    },
+    'diag.tw.11': {
+      'TR': 'sürücü kartı süresi doluyor',
+      'EN': 'driver card expiring',
+      'DE': 'Fahrerkarte läuft ab',
+    },
+    'diag.tw.12': {
+      'TR': 'sürücü kartı indirme zamanı',
+      'EN': 'driver card download due',
+      'DE': 'Download der Fahrerkarte fällig',
+    },
+    'diag.id.F190': {'TR': 'VIN', 'EN': 'VIN', 'DE': 'FIN'},
+    'diag.id.F902': {
+      'TR': 'Araç hızı',
+      'EN': 'Vehicle speed',
+      'DE': 'Fahrzeuggeschwindigkeit',
+    },
+    'diag.id.F903': {
+      'TR': 'Sürücü 1 çalışma durumu',
+      'EN': 'Driver 1 working state',
+      'DE': 'Arbeitsstatus Fahrer 1',
+    },
+    'diag.id.F904': {
+      'TR': 'Sürücü 2 çalışma durumu',
+      'EN': 'Driver 2 working state',
+      'DE': 'Arbeitsstatus Fahrer 2',
+    },
+    'diag.id.F905': {
+      'TR': 'Sürüş algılama',
+      'EN': 'Driving detection',
+      'DE': 'Fahrterkennung',
+    },
+    'diag.id.F906': {
+      'TR': 'Sürücü 1 süre durumları',
+      'EN': 'Driver 1 time states',
+      'DE': 'Zeitstatus Fahrer 1',
+    },
+    'diag.id.F907': {
+      'TR': 'Sürücü 1 kartı',
+      'EN': 'Driver 1 card',
+      'DE': 'Karte Fahrer 1',
+    },
+    'diag.id.F908': {
+      'TR': 'Hız aşımı',
+      'EN': 'Overspeeding',
+      'DE': 'Geschwindigkeitsüberschreitung',
+    },
+    'diag.id.F909': {
+      'TR': 'Sürücü 2 süre durumları',
+      'EN': 'Driver 2 time states',
+      'DE': 'Zeitstatus Fahrer 2',
+    },
+    'diag.id.F90A': {
+      'TR': 'Sürücü 2 kartı',
+      'EN': 'Driver 2 card',
+      'DE': 'Karte Fahrer 2',
+    },
+    'diag.id.F90B': {
+      'TR': 'Tarih ve saat',
+      'EN': 'Date and time',
+      'DE': 'Datum und Uhrzeit',
+    },
+    'diag.id.F912': {
+      'TR': 'Toplam araç mesafesi',
+      'EN': 'Total vehicle distance',
+      'DE': 'Gesamtwegstrecke',
+    },
+    'diag.id.F913': {
+      'TR': 'Yolculuk mesafesi',
+      'EN': 'Trip distance',
+      'DE': 'Tageswegstrecke',
+    },
+    'diag.id.F916': {
+      'TR': 'Sürücü 1 kimliği',
+      'EN': 'Driver 1 identification',
+      'DE': 'Kennung Fahrer 1',
+    },
+    'diag.id.F917': {
+      'TR': 'Sürücü 2 kimliği',
+      'EN': 'Driver 2 identification',
+      'DE': 'Kennung Fahrer 2',
+    },
+    'diag.id.F918': {
+      'TR': 'K faktörü',
+      'EN': 'K constant',
+      'DE': 'Konstante k',
+    },
+    'diag.id.F91B': {
+      'TR': 'Çıkış mili hızı',
+      'EN': 'Output shaft speed',
+      'DE': 'Abtriebswellendrehzahl',
+    },
+    'diag.id.F91C': {
+      'TR': 'L faktörü (lastik çevresi)',
+      'EN': 'L factor (tyre circumference)',
+      'DE': 'Faktor l (Reifenumfang)',
+    },
+    'diag.id.F91D': {'TR': 'W faktörü', 'EN': 'W factor', 'DE': 'Faktor w'},
+    'diag.id.F921': {
+      'TR': 'Lastik ölçüsü',
+      'EN': 'Tyre size',
+      'DE': 'Reifengröße',
+    },
+    'diag.id.F922': {
+      'TR': 'Sonraki kalibrasyon tarihi',
+      'EN': 'Next calibration date',
+      'DE': 'Nächstes Kalibrierdatum',
+    },
+    'diag.id.F923': {
+      'TR': 'Sürücü 1 kesintisiz sürüş',
+      'EN': 'Driver 1 continuous driving',
+      'DE': 'Ununterbrochene Lenkzeit Fahrer 1',
+    },
+    'diag.id.F924': {
+      'TR': 'Sürücü 2 kesintisiz sürüş',
+      'EN': 'Driver 2 continuous driving',
+      'DE': 'Ununterbrochene Lenkzeit Fahrer 2',
+    },
+    'diag.id.F92C': {
+      'TR': 'İzin verilen hız',
+      'EN': 'Authorised speed',
+      'DE': 'Zulässige Geschwindigkeit',
+    },
+    'diag.id.F930': {
+      'TR': 'Kart yuvası 1',
+      'EN': 'Card slot 1',
+      'DE': 'Kartensteckplatz 1',
+    },
+    'diag.id.F931': {
+      'TR': 'Sürücü 1 adı',
+      'EN': 'Driver 1 name',
+      'DE': 'Name Fahrer 1',
+    },
+    'diag.id.F932': {
+      'TR': 'Sürücü 2 adı',
+      'EN': 'Driver 2 name',
+      'DE': 'Name Fahrer 2',
+    },
+    'diag.id.F933': {
+      'TR': 'Kart yuvası 2',
+      'EN': 'Card slot 2',
+      'DE': 'Kartensteckplatz 2',
+    },
+    'diag.id.F936': {
+      'TR': 'Kapsam dışı durumu',
+      'EN': 'Out of scope state',
+      'DE': 'Status außerhalb des Geltungsbereichs',
+    },
+    'diag.id.F937': {
+      'TR': 'Çalışma modu',
+      'EN': 'Operating mode',
+      'DE': 'Betriebsart',
+    },
+    'diag.id.F97D': {
+      'TR': 'Tescil ülkesi',
+      'EN': 'Registering member state',
+      'DE': 'Zulassungsmitgliedstaat',
+    },
+    'diag.id.F97E': {
+      'TR': 'Araç plakası',
+      'EN': 'Vehicle registration number',
+      'DE': 'Amtliches Kennzeichen',
+    },
+    'diag.id.F97F': {
+      'TR': 'Araç tescil tarihi',
+      'EN': 'Vehicle registration date',
+      'DE': 'Zulassungsdatum',
+    },
+    'diag.id.F98B': {
+      'TR': 'Sürücü 2 kart son kullanma',
+      'EN': 'Driver 2 card expiry',
+      'DE': 'Ablauf Karte Fahrer 2',
+    },
+    'diag.id.F99A': {
+      'TR': 'Sürücü 1 günlük sürüş',
+      'EN': 'Driver 1 daily driving',
+      'DE': 'Tageslenkzeit Fahrer 1',
+    },
+    'diag.id.F99D': {
+      'TR': 'Sürücü 1 kart son kullanma',
+      'EN': 'Driver 1 card expiry',
+      'DE': 'Ablauf Karte Fahrer 1',
+    },
+    'diag.id.F9D5': {
+      'TR': 'Varsayılan yük tipi',
+      'EN': 'Default load type',
+      'DE': 'Standard-Ladungsart',
+    },
+    'diag.id.F9D7': {
+      'TR': 'Araç konumu',
+      'EN': 'Vehicle position',
+      'DE': 'Fahrzeugposition',
+    },
+    'about.title': {'TR': 'Hakkımızda', 'EN': 'About us', 'DE': 'Über uns'},
+    'about.badge': {
+      'TR': 'ASELSAN\'IN TEK KÜRESEL DİSTRİBÜTÖRÜ',
+      'EN': 'ASELSAN\'S SOLE GLOBAL DISTRIBUTOR',
+      'DE': 'ALLEINIGER WELTWEITER VERTRIEBSPARTNER VON ASELSAN',
+    },
+    'about.headline': {
+      'TR': 'Filo yönetimi teknolojisinde yenilikler geliştiriyoruz',
+      'EN': 'We develop innovations in fleet management technology',
+      'DE': 'Wir entwickeln Innovationen in der Flottenmanagement-Technologie',
+    },
+    'about.intro': {
+      'TR':
+          'SmartTrack; yol güvenliğini artırmak, filo operasyonlarını optimize etmek ve mevzuata uygunluğu sağlamak için tasarlanmış dijital takograf çözümleri sunar.',
+      'EN':
+          'SmartTrack offers digital tachograph solutions designed to improve road safety, optimise fleet operations and ensure regulatory compliance.',
+      'DE':
+          'SmartTrack bietet digitale Fahrtenschreiberlösungen, die die Verkehrssicherheit erhöhen, den Flottenbetrieb optimieren und die Einhaltung der Vorschriften sicherstellen.',
+    },
+    'about.statCustomers': {'TR': 'Müşteri', 'EN': 'Customers', 'DE': 'Kunden'},
+    'about.statTachographs': {
+      'TR': 'Takograf',
+      'EN': 'Tachographs',
+      'DE': 'Fahrtenschreiber',
+    },
+    'about.statYears': {
+      'TR': 'Yıllık deneyim',
+      'EN': 'Years of experience',
+      'DE': 'Jahre Erfahrung',
+    },
+    'about.expertise': {
+      'TR': 'Uzmanlığımız',
+      'EN': 'Our expertise',
+      'DE': 'Unsere Kompetenzen',
+    },
+    'about.s1Title': {
+      'TR': 'Filo yönetimi',
+      'EN': 'Fleet management',
+      'DE': 'Flottenmanagement',
+    },
+    'about.s1Body': {
+      'TR': 'Sektöre özel ihtiyaçlara göre uyarlanmış akıllı takip çözümleri.',
+      'EN': 'Smart tracking solutions tailored to the needs of each sector.',
+      'DE':
+          'Intelligente Ortungslösungen, zugeschnitten auf die Anforderungen jeder Branche.',
+    },
+    'about.s2Title': {
+      'TR': 'Mevzuata uygunluk',
+      'EN': 'Regulatory compliance',
+      'DE': 'Einhaltung der Vorschriften',
+    },
+    'about.s2Body': {
+      'TR': 'Güncel uluslararası standartlara ve yasal mevzuata tam uyum.',
+      'EN':
+          'Full compliance with current international standards and regulations.',
+      'DE':
+          'Volle Übereinstimmung mit aktuellen internationalen Normen und Vorschriften.',
+    },
+    'about.s3Title': {
+      'TR': 'Yol güvenliği',
+      'EN': 'Road safety',
+      'DE': 'Verkehrssicherheit',
+    },
+    'about.s3Body': {
+      'TR': 'Sürücü ve yük güvenliğini artıran yenilikçi teknolojiler.',
+      'EN': 'Innovative technologies that make drivers and cargo safer.',
+      'DE':
+          'Innovative Technologien für mehr Sicherheit von Fahrern und Ladung.',
+    },
+    'about.s4Title': {
+      'TR': 'Sürdürülebilirlik',
+      'EN': 'Sustainability',
+      'DE': 'Nachhaltigkeit',
+    },
+    'about.s4Body': {
+      'TR': 'Verimliliği artıran ve çevresel etkiyi azaltan uygulamalar.',
+      'EN': 'Practices that raise efficiency and reduce environmental impact.',
+      'DE':
+          'Verfahren, die die Effizienz steigern und die Umweltbelastung senken.',
+    },
+    'about.process': {
+      'TR': 'Çalışma sürecimiz',
+      'EN': 'How we work',
+      'DE': 'So arbeiten wir',
+    },
+    'about.processSub': {
+      'TR': 'Daha akıllı filo çözümlerini nasıl sunuyoruz',
+      'EN': 'How we deliver smarter fleet solutions',
+      'DE': 'Wie wir intelligentere Flottenlösungen liefern',
+    },
+    'about.p1Title': {
+      'TR': 'Değerlendirme',
+      'EN': 'Assessment',
+      'DE': 'Analyse',
+    },
+    'about.p1Body': {
+      'TR':
+          'Filo yönetimi ihtiyaçlarınızı analiz eder, iyileştirme alanlarını belirleriz.',
+      'EN':
+          'We analyse your fleet management needs and identify areas for improvement.',
+      'DE':
+          'Wir analysieren Ihren Bedarf im Flottenmanagement und zeigen Verbesserungspotenzial auf.',
+    },
+    'about.p2Title': {
+      'TR': 'Stratejik planlama',
+      'EN': 'Strategic planning',
+      'DE': 'Strategische Planung',
+    },
+    'about.p2Body': {
+      'TR':
+          'Operasyonel verimliliği ve uyumluluğu artıracak size özel stratejiler geliştiririz.',
+      'EN':
+          'We build tailored strategies to raise operational efficiency and compliance.',
+      'DE':
+          'Wir entwickeln maßgeschneiderte Strategien für mehr Effizienz und Regelkonformität.',
+    },
+    'about.p3Title': {
+      'TR': 'Uygulama',
+      'EN': 'Implementation',
+      'DE': 'Umsetzung',
+    },
+    'about.p3Body': {
+      'TR': 'Gelişmiş takograf sistemlerini operasyonlarınıza entegre ederiz.',
+      'EN': 'We integrate advanced tachograph systems into your operations.',
+      'DE': 'Wir integrieren moderne Fahrtenschreibersysteme in Ihren Betrieb.',
+    },
+    'about.p4Title': {
+      'TR': 'Sürekli destek',
+      'EN': 'Ongoing support',
+      'DE': 'Laufende Unterstützung',
+    },
+    'about.p4Body': {
+      'TR':
+          'Sorunsuz çalışma için bakım, güncelleme ve uzman desteği sağlarız.',
+      'EN':
+          'We provide maintenance, updates and expert support for trouble-free operation.',
+      'DE':
+          'Wir bieten Wartung, Updates und Expertenunterstützung für einen reibungslosen Betrieb.',
+    },
+    'about.products': {
+      'TR': 'Ürünlerimiz',
+      'EN': 'Our products',
+      'DE': 'Unsere Produkte',
+    },
+    'about.prodTacho': {
+      'TR': 'Dijital takograf',
+      'EN': 'Digital tachograph',
+      'DE': 'Digitaler Fahrtenschreiber',
+    },
+    'about.prodCalibration': {
+      'TR': 'Dijital takograf kalibrasyon cihazı',
+      'EN': 'Digital tachograph calibration device',
+      'DE': 'Kalibriergerät für digitale Fahrtenschreiber',
+    },
+    'about.contact': {'TR': 'İletişim', 'EN': 'Contact', 'DE': 'Kontakt'},
+    'about.closing': {
+      'TR':
+          'SmartTrack, güvenilir ve sürdürülebilir filo yönetimi çözümleri sunmak için yenilikçi teknolojiyi uzmanlıkla birleştirir.',
+      'EN':
+          'SmartTrack combines innovative technology with expertise to deliver reliable and sustainable fleet management solutions.',
+      'DE':
+          'SmartTrack verbindet innovative Technologie mit Fachwissen für zuverlässige und nachhaltige Flottenmanagement-Lösungen.',
+    },
+    'about.rights': {
+      'TR': '© {year} SmartTrack. Tüm hakları saklıdır.',
+      'EN': '© {year} SmartTrack. All rights reserved.',
+      'DE': '© {year} SmartTrack. Alle Rechte vorbehalten.',
+    },
+    'about.heroTitle': {
+      'TR': 'Daha güvenli bir yarın için gelişmiş filo yönetimi çözümleri',
+      'EN': 'Advanced fleet management solutions for a safer tomorrow',
+      'DE': 'Moderne Flottenmanagement-Lösungen für ein sichereres Morgen',
+    },
+    'about.servicesTitle': {
+      'TR': 'Filo yönetimi için yenilikçi çözümler',
+      'EN': 'Innovative solutions for fleet management',
+      'DE': 'Innovative Lösungen für das Flottenmanagement',
+    },
+    'about.sv1Title': {
+      'TR': 'Gelişmiş takograf sistemleri',
+      'EN': 'Advanced tachograph systems',
+      'DE': 'Moderne Fahrtenschreibersysteme',
+    },
+    'about.sv1Body': {
+      'TR':
+          'Küresel standartlara uygun, güvenli ve doğru sürücü aktivitesi takibi.',
+      'EN':
+          'Safe, accurate tracking of driver activity that meets global standards.',
+      'DE':
+          'Sichere, genaue Erfassung der Fahrertätigkeiten nach internationalen Standards.',
+    },
+    'about.sv2Title': {
+      'TR': 'Mevzuata uygunluk desteği',
+      'EN': 'Regulatory compliance assistance',
+      'DE': 'Unterstützung bei der Regelkonformität',
+    },
+    'about.sv2Body': {
+      'TR': 'AB mevzuatına uygun cihazlar ve size özel çözümler.',
+      'EN': 'EU-compliant devices and solutions tailored to you.',
+      'DE': 'EU-konforme Geräte und maßgeschneiderte Lösungen.',
+    },
+    'about.sv3Title': {
+      'TR': 'Filo yönetimi optimizasyonu',
+      'EN': 'Fleet management optimisation',
+      'DE': 'Optimierung des Flottenmanagements',
+    },
+    'about.sv3Body': {
+      'TR':
+          'Taşımacılık şirketlerinin operasyonel verimliliğini artıran özel çözümler.',
+      'EN':
+          'Tailored solutions that raise the operational efficiency of transport companies.',
+      'DE':
+          'Maßgeschneiderte Lösungen für mehr Effizienz in Transportunternehmen.',
+    },
+    'about.sv4Title': {
+      'TR': 'Sürdürülebilirlik odaklı tasarım',
+      'EN': 'Sustainability-focused design',
+      'DE': 'Nachhaltiges Design',
+    },
+    'about.sv4Body': {
+      'TR': 'Çevre dostu ve enerji verimli ürünler.',
+      'EN': 'Environmentally friendly, energy-efficient products.',
+      'DE': 'Umweltfreundliche, energieeffiziente Produkte.',
+    },
+    'about.sv5Title': {
+      'TR': 'Yol güvenliği iyileştirmeleri',
+      'EN': 'Road safety improvements',
+      'DE': 'Mehr Verkehrssicherheit',
+    },
+    'about.sv5Body': {
+      'TR': 'Sürüş ve dinlenme sürelerini izleyen teknolojiler.',
+      'EN': 'Technology that monitors driving and rest times.',
+      'DE': 'Technik zur Überwachung von Lenk- und Ruhezeiten.',
+    },
+    'about.sv6Title': {
+      'TR': 'Küresel dağıtım ağı',
+      'EN': 'Global distribution network',
+      'DE': 'Weltweites Vertriebsnetz',
+    },
+    'about.sv6Body': {
+      'TR':
+          'Destek altyapısıyla birlikte, çözümlerimize dünyanın her yerinden erişim.',
+      'EN': 'Access to our solutions worldwide, backed by a support network.',
+      'DE': 'Weltweiter Zugang zu unseren Lösungen mit Support-Netzwerk.',
+    },
+    'about.videoTitle': {
+      'TR': 'Tanıtım videosu',
+      'EN': 'Promotional video',
+      'DE': 'Imagevideo',
+    },
+    'about.videoBody': {
+      'TR': 'SmartTrack\'i YouTube\'da izleyin.',
+      'EN': 'Watch SmartTrack on YouTube.',
+      'DE': 'SmartTrack auf YouTube ansehen.',
+    },
+    'about.ctaTitle': {
+      'TR': 'Bize ulaşın',
+      'EN': 'Contact us',
+      'DE': 'Kontaktieren Sie uns',
+    },
+    'about.ctaBody': {
+      'TR':
+          'Takograf sistemleri ya da filo yönetimi konusunda uzman ekibimiz yardıma hazır; en kısa sürede dönüş yapıyoruz.',
+      'EN':
+          'Our expert team is ready to help with tachograph systems or fleet management, and we reply as soon as we can.',
+      'DE':
+          'Unser Expertenteam hilft gern bei Fahrtenschreibern oder Flottenmanagement – wir melden uns schnellstmöglich.',
+    },
+    'about.call': {'TR': 'Ara', 'EN': 'Call', 'DE': 'Anrufen'},
+    'about.sendMail': {'TR': 'E-posta', 'EN': 'Email', 'DE': 'E-Mail'},
+    'about.openMap': {
+      'TR': 'Haritada aç',
+      'EN': 'Open in maps',
+      'DE': 'In Karten öffnen',
+    },
+    'about.linkFailed': {
+      'TR': 'Bağlantı açılamadı.',
+      'EN': 'The link could not be opened.',
+      'DE': 'Der Link konnte nicht geöffnet werden.',
+    },
+    'stcdl.title': {
+      'TR': '.ddd verisi indir',
+      'EN': 'Download .ddd data',
+      'DE': '.ddd-Daten herunterladen',
+    },
+    'stcdl.subtitle': {
+      'TR': 'Hangi verileri almak istediğini seç',
+      'EN': 'Choose which data to download',
+      'DE': 'Wählen Sie, welche Daten geladen werden',
+    },
+    'stcdl.vehicleUnit': {
+      'TR': 'Araç ünitesi (takograf)',
+      'EN': 'Vehicle unit (tachograph)',
+      'DE': 'Fahrzeugeinheit (Fahrtenschreiber)',
+    },
+    'stcdl.card': {
+      'TR': 'Sürücü kartı',
+      'EN': 'Driver card',
+      'DE': 'Fahrerkarte',
+    },
+    'stcdl.activities': {
+      'TR': 'Aktivite verisi',
+      'EN': 'Activity data',
+      'DE': 'Tätigkeitsdaten',
+    },
+    'stcdl.eventsFaults': {
+      'TR': 'Olaylar ve arızalar',
+      'EN': 'Events and faults',
+      'DE': 'Ereignisse und Störungen',
+    },
+    'stcdl.detailedSpeed': {
+      'TR': 'Detaylı hız',
+      'EN': 'Detailed speed',
+      'DE': 'Detaillierte Geschwindigkeit',
+    },
+    'stcdl.technical': {
+      'TR': 'Teknik veri',
+      'EN': 'Technical data',
+      'DE': 'Technische Daten',
+    },
+    'stcdl.download': {
+      'TR': 'İndir',
+      'EN': 'Download',
+      'DE': 'Herunterladen',
+    },
+    'stcdl.rangeNone': {
+      'TR': 'Alınmayacak',
+      'EN': 'Not downloaded',
+      'DE': 'Wird nicht geladen',
+    },
+    'stcdl.rangeDays': {
+      'TR': 'Son {days} gün',
+      'EN': 'Last {days} days',
+      'DE': 'Letzte {days} Tage',
+    },
+    'stcdl.rangeTitle': {
+      'TR': 'Aktivite verisi — hangi tarih aralığı?',
+      'EN': 'Activity data — which date range?',
+      'DE': 'Tätigkeitsdaten – welcher Zeitraum?',
+    },
+    'stcdl.rangeCustom': {
+      'TR': 'Özel tarih aralığı seç…',
+      'EN': 'Choose a custom range…',
+      'DE': 'Eigenen Zeitraum wählen…',
+    },
+    'stcdl.rangeSkip': {
+      'TR': 'Aktivite verisi alma',
+      'EN': 'Don\'t download activity data',
+      'DE': 'Keine Tätigkeitsdaten laden',
+    },
+    'stcdl.rangeHelp': {
+      'TR': 'Aktivite verisi tarih aralığı',
+      'EN': 'Activity data date range',
+      'DE': 'Zeitraum der Tätigkeitsdaten',
+    },
+    'stcdl.rangeEverything': {
+      'TR': 'Takografın tuttuğu tüm dönem',
+      'EN': 'Everything the tachograph holds',
+      'DE': 'Alles, was der Fahrtenschreiber gespeichert hat',
+    },
+    'stcdl.rangeEverythingShort': {
+      'TR': 'Tüm dönem',
+      'EN': 'Full period',
+      'DE': 'Gesamter Zeitraum',
+    },
   };
 
   static String getText(String lang, String key) {
+    final more = _moreLanguages[lang]?[key];
+    if (more != null) return more;
     final entry = _translations[key];
     if (entry == null) return key;
-    return entry[lang] ?? entry['TR'] ?? key;
+    // A text not yet translated is shown in English, which a driver who has
+    // chosen another language is likelier to read than Turkish.
+    return entry[lang] ?? entry['EN'] ?? entry['TR'] ?? key;
   }
 
+  static const Map<String, List<String>> _weekdaysShort = {
+    'TR': ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'],
+    'EN': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    'DE': ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
+    'RU': ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+    'PL': ['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nd'],
+    'RO': ['Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm', 'Dum'],
+    'ES': ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+    'UK': ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'],
+  };
+
+  static const Map<String, List<String>> _weekdaysLong = {
+    'TR': [
+      'Pazartesi',
+      'Salı',
+      'Çarşamba',
+      'Perşembe',
+      'Cuma',
+      'Cumartesi',
+      'Pazar',
+    ],
+    'EN': [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ],
+    'DE': [
+      'Montag',
+      'Dienstag',
+      'Mittwoch',
+      'Donnerstag',
+      'Freitag',
+      'Samstag',
+      'Sonntag',
+    ],
+    'RU': [
+      'понедельник',
+      'вторник',
+      'среда',
+      'четверг',
+      'пятница',
+      'суббота',
+      'воскресенье',
+    ],
+    'PL': [
+      'poniedziałek',
+      'wtorek',
+      'środa',
+      'czwartek',
+      'piątek',
+      'sobota',
+      'niedziela',
+    ],
+    'RO': ['luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă', 'duminică'],
+    'ES': [
+      'lunes',
+      'martes',
+      'miércoles',
+      'jueves',
+      'viernes',
+      'sábado',
+      'domingo',
+    ],
+    'UK': [
+      'понеділок',
+      'вівторок',
+      'середа',
+      'четвер',
+      "п'ятниця",
+      'субота',
+      'неділя',
+    ],
+  };
+
+  /// "Mon" for [weekday] 1 (Monday) to 7 (Sunday).
+  static String weekdayShort(String lang, int weekday) =>
+      (_weekdaysShort[lang] ?? _weekdaysShort['EN']!)[weekday - 1];
+
+  /// "Monday" for [weekday] 1 (Monday) to 7 (Sunday).
+  static String weekdayLong(String lang, int weekday) =>
+      (_weekdaysLong[lang] ?? _weekdaysLong['EN']!)[weekday - 1];
+
+  /// Month names as they read inside a date: Russian, Polish and Ukrainian
+  /// put the month in the genitive ("19 октября"), the others as they are.
+  static const Map<String, List<String>> _monthsInDate = {
+    'TR': [
+      'Ocak',
+      'Şubat',
+      'Mart',
+      'Nisan',
+      'Mayıs',
+      'Haziran',
+      'Temmuz',
+      'Ağustos',
+      'Eylül',
+      'Ekim',
+      'Kasım',
+      'Aralık',
+    ],
+    'EN': [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ],
+    'DE': [
+      'Januar',
+      'Februar',
+      'März',
+      'April',
+      'Mai',
+      'Juni',
+      'Juli',
+      'August',
+      'September',
+      'Oktober',
+      'November',
+      'Dezember',
+    ],
+    'RU': [
+      'января',
+      'февраля',
+      'марта',
+      'апреля',
+      'мая',
+      'июня',
+      'июля',
+      'августа',
+      'сентября',
+      'октября',
+      'ноября',
+      'декабря',
+    ],
+    'PL': [
+      'stycznia',
+      'lutego',
+      'marca',
+      'kwietnia',
+      'maja',
+      'czerwca',
+      'lipca',
+      'sierpnia',
+      'września',
+      'października',
+      'listopada',
+      'grudnia',
+    ],
+    'RO': [
+      'ianuarie',
+      'februarie',
+      'martie',
+      'aprilie',
+      'mai',
+      'iunie',
+      'iulie',
+      'august',
+      'septembrie',
+      'octombrie',
+      'noiembrie',
+      'decembrie',
+    ],
+    'ES': [
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
+    ],
+    'UK': [
+      'січня',
+      'лютого',
+      'березня',
+      'квітня',
+      'травня',
+      'червня',
+      'липня',
+      'серпня',
+      'вересня',
+      'жовтня',
+      'листопада',
+      'грудня',
+    ],
+  };
+
+  /// "19 October 2026, Monday", in the order and forms [lang] writes it.
   static String formatDate(String lang, DateTime date) {
-    final daysMap = {
-      'TR': [
-        'Pazartesi',
-        'Salı',
-        'Çarşamba',
-        'Perşembe',
-        'Cuma',
-        'Cumartesi',
-        'Pazar',
-      ],
-      'EN': [
-        'Monday',
-        'Tuesday',
-        'Wednesday',
-        'Thursday',
-        'Friday',
-        'Saturday',
-        'Sunday',
-      ],
-      'DE': [
-        'Montag',
-        'Dienstag',
-        'Mittwoch',
-        'Donnerstag',
-        'Freitag',
-        'Samstag',
-        'Sonntag',
-      ],
-    };
-    final monthsMap = {
-      'TR': [
-        'Ocak',
-        'Şubat',
-        'Mart',
-        'Nisan',
-        'Mayıs',
-        'Haziran',
-        'Temmuz',
-        'Ağustos',
-        'Eylül',
-        'Ekim',
-        'Kasım',
-        'Aralık',
-      ],
-      'EN': [
-        'January',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December',
-      ],
-      'DE': [
-        'Januar',
-        'Februar',
-        'März',
-        'April',
-        'Mai',
-        'Juni',
-        'Juli',
-        'August',
-        'September',
-        'Oktober',
-        'November',
-        'Dezember',
-      ],
-    };
-
-    final days = daysMap[lang] ?? daysMap['TR']!;
-    final months = monthsMap[lang] ?? monthsMap['TR']!;
-
-    return '${date.day} ${months[date.month - 1]} ${date.year}, ${days[date.weekday - 1]}';
+    final months = _monthsInDate[lang] ?? _monthsInDate['EN']!;
+    final month = months[date.month - 1];
+    final weekday = weekdayLong(lang, date.weekday);
+    if (lang == 'ES') {
+      return '${date.day} de $month de ${date.year}, $weekday';
+    }
+    return '${date.day} $month ${date.year}, $weekday';
   }
 
   static String getGreeting(String lang, String driverName) {
-    if (lang == 'EN') return 'Hello, $driverName';
-    if (lang == 'DE') return 'Hallo, $driverName';
-    return 'Merhaba, $driverName';
+    final hello = switch (lang) {
+      'EN' => 'Hello',
+      'DE' => 'Hallo',
+      'RU' => 'Здравствуйте',
+      'PL' => 'Dzień dobry',
+      'RO' => 'Bună ziua',
+      'ES' => 'Hola',
+      'UK' => 'Вітаємо',
+      _ => 'Merhaba',
+    };
+    return '$hello, $driverName';
   }
 }

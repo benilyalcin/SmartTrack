@@ -1348,8 +1348,9 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildViolationSummaryCard(BuildContext context, AppState appState) {
-    if (!appState.rolePermissions.viewViolations)
+    if (!appState.rolePermissions.viewViolations) {
       return const SizedBox.shrink();
+    }
 
     final scheme = Theme.of(context).colorScheme;
     final violations = appState.violations;
@@ -1630,5 +1631,4 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
   }
-
 }

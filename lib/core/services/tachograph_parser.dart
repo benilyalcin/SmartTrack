@@ -351,8 +351,9 @@ class DddFileParser {
         : null;
     if (identity != null) {
       if (cardNumber.isEmpty) cardNumber = identity.cardNumber;
-      if (cardIssuingMemberState.isEmpty)
+      if (cardIssuingMemberState.isEmpty) {
         cardIssuingMemberState = identity.cardIssuingMemberState;
+      }
       if (holderSurname.isEmpty) holderSurname = identity.holderSurname;
       if (holderFirstName.isEmpty) holderFirstName = identity.holderFirstName;
       cardExpiryDate ??= identity.cardExpiryDate;

@@ -7,7 +7,62 @@ import 'vu_field_codecs.dart';
 class VuOverviewDecoder {
   VuOverviewDecoder._();
 
+  // Field offsets in a Gen1 overview block, after its `76 01` header: two
+  // certificates of 194 bytes, then the vehicle's identity and times.
+  static const int _vinAt = 388;
+  static const int _vrnAt = 405; // nation, code page, 13 characters
+  static const int _currentTimeAt = 420;
+  static const int _periodAt = 424;
+  static const int _gen1MinimumLength = 433 + 58 + 2 + 128;
+
   static ({String vin, String vrn, VuOverviewData? overview})? decode(
+    Uint8List block,
+  ) => _structured(block) ?? _searched(block);
+
+  /// The fields where Annex 1B puts them. A unit with no VIN or plate yet -
+  /// a bench unit, one never calibrated - holds question marks there; that
+  /// is an empty VIN, not a reason to look for one elsewhere in the block,
+  /// where a card number in the download activity passed for a VIN.
+  static ({String vin, String vrn, VuOverviewData? overview})? _structured(
+    Uint8List block,
+  ) {
+    if (block.length < _gen1MinimumLength) return null;
+    DateTime? time(int at) {
+      final t = VuByteReader(
+        block,
+        at,
+      ).readTimeReal(minYear: 2000, maxYear: 2100);
+      return t;
+    }
+
+    final current = time(_currentTimeAt);
+    final periodStart = time(_periodAt);
+    final periodEnd = time(_periodAt + 4);
+    // Not an overview laid out as Gen1: let the search have it.
+    if (current == null && periodStart == null && periodEnd == null) {
+      return null;
+    }
+    return (
+      vin: _identity(Uint8List.sublistView(block, _vinAt, _vinAt + 17)),
+      vrn: _identity(Uint8List.sublistView(block, _vrnAt + 2, _vrnAt + 15)),
+      overview: VuOverviewData(
+        currentDateTime: current,
+        downloadablePeriodStart: periodStart,
+        downloadablePeriodEnd: periodEnd,
+      ),
+    );
+  }
+
+  /// Printable characters, trimmed; empty when the field is unset (spaces,
+  /// zeros, 0xFF or question marks).
+  static String _identity(Uint8List bytes) {
+    final text = VuFieldCodecs.cleanAsciiText(bytes);
+    if (text.isEmpty || text.split('').every((c) => c == '?')) return '';
+    if (!VuFieldCodecs.isCleanAsciiField(bytes)) return '';
+    return text;
+  }
+
+  static ({String vin, String vrn, VuOverviewData? overview})? _searched(
     Uint8List block,
   ) {
     final vin =

@@ -24,6 +24,66 @@ class _HostState extends State<_Host> {
 }
 
 void main() {
+  testWidgets('severity sheet centers prose and softly tints severity rows', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(600, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      const AppStateProvider(child: MaterialApp(home: AnalysisPage())),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final button = find.text('Cezalar ve Ciddiyetleri').first;
+    await tester.scrollUntilVisible(
+      button,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(button);
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(
+      tester.widget<Text>(find.text('Cezalar ve Ciddiyetleri').last).textAlign,
+      TextAlign.center,
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.text(
+              'Sürüş ve dinlenme ihlallerinin AB ciddiyet seviyesi ve 2026 Türkiye cezası.',
+            ),
+          )
+          .textAlign,
+      TextAlign.center,
+    );
+    final dailyNine = find.byKey(
+      const ValueKey('severity-rule-analysis.sevRuleDaily9'),
+    );
+    final sheetScrollable = find.byType(Scrollable).last;
+    await tester.scrollUntilVisible(
+      dailyNine,
+      200,
+      scrollable: sheetScrollable,
+    );
+    final table = tester.widget<Table>(
+      find.descendant(of: dailyNine, matching: find.byType(Table)),
+    );
+    final minorRow = table.children[1].decoration! as BoxDecoration;
+    expect(
+      minorRow.color,
+      Color.alphaBlend(
+        const Color(0xFF43A047).withValues(alpha: 0.10),
+        Theme.of(tester.element(dailyNine)).colorScheme.surfaceContainerLowest,
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'the penalties sheet keeps working after the page under it is rebuilt',
     (tester) async {

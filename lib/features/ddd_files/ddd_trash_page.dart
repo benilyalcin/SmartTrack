@@ -21,12 +21,13 @@ class _DddTrashPageState extends State<DddTrashPage> {
 
   Future<void> _restore(AppState appState, DddFile file) async {
     await appState.restoreDddFiles([file]);
-    if (mounted)
+    if (mounted) {
       showAppSnackBar(
         context,
         _t('ddd.restoreSuccess'),
         type: AppSnackBarType.success,
       );
+    }
   }
 
   Future<void> _confirmAndDeleteForever(AppState appState, DddFile file) async {
@@ -53,12 +54,13 @@ class _DddTrashPageState extends State<DddTrashPage> {
     if (confirmed != true) return;
 
     await appState.permanentlyDeleteDddFiles([file]);
-    if (mounted)
+    if (mounted) {
       showAppSnackBar(
         context,
         _t('ddd.deleteSuccess'),
         type: AppSnackBarType.success,
       );
+    }
   }
 
   Future<void> _confirmAndDeleteAll(
@@ -92,12 +94,13 @@ class _DddTrashPageState extends State<DddTrashPage> {
     if (confirmed != true) return;
 
     await appState.permanentlyDeleteDddFiles(files);
-    if (mounted)
+    if (mounted) {
       showAppSnackBar(
         context,
         _t('ddd.deleteSuccess'),
         type: AppSnackBarType.success,
       );
+    }
   }
 
   @override

@@ -54,13 +54,14 @@ void main() {
         (a) => a.type == ActivityType.work && a.startTime.day == 5,
         orElse: () => throw StateError('no work on the 5th'),
       );
-      expect(work.startTime, DateTime(2026, 10, 5, 14, 14));
+      // Activity minutes count from 00:00 UTC of the record's day.
+      expect(work.startTime, DateTime.utc(2026, 10, 5, 14, 14));
       expect(
         parsed.activityLog.any(
           (a) =>
               a.type == ActivityType.work &&
-              a.startTime == DateTime(2026, 10, 5, 17, 44) &&
-              a.endTime == DateTime(2026, 10, 5, 19, 11),
+              a.startTime == DateTime.utc(2026, 10, 5, 17, 44) &&
+              a.endTime == DateTime.utc(2026, 10, 5, 19, 11),
         ),
         isTrue,
       );

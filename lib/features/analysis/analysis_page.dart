@@ -79,53 +79,6 @@ class _AnalysisPageState extends State<AnalysisPage>
     BoxShadow(color: Color(0x14000000), offset: Offset(0, 1), blurRadius: 3),
   ];
 
-  static const _weekdayShortTR = [
-    'Pzt',
-    'Sal',
-    'Çar',
-    'Per',
-    'Cum',
-    'Cmt',
-    'Paz',
-  ];
-  static const _weekdayShortEN = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ];
-  static const _weekdayShortDE = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-  static const _weekdayLongTR = [
-    'Pazartesi',
-    'Salı',
-    'Çarşamba',
-    'Perşembe',
-    'Cuma',
-    'Cumartesi',
-    'Pazar',
-  ];
-  static const _weekdayLongEN = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
-  ];
-  static const _weekdayLongDE = [
-    'Montag',
-    'Dienstag',
-    'Mittwoch',
-    'Donnerstag',
-    'Freitag',
-    'Samstag',
-    'Sonntag',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -204,23 +157,11 @@ class _AnalysisPageState extends State<AnalysisPage>
 
   String _t(String key) => AppLocalizations.getText(_lang, key);
 
-  String _weekdayShort(int weekday, String lang) {
-    final names = lang == 'EN'
-        ? _weekdayShortEN
-        : lang == 'DE'
-        ? _weekdayShortDE
-        : _weekdayShortTR;
-    return names[weekday - 1];
-  }
+  String _weekdayShort(int weekday, String lang) =>
+      AppLocalizations.weekdayShort(lang, weekday);
 
-  String _weekdayLong(int weekday, String lang) {
-    final names = lang == 'EN'
-        ? _weekdayLongEN
-        : lang == 'DE'
-        ? _weekdayLongDE
-        : _weekdayLongTR;
-    return names[weekday - 1];
-  }
+  String _weekdayLong(int weekday, String lang) =>
+      AppLocalizations.weekdayLong(lang, weekday);
 
   String _shortDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}';
@@ -1111,6 +1052,7 @@ class _AnalysisPageState extends State<AnalysisPage>
     List<String>? columnTitles,
     required Map<int, TableColumnWidth> columnWidths,
     required List<List<Widget>> rows,
+    List<Color>? rowColors,
   }) {
     final scheme = Theme.of(context).colorScheme;
     final line = BorderSide(color: scheme.outlineVariant);
@@ -1162,8 +1104,13 @@ class _AnalysisPageState extends State<AnalysisPage>
                       ),
                   ],
                 ),
-              for (final row in rows)
-                TableRow(children: [for (final cell in row) _tableCell(cell)]),
+              for (var i = 0; i < rows.length; i++)
+                TableRow(
+                  decoration: rowColors == null
+                      ? null
+                      : BoxDecoration(color: rowColors[i]),
+                  children: [for (final cell in rows[i]) _tableCell(cell)],
+                ),
             ],
           ),
         ],
@@ -1643,6 +1590,12 @@ class _AnalysisPageState extends State<AnalysisPage>
     EuSeverity.minor: Color(0xFF43A047),
   };
 
+  Color _severityRowColor(ColorScheme scheme, EuSeverity severity) =>
+      Color.alphaBlend(
+        _severityColors[severity]!.withValues(alpha: 0.10),
+        scheme.surfaceContainerLowest,
+      );
+
   // Non-breaking space and word joiner: keep "10 sa", "₺3.000" and the like
   // together on one line.
   static const _nbsp = '\u00A0';
@@ -1696,30 +1649,38 @@ class _AnalysisPageState extends State<AnalysisPage>
   Widget _buildSeverityRuleTable(BuildContext context, SeverityRule rule) {
     final scheme = Theme.of(context).colorScheme;
     final value = _tableValueStyle(scheme).copyWith(fontSize: 13.5);
-    return _tableCard(
-      context,
-      header: Text(
-        _t(rule.titleKey),
-        style: _tableValueStyle(scheme).copyWith(fontWeight: FontWeight.w700),
+    return KeyedSubtree(
+      key: ValueKey('severity-rule-${rule.titleKey}'),
+      child: _tableCard(
+        context,
+        header: Text(
+          _t(rule.titleKey),
+          textAlign: TextAlign.center,
+          style: _tableValueStyle(scheme).copyWith(fontWeight: FontWeight.w700),
+        ),
+        columnTitles: [
+          _t('analysis.sevColRange'),
+          _t('analysis.sevColSeverity'),
+          _t('analysis.sevColFine'),
+        ],
+        columnWidths: const {
+          0: FlexColumnWidth(),
+          1: FixedColumnWidth(66),
+          2: FixedColumnWidth(136),
+        },
+        rowColors: [
+          for (final band in rule.bands)
+            _severityRowColor(scheme, band.severity),
+        ],
+        rows: [
+          for (final b in rule.bands)
+            [
+              Text(_bandRangeText(b), style: value),
+              _euSeverityTag(context, b.severity, short: true),
+              Text(_bandFineText(b), style: value),
+            ],
+        ],
       ),
-      columnTitles: [
-        _t('analysis.sevColRange'),
-        _t('analysis.sevColSeverity'),
-        _t('analysis.sevColFine'),
-      ],
-      columnWidths: const {
-        0: FlexColumnWidth(),
-        1: FixedColumnWidth(66),
-        2: FixedColumnWidth(136),
-      },
-      rows: [
-        for (final b in rule.bands)
-          [
-            Text(_bandRangeText(b), style: value),
-            _euSeverityTag(context, b.severity, short: true),
-            Text(_bandFineText(b), style: value),
-          ],
-      ],
     );
   }
 
@@ -1758,44 +1719,57 @@ class _AnalysisPageState extends State<AnalysisPage>
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _t('analysis.openSeverityListButton'),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: scheme.onSurface,
+                SizedBox(
+                  height: 40,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        child: Text(
+                          _t('analysis.openSeverityListButton'),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: scheme.onSurface,
+                          ),
                         ),
                       ),
-                    ),
-                    InkWell(
-                      onTap: () => Navigator.of(sheetContext).pop(),
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: scheme.surfaceContainer,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.close,
-                          size: 16,
-                          color: scheme.onSurface,
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: InkWell(
+                          onTap: () => Navigator.of(sheetContext).pop(),
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: scheme.surfaceContainer,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.close,
+                              size: 16,
+                              color: scheme.onSurface,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   _t('analysis.sevIntro'),
+                  textAlign: TextAlign.center,
                   style: label.copyWith(height: 1.4),
                 ),
                 const SizedBox(height: 12),
                 Wrap(
+                  alignment: WrapAlignment.center,
                   spacing: 18,
                   runSpacing: 8,
                   children: [
@@ -1817,17 +1791,10 @@ class _AnalysisPageState extends State<AnalysisPage>
                 for (final key in footnotes)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('•  ', style: label),
-                        Expanded(
-                          child: Text(
-                            _t(key),
-                            style: label.copyWith(fontSize: 12.5, height: 1.4),
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      _t(key),
+                      textAlign: TextAlign.center,
+                      style: label.copyWith(fontSize: 12.5, height: 1.4),
                     ),
                   ),
                 const SizedBox(height: 8),

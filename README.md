@@ -83,11 +83,12 @@ Arayüz Türkçe, İngilizce ve Almanca'dır; varsayılan dil Türkçe'dir. ITS,
 | **Veri indirme** | `/vu/download` | Annex 7 indirmesi ITS indirme servisinden yapılır. <ul><li>Kart, VU ya da ikisi birden indirilebilir.</li><li>VU aktiviteleri, olay ve arızalar, detaylı hız ve teknik veri ayrı ayrı seçilir.</li><li>Nesil: Gen1, Gen2 v1 ya da Gen2 v2 (varsayılan).</li><li>Tarih aralığı varsayılan 28 gün, en fazla 62 gün.</li></ul> |
 | **Kalibrasyon (tanı konsolu)** | `/vu/calibration` | Annex 8 ham istek konsolu. Baytlar SID'den itibaren yazılır; başlık, uzunluk ve checksum uygulama tarafından eklenir. Yanıtlar çözülerek gösterilir ve sık kullanılan RDBI istekleri hazır düğme olarak bulunur. |
 
-STC 8255 seçiliyken bu sekmede yalnızca **İndirilen dosyalar** bulunur.
+STC 8255 seçiliyken bu sekme **İndirilen dosyalar** ekranını açar. Ekrandaki **.ddd Verisi Al** düğmesi, Bluetooth ayarlarından eşleştirilmiş STC dongle'ını bulur ve indirmeden önce kart verisi, takograf verisi ya da ikisini seçtirir.
 
 ### İndirilen dosyalar (`/ddd-files`)
 
 - **Liste:** kaydedilen `.ddd` dosyaları kart, takograf ya da ikisi birden etiketleriyle listelenir. Dosyalar sıralanabilir, çoklu seçilebilir ve paylaşılabilir. Silinen dosyalar çöp kutusuna (`/ddd-files/trash`) gider; oradan geri alınabilir ya da kalıcı olarak silinebilir.
+- **STC 8255 indirmesi:** eşleştirilmiş K-line dongle üzerinden kart, araç ünitesi veya her iki veri birlikte istenebilir. Kart verisi seçiliyken uygulamadaki etkin sürücü yuvası kullanılır.
 - **Kart dosyası ayrıntısı** (`/ddd-files/:id`): kimlik, ehliyet ve kullanım, kullanılan araçlar, son kontrol, yerler, özel durumlar, olay ve arızalar, ihlaller. Gen1 ve Gen2 kartları desteklenir; Gen2 kartta iki uygulama da okunur ve en yeni gün alınır.
 - **VU dosyası ayrıntısı:** VIN/VRN, indirilebilir dönem, teknik veri, kalibrasyonlar, hız ve olaylar. Gen1, Gen2 v1 ve Gen2 v2 desteklenir; imza ve sertifikalar doğrulanmaz.
 - **PDF raporu:** yazdırma ya da paylaşım için PDF olarak dışa aktarılabilir.
@@ -319,7 +320,7 @@ Kodda bulunan ama uygulamada **çalışmayan ya da ulaşılamayan** kısımlar:
 | GPS rota haritası | `RouteMapCard` ve `GpsTrackingService` var ama hiçbir sayfaya bağlı değil. Uygulamada harita yoktur. |
 | Google Drive yedeği | Analiz sayfasında oturum açma ve açma/kapama düğmesi var, ancak `uploadDddFile` hiçbir yerden çağrılmıyor; hiçbir dosya yüklenmiyor. |
 | Hata ayıklama sayfaları | `/debug-values`, `/dongle-values`, `/dongle-log` ve `/dongle-download-results` rotaları var ama uygulama içinden ulaşılamıyor. Yalnızca `/kline-log`'a ulaşılabiliyor. |
-| K-line dongle üzerinden `.ddd` indirme | `DddDownloadService` ve `downloadRealDddFromDongle` hiçbir yerden çağrılmıyor. Canlı indirme yolu ITS'tir (yalnız ATC 8256). |
+| K-line dongle üzerinden `.ddd` indirme | STC 8255'in İndirilen dosyalar ekranından başlatılır; eşleştirilmiş dongle gerekir. ATC 8256 indirmeleri ITS kullanır. |
 | Eski bağlantı katmanları | Classic SPP (`flutter_classic_bluetooth` hâlâ bağımlılıklarda), simüle bağlantı ve genel BLE bağlantı servisleri canlı bağlantıda kullanılmıyor. |
 | Roller | Sürücü, işletme ve polis rolleri tanımlı, ancak rolü değiştirecek bir arayüz yok; uygulama hep sürücü rolündedir. |
 | Örnek ve simüle `.ddd` | `assets/ddd_samples` paketlenmiş ve `DddSimulator` duruyor, ancak ikisi de hiçbir yerden çağrılmıyor. |

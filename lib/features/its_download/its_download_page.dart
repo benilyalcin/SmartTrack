@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/bluetooth/vu/its_link.dart';
+import '../../core/localization/localization.dart';
 import '../../core/providers/app_state.dart';
 import '../../core/services/bluetooth_service.dart';
 import '../../core/services/its/appendix7.dart';
+import '../../core/services/its/download_generation_setting.dart';
 import '../../core/services/its/its_download_service.dart';
 import '../../core/widgets/app_snackbar.dart';
 
@@ -15,7 +17,9 @@ import '../../core/widgets/app_snackbar.dart';
 /// part of a vehicle unit session (DDP_054): it carries the certificates a
 /// reader needs to check the rest. A card download is a session of its own.
 class ItsDownloadPage extends StatefulWidget {
-  const ItsDownloadPage({super.key});
+  const ItsDownloadPage({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<ItsDownloadPage> createState() => _ItsDownloadPageState();
@@ -24,8 +28,14 @@ class ItsDownloadPage extends StatefulWidget {
 class _ItsDownloadPageState extends State<ItsDownloadPage> {
   // Kept across visits, as the tester's view model keeps them.
   static Set<VuTransfer> _selected = {VuTransfer.eventsAndFaults};
-  static DownloadGeneration _generation = DownloadGeneration.gen2v2;
   static DownloadablePeriod? _downloadable;
+
+  /// The generation [_downloadable] was read with; another generation's
+  /// overview has to be downloaded before its period is known.
+  static DownloadGeneration? _downloadableFor;
+
+  /// Chosen under ITS > Gelişmiş; Gen 2 v2 unless somebody changed it.
+  DownloadGeneration get _generation => DownloadGenerationSetting.value.value;
 
   DateTime _from = _todayUtc();
   DateTime _to = _todayUtc();
@@ -35,12 +45,31 @@ class _ItsDownloadPageState extends State<ItsDownloadPage> {
   int _bytes = 0;
   String? _saved;
 
+  @override
+  void initState() {
+    super.initState();
+    DownloadGenerationSetting.value.addListener(_onGenerationChanged);
+  }
+
+  @override
+  void dispose() {
+    DownloadGenerationSetting.value.removeListener(_onGenerationChanged);
+    super.dispose();
+  }
+
+  void _onGenerationChanged() => setState(() {});
+
   static DateTime _todayUtc() {
     final n = DateTime.now().toUtc();
     return DateTime.utc(n.year, n.month, n.day);
   }
 
   ItsLink? get _link => AppBluetoothService.instance.itsDownload;
+
+  String _t(String key) => AppLocalizations.getText(
+    AppStateProvider.of(context).selectedLanguage,
+    key,
+  );
 
   bool get _cardOnly => _selected.contains(VuTransfer.cardDownload);
   bool get _wantsActivities => _selected.contains(VuTransfer.activities);
@@ -63,8 +92,9 @@ class _ItsDownloadPageState extends State<ItsDownloadPage> {
   }
 
   Future<void> _start(ItsLink link) async {
+    final generation = _generation;
     setState(() {
-      _busy = 'Oturum açılıyor';
+      _busy = _t('its.openingSession');
       _message = null;
       _steps = const [];
       _bytes = 0;
@@ -83,7 +113,7 @@ class _ItsDownloadPageState extends State<ItsDownloadPage> {
         technicalData: _selected.contains(VuTransfer.technicalData),
         activitiesFrom: _from,
         activitiesTo: _to,
-        generation: _generation,
+        generation: generation,
       ),
       onProgress: (m) {
         if (mounted) setState(() => _busy = m);
@@ -101,7 +131,13 @@ class _ItsDownloadPageState extends State<ItsDownloadPage> {
       final f = files.card ?? files.vehicleUnit;
       saved = f == null
           ? null
-          : 'Dosyalar · ${f.cardHolderName.isEmpty ? f.id : f.cardHolderName}';
+          : AppLocalizations.getText(
+              appState.selectedLanguage,
+              'its.savedTo',
+            ).replaceAll(
+              '{name}',
+              f.cardHolderName.isEmpty ? f.id : f.cardHolderName,
+            );
     }
 
     if (!mounted) return;
@@ -110,20 +146,29 @@ class _ItsDownloadPageState extends State<ItsDownloadPage> {
       _steps = result.steps;
       _bytes = bytes;
       _saved = saved;
-      if (result.period != null) _downloadable = result.period;
+      if (result.period != null) {
+        _downloadable = result.period;
+        _downloadableFor = generation;
+      }
       _message = bytes == 0
-          ? (result.problem ??
-                'Oturum çalıştı ama takograf hiç veri göndermedi.')
-          : '$bytes bayt, ${result.steps.length} transfer'
-                '${result.problem == null ? '' : '\n${result.problem}'}';
+          ? (result.problem ?? _t('its.noDataSession'))
+          : _t('its.resultSummary')
+                    .replaceAll('{bytes}', '$bytes')
+                    .replaceAll('{count}', '${result.steps.length}') +
+                (result.problem == null ? '' : '\n${result.problem}');
     });
     showAppSnackBar(
       context,
       bytes == 0
-          ? 'İndirme başarısız: ${result.problem ?? 'takograf veri göndermedi.'}'
+          ? _t('its.downloadFailed').replaceAll(
+              '{problem}',
+              result.problem ?? _t('its.unitSentNoData'),
+            )
           : result.problem == null
-          ? '$bytes bayt indirildi ve kaydedildi.'
-          : '$bytes bayt kaydedildi, eksik: ${result.problem}',
+          ? _t('its.downloadedSaved').replaceAll('{bytes}', '$bytes')
+          : _t('its.savedPartial')
+                .replaceAll('{bytes}', '$bytes')
+                .replaceAll('{problem}', result.problem!),
       type: bytes > 0 && result.problem == null
           ? AppSnackBarType.success
           : AppSnackBarType.error,
@@ -136,7 +181,7 @@ class _ItsDownloadPageState extends State<ItsDownloadPage> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
       initialDate: from ? _from : _to,
-      helpText: from ? 'Başlangıç (UTC)' : 'Bitiş (UTC)',
+      helpText: from ? _t('its.pickFrom') : _t('its.pickTo'),
     );
     if (picked == null) return;
     final day = DateTime.utc(picked.year, picked.month, picked.day);
@@ -151,313 +196,266 @@ class _ItsDownloadPageState extends State<ItsDownloadPage> {
   static String _fmt(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  static String _transferName(VuTransfer t) => switch (t) {
-    VuTransfer.overview => 'Genel bakış',
-    VuTransfer.activities => 'Aktiviteler',
-    VuTransfer.eventsAndFaults => 'Olaylar ve arızalar',
-    VuTransfer.detailedSpeed => 'Detaylı hız',
-    VuTransfer.technicalData => 'Teknik veri',
-    VuTransfer.cardDownload => 'Kart indirme',
-  };
-
-  static String _hex(int v) =>
-      '0x${v.toRadixString(16).padLeft(2, '0').toUpperCase()}';
+  String _transferName(VuTransfer t) => _t(switch (t) {
+    VuTransfer.overview => 'its.transferOverview',
+    VuTransfer.activities => 'its.transferActivities',
+    VuTransfer.eventsAndFaults => 'its.transferEvents',
+    VuTransfer.detailedSpeed => 'its.transferSpeed',
+    VuTransfer.technicalData => 'its.transferTechnical',
+    VuTransfer.cardDownload => 'its.transferCard',
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) return _body(context);
+
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 48,
         leading: BackButton(onPressed: () => context.go('/vu')),
-        title: const Text('Veri indirme', style: TextStyle(fontSize: 18)),
+        title: Text(
+          _t('its.toolDownloadTitle'),
+          style: const TextStyle(fontSize: 18),
+        ),
       ),
       body: _body(context),
     );
   }
 
+  /// Stands in for the channel while no ATC is connected, so the screen can
+  /// still be looked at; it stays closed, so nothing can be started.
+  static final _noLink = ValueNotifier(ItsChannelStatus.closed);
+
   Widget _body(BuildContext context) {
     final link = _link;
-    if (link == null) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'ITS indirme için bir ATC 8256\'ya bağlanın.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
-
     final small = Theme.of(context).textTheme.bodySmall;
     final datesUsable = !_wantsActivities || !_to.isBefore(_from);
     final idle = _busy == null;
 
     return ValueListenableBuilder<ItsChannelStatus>(
-      valueListenable: link.status,
+      valueListenable: link?.status ?? _noLink,
       builder: (context, status, _) {
         final open = status == ItsChannelStatus.open;
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _Card(
-              title: 'Kanal',
-              children: [
-                Text(
-                  'Kanalı açmak takografa 16 credit verir. 0xFF reddi ön '
-                  'konektörün bu arayüzü kullandığı ya da takılı kartların '
-                  'ITS\'e izin vermediği anlamına gelir.',
-                  style: small,
+        final children = <Widget>[
+          _Card(
+            title: _t('its.channelCard'),
+            children: [
+              Text(_t('its.channelHint'), style: small),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(switch (status) {
+                      ItsChannelStatus.open =>
+                        _t('its.downloadOpen').replaceAll(
+                          '{credits}',
+                          '${link?.channel.creditsFromVu}',
+                        ),
+                      ItsChannelStatus.opening => _t('its.downloadOpening'),
+                      ItsChannelStatus.refused => _t('its.downloadRefused'),
+                      ItsChannelStatus.closed => _t('its.downloadClosed'),
+                    }),
+                  ),
+                  if (open)
+                    OutlinedButton(
+                      onPressed: idle ? link?.close : null,
+                      child: Text(_t('its.close')),
+                    )
+                  else
+                    FilledButton(
+                      onPressed: idle && status != ItsChannelStatus.opening
+                          ? link?.open
+                          : null,
+                      child: Text(_t('its.open')),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          _Card(
+            title: _t('its.sessionCard'),
+            children: [
+              Text(_t('its.sessionHint'), style: small),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  for (final t in VuTransfer.values)
+                    FilterChip(
+                      label: Text(
+                        t == VuTransfer.overview
+                            ? '${_transferName(t)} (${_cardOnly ? _t('its.overviewNotWithCard') : _t('its.overviewAlways')})'
+                            : _transferName(t),
+                      ),
+                      selected: t == VuTransfer.overview
+                          ? !_cardOnly
+                          : _selected.contains(t),
+                      onSelected: t == VuTransfer.overview || !idle
+                          ? null
+                          : (_) => _toggle(t),
+                    ),
+                ],
+              ),
+              if (_cardOnly)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(_t('its.cardOwnSession'), style: small),
                 ),
+            ],
+          ),
+          if (_wantsActivities)
+            _Card(
+              title: _t('its.activitiesCard'),
+              children: [
+                Text(_t('its.activitiesHint'), style: small),
+                if (_downloadableFor == _generation ? _downloadable : null
+                    case final p?) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _t('its.unitHolds')
+                        .replaceAll('{from}', _fmt(_utcDay(p.minSeconds)))
+                        .replaceAll('{to}', _fmt(_utcDay(p.maxSeconds))),
+                  ),
+                  TextButton(
+                    onPressed: idle
+                        ? () => setState(() {
+                            _from = _utcDay(p.minSeconds);
+                            _to = _utcDay(p.maxSeconds);
+                          })
+                        : null,
+                    child: Text(_t('its.wholePeriod')),
+                  ),
+                ] else
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(_t('its.periodUnknown'), style: small),
+                  ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
-                      child: Text(switch (status) {
-                        ItsChannelStatus.open =>
-                          'İndirme: açık (${link.channel.creditsFromVu} credit)',
-                        ItsChannelStatus.opening => 'İndirme: açılıyor…',
-                        ItsChannelStatus.refused =>
-                          'İndirme: reddedildi (0xFF)',
-                        ItsChannelStatus.closed => 'İndirme: kapalı',
-                      }),
-                    ),
-                    if (open)
-                      OutlinedButton(
-                        onPressed: idle ? link.close : null,
-                        child: const Text('Kapat'),
-                      )
-                    else
-                      FilledButton(
-                        onPressed: idle && status != ItsChannelStatus.opening
-                            ? link.open
-                            : null,
-                        child: const Text('Aç'),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-            _Card(
-              title: 'Oturum',
-              children: [
-                Text(
-                  'Bir basış bir indirme oturumudur: StartCommunication, '
-                  'transferler, TransferExit ve StopCommunication, hepsi tek '
-                  'dosyada. Genel bakış her zaman ilk gider ve çıkarılamaz: '
-                  'takograf sertifikalarını taşır.',
-                  style: small,
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    for (final t in VuTransfer.values)
-                      FilterChip(
-                        label: Text(
-                          t == VuTransfer.overview
-                              ? '${_transferName(t)} (${_cardOnly ? 'kartla değil' : 'her zaman'})'
-                              : _transferName(t),
+                      child: OutlinedButton(
+                        onPressed: idle ? () => _pick(true) : null,
+                        child: Text(
+                          _t('its.fromDate').replaceAll('{date}', _fmt(_from)),
                         ),
-                        selected: t == VuTransfer.overview
-                            ? !_cardOnly
-                            : _selected.contains(t),
-                        onSelected: t == VuTransfer.overview || !idle
-                            ? null
-                            : (_) => _toggle(t),
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: idle ? () => _pick(false) : null,
+                        child: Text(
+                          _t('its.toDate').replaceAll('{date}', _fmt(_to)),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-                if (_cardOnly)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      'Kart indirme kendi oturumu ve kendi dosyasıdır: kartın '
-                      'verisi, kartın sertifikalarıyla.',
-                      style: small,
+                if (!datesUsable)
+                  Text(
+                    _t('its.endBeforeStart'),
+                    style: small?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
                     ),
                   ),
-              ],
-            ),
-            _Card(
-              title: 'Nesil',
-              children: [
                 Text(
-                  'Nesil, transfer istek parametresinin (TRTP) içinde gider. '
-                  'Kart indirmenin her nesilde tek değeri vardır. Uygulama '
-                  'her neslin dosyasını okur.',
+                  _t('its.daysUtc').replaceAll(
+                    '{days}',
+                    '${ItsDownloadService.maxActivityDays}',
+                  ),
                   style: small,
                 ),
-                const SizedBox(height: 8),
-                SegmentedButton<DownloadGeneration>(
-                  segments: [
-                    for (final g in DownloadGeneration.values)
-                      ButtonSegment(value: g, label: Text(g.label)),
-                  ],
-                  selected: {_generation},
-                  onSelectionChanged: idle
-                      ? (s) => setState(() {
-                          _generation = s.first;
-                          // Read out of the other generation's overview.
-                          _downloadable = null;
-                        })
+              ],
+            ),
+          _Card(
+            title: _t('its.runCard'),
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.icon(
+                  onPressed: link != null && open && idle && datesUsable
+                      ? () => _start(link)
                       : null,
+                  icon: const Icon(Icons.download),
+                  label: Text(_t('its.download')),
                 ),
-                const SizedBox(height: 4),
+              ),
+              if (!open)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    _t('its.channelClosedHint'),
+                    style: small?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              if (_busy != null)
+                Row(
+                  children: [
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_busy!)),
+                  ],
+                )
+              else
+                Text(_t('its.idleStatus').replaceAll('{bytes}', '$_bytes')),
+              if (_saved != null)
+                Text(_t('its.saved').replaceAll('{name}', _saved!)),
+              if (_message != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(_message!),
+                ),
+            ],
+          ),
+          if (_steps.isNotEmpty)
+            _Card(
+              title: _t('its.transfersCard'),
+              children: [for (final s in _steps) Text(s, style: small)],
+            ),
+          _Card(
+            title: _t('its.filesCard'),
+            children: [
+              // The two things a download gives: the unit's data and the
+              // card's, newest first; a tap opens the file.
+              for (final (title, kind) in const [
+                ('VU download', 'vehicleUnit'),
+                ('Card download', 'card'),
+              ]) ...[
                 Text(
-                  'Genel bakış TRTP ${_hex(Appendix7.trtpFor(VuTransfer.overview, _generation))}, '
-                  'aktiviteler ${_hex(Appendix7.trtpFor(VuTransfer.activities, _generation))} '
-                  'olarak gider.',
-                  style: small,
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
-              ],
-            ),
-            if (_wantsActivities)
-              _Card(
-                title: 'Aktiviteler, gün gün',
-                children: [
-                  Text(
-                    'Her istek tek bir takvim gününü adlandırır; bir dönem aynı '
-                    'oturumda gün gün istenir, en eskiden başlayarak. İki uç '
-                    'da dahil.',
-                    style: small,
-                  ),
-                  if (_downloadable case final p?) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Takograf ${_fmt(_utcDay(p.minSeconds))} – '
-                      '${_fmt(_utcDay(p.maxSeconds))} arasını tutuyor.',
-                    ),
-                    TextButton(
-                      onPressed: idle
-                          ? () => setState(() {
-                              _from = _utcDay(p.minSeconds);
-                              _to = _utcDay(p.maxSeconds);
-                            })
-                          : null,
-                      child: const Text('İndirilebilir dönemin tamamı'),
-                    ),
-                  ] else
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        'Takografın indirilebilir dönemi ilk Gen 2 '
-                        'oturumundan sonra burada görünür.',
-                        style: small,
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: idle ? () => _pick(true) : null,
-                          child: Text('Başlangıç ${_fmt(_from)}'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: idle ? () => _pick(false) : null,
-                          child: Text('Bitiş ${_fmt(_to)}'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (!datesUsable)
-                    Text(
-                      'Bitiş başlangıçtan önce olamaz.',
-                      style: small?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  Text(
-                    'Günler UTC\'dir; bir oturum en fazla '
-                    '${ItsDownloadService.maxActivityDays} gün ister.',
-                    style: small,
-                  ),
-                ],
-              ),
-            _Card(
-              title: 'Çalıştır',
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: FilledButton.icon(
-                    onPressed: open && idle && datesUsable
-                        ? () => _start(link)
-                        : null,
-                    icon: const Icon(Icons.download),
-                    label: const Text('İndir'),
-                  ),
-                ),
-                if (!open)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      'İndirme kanalı açık değil: yukarıdan açın.',
-                      style: small?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ),
+                ..._filesOf(context, kind),
                 const SizedBox(height: 8),
-                if (_busy != null)
-                  Row(
-                    children: [
-                      const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(_busy!)),
-                    ],
-                  )
-                else
-                  Text('Durum: boşta · $_bytes bayt'),
-                if (_saved != null) Text('Kaydedildi: $_saved'),
-                if (_message != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(_message!),
-                  ),
               ],
-            ),
-            if (_steps.isNotEmpty)
-              _Card(
-                title: 'Transferler',
-                children: [for (final s in _steps) Text(s, style: small)],
-              ),
-            _Card(
-              title: 'Dosyalar',
-              children: [
-                // The two things a download gives: the unit's data and the
-                // card's, newest first; a tap opens the file.
-                for (final (title, kind) in const [
-                  ('VU download', 'vehicleUnit'),
-                  ('Card download', 'card'),
-                ]) ...[
-                  Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  ..._filesOf(context, kind),
-                  const SizedBox(height: 8),
-                ],
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () => context.go('/ddd-files'),
-                    icon: const Icon(Icons.folder_outlined),
-                    label: const Text('Tüm dosyalar'),
-                  ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => context.go('/ddd-files'),
+                  icon: const Icon(Icons.folder_outlined),
+                  label: Text(_t('its.allFiles')),
                 ),
-              ],
-            ),
-          ],
-        );
+              ),
+            ],
+          ),
+        ];
+        if (widget.embedded) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children,
+          );
+        }
+        return ListView(padding: const EdgeInsets.all(16), children: children);
       },
     );
   }
@@ -471,7 +469,10 @@ List<Widget> _filesOf(BuildContext context, String kind) {
       .take(3)
       .toList();
   final small = Theme.of(context).textTheme.bodySmall;
-  if (files.isEmpty) return [Text('Henüz yok.', style: small)];
+  if (files.isEmpty) {
+    final lang = AppStateProvider.of(context).selectedLanguage;
+    return [Text(AppLocalizations.getText(lang, 'its.noneYet'), style: small)];
+  }
 
   String two(int v) => v.toString().padLeft(2, '0');
   return [

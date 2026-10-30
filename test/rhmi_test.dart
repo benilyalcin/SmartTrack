@@ -1,9 +1,27 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smarttrack_mine/core/providers/app_state.dart';
+import 'package:smarttrack_mine/features/rhmi/rhmi_page.dart';
 import 'package:smarttrack_mine/core/services/rhmi/manual_entry.dart';
 import 'package:smarttrack_mine/core/services/rhmi/rhmi.dart';
 
 // Vectors taken from AvuItsTester's RhmiCrc32Test.kt and ProtocolTest.kt.
 void main() {
+  testWidgets('RHMI session can be explored without pairing', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(
+      const AppStateProvider(child: MaterialApp(home: RhmiPage())),
+    );
+    await tester.pump();
+
+    final openButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Oturumu aç'),
+    );
+    expect(openButton.onPressed, isNotNull);
+    expect(find.text('Oturum açmak için önce eşleştirin.'), findsNothing);
+  });
+
   group('Rhmi.crc32', () {
     test('empty input is zero', () => expect(Rhmi.crc32(const []), 0));
 

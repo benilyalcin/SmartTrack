@@ -221,7 +221,8 @@ void main() {
               ..sort((a, b) => a.startTime.compareTo(b.startTime));
         expect(driverActs, hasLength(2));
         expect(driverActs[0].type, ActivityType.rest);
-        expect(driverActs[0].endTime, DateTime(2026, 6, 24, 8));
+        // Change minutes count from 00:00 UTC of the record's day.
+        expect(driverActs[0].endTime, DateTime.utc(2026, 6, 24, 8));
         expect(driverActs[1].type, ActivityType.driving);
 
         final coDriverActs =
@@ -231,12 +232,12 @@ void main() {
               ..sort((a, b) => a.startTime.compareTo(b.startTime));
         expect(coDriverActs, hasLength(3));
         expect(coDriverActs[0].type, ActivityType.rest);
-        expect(coDriverActs[0].endTime, DateTime(2026, 6, 24, 5));
+        expect(coDriverActs[0].endTime, DateTime.utc(2026, 6, 24, 5));
         expect(coDriverActs[1].type, ActivityType.driving);
-        expect(coDriverActs[1].startTime, DateTime(2026, 6, 24, 5));
-        expect(coDriverActs[1].endTime, DateTime(2026, 6, 24, 10));
+        expect(coDriverActs[1].startTime, DateTime.utc(2026, 6, 24, 5));
+        expect(coDriverActs[1].endTime, DateTime.utc(2026, 6, 24, 10));
         expect(coDriverActs[2].type, ActivityType.rest);
-        expect(coDriverActs[2].startTime, DateTime(2026, 6, 24, 10));
+        expect(coDriverActs[2].startTime, DateTime.utc(2026, 6, 24, 10));
       },
     );
   });

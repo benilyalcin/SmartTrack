@@ -113,6 +113,34 @@ void main() {
       );
       expect(rest, isEmpty);
     });
+
+    test('a violation before a long data gap stays in its own 24h period', () {
+      // Work until 23:00, then no data for 50 days: only 7h of the gap fall
+      // inside Monday's 24h period, so Monday's daily rest is short.
+      final day = _seq(monday, [
+        (_drive, _h(4)),
+        (_rest, _h(0, 45)),
+        (_drive, _h(4)),
+        (_work, _h(8, 15)),
+      ]);
+      final later = _seq(monday.add(const Duration(days: 50)), [
+        (_drive, _h(1)),
+      ]);
+      final now = _end(later);
+      final rest = _ofType(
+        analyzer.analyze([...day, ...later], now),
+        ViolationType.dailyRestInsufficient,
+      );
+      expect(rest, hasLength(1));
+      expect(rest.single.start, DateTime(2026, 1, 5, 23));
+      // It ends with Monday's period, not when the data resumes, so it no
+      // longer counts toward a risk score 50 days later.
+      expect(rest.single.end, DateTime(2026, 1, 6, 6));
+      expect(
+        rest.single.end.isBefore(now.subtract(const Duration(days: 28))),
+        isTrue,
+      );
+    });
   });
 
   group('weekly rest (Art. 8.6)', () {

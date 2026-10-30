@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/bluetooth/vu/its_link.dart';
+import '../../core/localization/localization.dart';
+import '../../core/providers/app_state.dart';
 import '../../core/services/bluetooth_service.dart';
 import '../../core/services/its/diag_decoder.dart';
 import '../../core/widgets/app_snackbar.dart';
 
 /// Requests worth a button, named the way the unit's own parameter table
 /// (ParameterSearch.cpp) names them - AvuItsTester's ConsoleScreen presets.
-const List<(String, String)> _presets = [
+List<(String, String)> _presets(String Function(String) t) => [
   ('StartCommunication', '81'),
-  ('Varsayılan oturum', '10 81'),
+  (t('its.presetDefaultSession'), '10 81'),
   ('TimeDate (F90B)', '22 F9 0B'),
   ('DriverCardDriver1 (F907)', '22 F9 07'),
   ('DriverCardDriver2 (F90A)', '22 F9 0A'),
@@ -21,8 +23,8 @@ const List<(String, String)> _presets = [
   ('VehiclePosition (F9D7)', '22 F9 D7'),
   ('ByDefaultLoadType (F9D5)', '22 F9 D5'),
   ('KFactor (F918)', '22 F9 18'),
-  ('Tanımsız (F9FE)', '22 F9 FE'),
-  ('RHMI oturum durumu (F211)', '31 03 F2 11'),
+  (t('its.presetUndefined'), '22 F9 FE'),
+  (t('its.presetRhmiSession'), '31 03 F2 11'),
 ];
 
 /// Annex 8 over the ITS diagnostics channel: a raw KWP2000 request, its
@@ -47,20 +49,22 @@ class _ItsCalibrationPageState extends State<ItsCalibrationPage> {
     super.dispose();
   }
 
+  String _t(String key) => AppLocalizations.getText(
+    AppStateProvider.of(context).selectedLanguage,
+    key,
+  );
+
   Future<void> _send(ItsLink link) async {
     final text = _hex.text.replaceAll(
       RegExp(r'0x|[\s,:-]', caseSensitive: false),
       '',
     );
     if (text.isEmpty) {
-      setState(
-        () => _message =
-            'Gönderilecek bir şey yok: istek servis tanımlayıcısıyla başlar.',
-      );
+      setState(() => _message = _t('its.calibNothingToSend'));
       return;
     }
     if (text.length.isOdd || !RegExp(r'^[0-9a-fA-F]+$').hasMatch(text)) {
-      setState(() => _message = 'Bu bir hex dizisi değil.');
+      setState(() => _message = _t('its.calibNotHex'));
       return;
     }
     final bytes = [
@@ -68,7 +72,7 @@ class _ItsCalibrationPageState extends State<ItsCalibrationPage> {
         int.parse(text.substring(i, i + 2), radix: 16),
     ];
     if (bytes.length > 255) {
-      setState(() => _message = 'Çok uzun: KWP2000 uzunluğu tek bayt.');
+      setState(() => _message = _t('its.calibTooLong'));
       return;
     }
 
@@ -81,11 +85,11 @@ class _ItsCalibrationPageState extends State<ItsCalibrationPage> {
       if (mounted) {
         setState(() {
           _busy = false;
-          _message = 'Diagnostik kanalı açılamadı.';
+          _message = _t('its.calibChannelFailed');
         });
         showAppSnackBar(
           context,
-          'İstek gönderilmedi: diagnostik kanalı açılamadı.',
+          _t('its.calibNotSent'),
           type: AppSnackBarType.error,
         );
       }
@@ -97,13 +101,13 @@ class _ItsCalibrationPageState extends State<ItsCalibrationPage> {
     setState(() {
       _busy = false;
       _result = result;
-      if (result == null) _message = 'Yanıt yok.';
+      if (result == null) _message = _t('its.calibNoAnswer');
     });
     showAppSnackBar(
       context,
       result == null
-          ? 'Yanıt yok: takograf isteği cevaplamadı.'
-          : '${result.positive ? 'Olumlu' : 'Reddedildi'} · '
+          ? _t('its.calibNoAnswerLong')
+          : '${result.positive ? _t('its.calibPositive') : _t('its.calibRefused')} · '
                 '${result.title}: ${result.value}',
       type: result?.positive ?? false
           ? AppSnackBarType.success
@@ -116,31 +120,27 @@ class _ItsCalibrationPageState extends State<ItsCalibrationPage> {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 48,
-        leading: BackButton(onPressed: () => context.go('/vu')),
-        title: const Text('Kalibrasyon', style: TextStyle(fontSize: 18)),
+        leading: BackButton(onPressed: () => context.go('/vu/advanced')),
+        title: Text(
+          _t('its.calibrationTitle'),
+          style: const TextStyle(fontSize: 18),
+        ),
       ),
       body: _body(context),
     );
   }
 
+  /// Stands in for the channel while no ATC is connected, so the screen can
+  /// still be looked at; it stays closed.
+  static final _noLink = ValueNotifier(ItsChannelStatus.closed);
+
   Widget _body(BuildContext context) {
     final link = AppBluetoothService.instance.itsDiagnostics;
-    if (link == null) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Kalibrasyon için bir ATC 8256\'ya bağlanın.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
     final scheme = Theme.of(context).colorScheme;
     final small = Theme.of(context).textTheme.bodySmall;
 
     return ValueListenableBuilder<ItsChannelStatus>(
-      valueListenable: link.status,
+      valueListenable: link?.status ?? _noLink,
       builder: (context, status, _) => ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -151,25 +151,26 @@ class _ItsCalibrationPageState extends State<ItsCalibrationPage> {
                 children: [
                   Expanded(
                     child: Text(switch (status) {
-                      ItsChannelStatus.open =>
-                        'Diagnostik: açık (${link.channel.creditsFromVu} credit)',
-                      ItsChannelStatus.opening => 'Diagnostik: açılıyor…',
-                      ItsChannelStatus.refused =>
-                        'Diagnostik: reddedildi (0xFF)',
-                      ItsChannelStatus.closed => 'Diagnostik: kapalı',
+                      ItsChannelStatus.open => _t('its.diagOpen').replaceAll(
+                        '{credits}',
+                        '${link?.channel.creditsFromVu}',
+                      ),
+                      ItsChannelStatus.opening => _t('its.diagOpening'),
+                      ItsChannelStatus.refused => _t('its.diagRefused'),
+                      ItsChannelStatus.closed => _t('its.diagClosed'),
                     }),
                   ),
                   if (status == ItsChannelStatus.open)
                     OutlinedButton(
-                      onPressed: _busy ? null : link.close,
-                      child: const Text('Kapat'),
+                      onPressed: _busy ? null : link?.close,
+                      child: Text(_t('its.close')),
                     )
                   else
                     FilledButton(
                       onPressed: _busy || status == ItsChannelStatus.opening
                           ? null
-                          : link.open,
-                      child: const Text('Aç'),
+                          : link?.open,
+                      child: Text(_t('its.open')),
                     ),
                 ],
               ),
@@ -181,17 +182,12 @@ class _ItsCalibrationPageState extends State<ItsCalibrationPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'Diagnostik kanalında ham istek',
+                  Text(
+                    _t('its.calibRawTitle'),
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    'Baytlar servis tanımlayıcısıyla başlar; 80 EE F0, uzunluk '
-                    've checksum otomatik eklenir. İmzalı RHMI istekleri '
-                    'Uzaktan kumanda ekranındadır.',
-                    style: small,
-                  ),
+                  Text(_t('its.calibRawHint'), style: small),
                   TextField(
                     controller: _hex,
                     decoration: const InputDecoration(labelText: 'hex'),
@@ -201,20 +197,24 @@ class _ItsCalibrationPageState extends State<ItsCalibrationPage> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: FilledButton(
-                      onPressed: _busy ? null : () => _send(link),
+                      onPressed: _busy || link == null
+                          ? null
+                          : () => _send(link),
                       child: _busy
                           ? const SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Gönder'),
+                          : Text(_t('its.calibSend')),
                     ),
                   ),
                   if (_result case final r?) ...[
                     const SizedBox(height: 10),
                     Text(
-                      r.positive ? 'Olumlu' : 'Olumsuz',
+                      r.positive
+                          ? _t('its.calibPositive')
+                          : _t('its.calibNegative'),
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         color: r.positive ? scheme.primary : scheme.error,
@@ -244,8 +244,8 @@ class _ItsCalibrationPageState extends State<ItsCalibrationPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'Hazır istekler',
+                  Text(
+                    _t('its.calibPresets'),
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
@@ -253,7 +253,7 @@ class _ItsCalibrationPageState extends State<ItsCalibrationPage> {
                     spacing: 8,
                     runSpacing: 4,
                     children: [
-                      for (final (label, bytes) in _presets)
+                      for (final (label, bytes) in _presets(_t))
                         FilterChip(
                           label: Text(label),
                           selected: _hex.text == bytes,

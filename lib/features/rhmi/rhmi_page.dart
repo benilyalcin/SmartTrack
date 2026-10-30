@@ -3,17 +3,25 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/localization/localization.dart';
 import '../../core/providers/app_state.dart';
 import '../../core/services/rhmi/manual_entry.dart';
 import '../../core/services/rhmi/rhmi.dart';
 import '../../core/services/rhmi/rhmi_controller.dart';
 import '../../core/widgets/app_snackbar.dart';
 
+/// The page rebuilds with the app language (it depends on AppStateProvider),
+/// so every text is read at build time.
+String _t(String key, [Map<String, Object?> args = const {}]) =>
+    AppLocalizations.text(key, args);
+
 /// Remote HMI for an ATC 8256: what the unit's own keys and menus do,
 /// from the phone. One status card on top - the session everything else
 /// needs - and the functions below it, folded away until wanted.
 class RhmiPage extends StatefulWidget {
-  const RhmiPage({super.key});
+  const RhmiPage({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<RhmiPage> createState() => _RhmiPageState();
@@ -69,24 +77,22 @@ class _RhmiPageState extends State<RhmiPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Eşleştirme kodu'),
+        title: Text(_t('rhmi.ui.tokenTitle')),
         content: TextField(
           controller: controller,
           autofocus: true,
           keyboardType: TextInputType.number,
           maxLength: 8,
-          decoration: const InputDecoration(
-            hintText: 'Takograf ekranındaki 8 hane',
-          ),
+          decoration: InputDecoration(hintText: _t('rhmi.ui.tokenHint')),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('İptal'),
+            child: Text(_t('rhmi.ui.cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Onayla'),
+            child: Text(_t('rhmi.ui.confirm')),
           ),
         ],
       ),
@@ -110,30 +116,26 @@ class _RhmiPageState extends State<RhmiPage> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _askToken());
     }
 
+    if (widget.embedded) return _body(context);
+
     // One of the tools under the Tachograph tab; back goes to the list.
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 48,
         leading: BackButton(onPressed: () => context.go('/vu')),
-        title: const Text('Uzaktan kumanda', style: TextStyle(fontSize: 18)),
+        title: Text(
+          _t('its.toolRhmiTitle'),
+          style: const TextStyle(fontSize: 18),
+        ),
       ),
       body: _body(context),
     );
   }
 
   Widget _body(BuildContext context) {
-    final appState = AppStateProvider.of(context);
-    if (!appState.isBluetoothConnected || !_c.isConnected) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Uzaktan kumanda için bir ATC 8256\'ya bağlanın.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
+    // Shown without a connection too, so the screen can be looked at; the
+    // controller answers every action with "not connected" then.
+    AppStateProvider.of(context);
     // A new connection may be to another unit.
     _c.syncDevice();
 
@@ -141,44 +143,57 @@ class _RhmiPageState extends State<RhmiPage> {
     final open = _c.isSessionOpen && enabled;
     final paired = _c.isPaired(_c.client);
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _StatusCard(c: _c, paired: paired),
-        const SizedBox(height: 12),
-        _Section(
-          icon: Icons.link,
-          title: 'Eşleştirme',
-          initiallyExpanded: !paired,
-          children: [_pairing(enabled)],
-        ),
-        _Section(
-          icon: Icons.touch_app_outlined,
-          title: 'Live Entries',
-          children: [_liveEntries(open)],
-        ),
-        _Section(
-          icon: Icons.warning_amber_outlined,
-          title: 'Uyarılar',
-          children: [_warnings(open)],
-        ),
-        _Section(
-          icon: Icons.print_outlined,
-          title: 'Çıktı',
-          children: [_PrintoutPanel(c: _c, enabled: open)],
-        ),
-        _Section(
-          icon: Icons.eject_outlined,
-          title: 'Kart çıkarma',
-          children: [_WithdrawalPanel(c: _c, enabled: open)],
-        ),
-        _Section(
-          icon: Icons.edit_calendar_outlined,
-          title: 'Manuel giriş',
-          children: [_ManualEntryPanel(c: _c, enabled: open)],
-        ),
-      ],
-    );
+    final children = <Widget>[
+      _StatusCard(c: _c),
+      const SizedBox(height: 12),
+      _Section(
+        storageId: 'pairing',
+        icon: Icons.link,
+        title: _t('rhmi.ui.secPairing'),
+        initiallyExpanded: !paired,
+        children: [_pairing(enabled)],
+      ),
+      _Section(
+        storageId: 'live',
+        icon: Icons.touch_app_outlined,
+        title: _t('rhmi.ui.secLive'),
+        children: [_liveEntries(open)],
+      ),
+      _Section(
+        storageId: 'warnings',
+        icon: Icons.warning_amber_outlined,
+        title: _t('rhmi.ui.secWarnings'),
+        children: [_warnings(open)],
+      ),
+      _Section(
+        storageId: 'printout',
+        icon: Icons.print_outlined,
+        title: _t('rhmi.ui.secPrintout'),
+        children: [_PrintoutPanel(c: _c, enabled: open)],
+      ),
+      _Section(
+        storageId: 'withdrawal',
+        icon: Icons.eject_outlined,
+        title: _t('rhmi.ui.secWithdraw'),
+        children: [_WithdrawalPanel(c: _c, enabled: open)],
+      ),
+      _Section(
+        storageId: 'manual',
+        icon: Icons.edit_calendar_outlined,
+        title: _t('rhmi.ui.secManual'),
+        children: [_ManualEntryPanel(c: _c, enabled: open)],
+      ),
+    ];
+
+    if (widget.embedded) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      );
+    }
+
+    return ListView(padding: const EdgeInsets.all(16), children: children);
   }
 
   Widget _pairing(bool enabled) {
@@ -189,10 +204,19 @@ class _RhmiPageState extends State<RhmiPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SegmentedButton<int>(
-          segments: const [
-            ButtonSegment(value: Rhmi.clientCardSlot1, label: Text('Yuva 1')),
-            ButtonSegment(value: Rhmi.clientCardSlot2, label: Text('Yuva 2')),
-            ButtonSegment(value: Rhmi.clientInVehicle, label: Text('Araç içi')),
+          segments: [
+            ButtonSegment(
+              value: Rhmi.clientCardSlot1,
+              label: Text(_t('rhmi.ui.slot', {'n': 1})),
+            ),
+            ButtonSegment(
+              value: Rhmi.clientCardSlot2,
+              label: Text(_t('rhmi.ui.slot', {'n': 2})),
+            ),
+            ButtonSegment(
+              value: Rhmi.clientInVehicle,
+              label: Text(_t('rhmi.client.vehicle')),
+            ),
           ],
           selected: {client},
           onSelectionChanged: enabled ? (s) => _c.setClient(s.first) : null,
@@ -200,11 +224,10 @@ class _RhmiPageState extends State<RhmiPage> {
         const SizedBox(height: 8),
         Text(
           verified
-              ? 'Eşleşmiş ve doğrulanmış.'
+              ? _t('rhmi.ui.pairedVerified')
               : paired
-              ? 'Bu telefonda eşleşmiş.'
-              : 'Eşleşmemiş. Yuva istemcisi için o yuvada kart olmalı; araç '
-                    'içi istemci yalnız kalibrasyon modunda eşleşir.',
+              ? _t('rhmi.ui.pairedHere')
+              : _t('rhmi.ui.notPairedHint'),
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 8),
@@ -214,22 +237,22 @@ class _RhmiPageState extends State<RhmiPage> {
           children: [
             FilledButton(
               onPressed: enabled && !verified ? _c.pairClient : null,
-              child: const Text('Eşleştir'),
+              child: Text(_t('rhmi.ui.pair')),
             ),
             // The way back to the code while a pairing waits for it, should
             // the dialog not be on screen.
             if (_c.awaitingToken != null)
               FilledButton.tonal(
                 onPressed: () => _askToken(),
-                child: const Text('Kodu gir'),
+                child: Text(_t('rhmi.ui.enterCode')),
               ),
             OutlinedButton(
               onPressed: enabled && paired ? _c.verifySessionId : null,
-              child: const Text('Doğrula'),
+              child: Text(_t('rhmi.ui.verify')),
             ),
             TextButton(
               onPressed: enabled && paired ? _c.forgetPairing : null,
-              child: const Text('Unut'),
+              child: Text(_t('rhmi.ui.forget')),
             ),
           ],
         ),
@@ -238,10 +261,7 @@ class _RhmiPageState extends State<RhmiPage> {
   }
 
   Widget _slotSelector(bool enabled) => SegmentedButton<int>(
-    segments: const [
-      ButtonSegment(value: 1, label: Text('Yuva 1')),
-      ButtonSegment(value: 2, label: Text('Yuva 2')),
-    ],
+    segments: _slotSegments(),
     selected: {_slot},
     onSelectionChanged: enabled ? (s) => setState(() => _slot = s.first) : null,
   );
@@ -252,15 +272,15 @@ class _RhmiPageState extends State<RhmiPage> {
       children: [
         _slotSelector(enabled),
         const SizedBox(height: 12),
-        const _Label('Aktivite'),
+        _Label(_t('rhmi.whatActivity')),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final (code, label) in const [
-              (Rhmi.activityRest, 'Dinlenme'),
-              (Rhmi.activityAvailability, 'Hazır bulunma'),
-              (Rhmi.activityWork, 'Diğer iş'),
+            for (final (code, label) in [
+              (Rhmi.activityRest, _t('rhmi.ui.rest')),
+              (Rhmi.activityAvailability, _t('rhmi.activity.available')),
+              (Rhmi.activityWork, _t('rhmi.activity.work')),
             ])
               OutlinedButton(
                 onPressed: enabled ? () => _c.setActivity(_slot, code) : null,
@@ -269,23 +289,23 @@ class _RhmiPageState extends State<RhmiPage> {
           ],
         ),
         const SizedBox(height: 12),
-        const _Label('Yer (günlük çalışma dönemi)'),
+        _Label(_t('rhmi.ui.placeLabel')),
         _PlaceEntry(
           enabled: enabled,
           onSend: (type, country, region) =>
               _c.enterPlace(_slot, type, country, region),
         ),
         const SizedBox(height: 12),
-        const _Label('Özel durum'),
+        _Label(_t('rhmi.whatCondition')),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final (code, label) in const [
-              (Rhmi.ferryTrainBegin, 'Feribot/tren başla'),
-              (Rhmi.ferryTrainEnd, 'Feribot/tren bitir'),
-              (Rhmi.outOfScopeBegin, 'Kapsam dışı başla'),
-              (Rhmi.outOfScopeEnd, 'Kapsam dışı bitir'),
+            for (final (code, label) in [
+              (Rhmi.ferryTrainBegin, _t('rhmi.ui.ferryBegin')),
+              (Rhmi.ferryTrainEnd, _t('rhmi.ui.ferryEnd')),
+              (Rhmi.outOfScopeBegin, _t('rhmi.ui.oosBegin')),
+              (Rhmi.outOfScopeEnd, _t('rhmi.ui.oosEnd')),
             ])
               OutlinedButton(
                 onPressed: enabled
@@ -296,15 +316,15 @@ class _RhmiPageState extends State<RhmiPage> {
           ],
         ),
         const SizedBox(height: 12),
-        const _Label('Yükleme / boşaltma'),
+        _Label(_t('rhmi.ui.loadLabel')),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final (code, label) in const [
-              (Rhmi.operationLoad, 'Yükleme'),
-              (Rhmi.operationUnload, 'Boşaltma'),
-              (Rhmi.operationLoadAndUnload, 'İkisi'),
+            for (final (code, label) in [
+              (Rhmi.operationLoad, _t('rhmi.ui.load')),
+              (Rhmi.operationUnload, _t('rhmi.ui.unload')),
+              (Rhmi.operationLoadAndUnload, _t('rhmi.ui.loadBoth')),
             ])
               OutlinedButton(
                 onPressed: enabled ? () => _c.loadUnload(code) : null,
@@ -325,13 +345,13 @@ class _RhmiPageState extends State<RhmiPage> {
           alignment: Alignment.centerLeft,
           child: FilledButton.tonal(
             onPressed: enabled ? _c.readWarnings : null,
-            child: const Text('Uyarıları oku'),
+            child: Text(_t('rhmi.ui.readWarnings')),
           ),
         ),
         if (list != null && list.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(top: 8),
-            child: Text('Bekleyen uyarı yok.'),
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(_t('rhmi.ui.noWarnings')),
           ),
         for (final w in list ?? const <VuWarning>[])
           ListTile(
@@ -340,7 +360,7 @@ class _RhmiPageState extends State<RhmiPage> {
             title: Text(Rhmi.eventFaultName(w.legalCode)),
             trailing: TextButton(
               onPressed: enabled ? () => _c.acknowledgeWarning(w.index) : null,
-              child: const Text('Onayla'),
+              child: Text(_t('rhmi.ui.confirm')),
             ),
           ),
       ],
@@ -352,9 +372,8 @@ class _RhmiPageState extends State<RhmiPage> {
 /// - pinned at the top so a button pressed further down never seems to do
 /// nothing.
 class _StatusCard extends StatelessWidget {
-  const _StatusCard({required this.c, required this.paired});
+  const _StatusCard({required this.c});
   final RhmiController c;
-  final bool paired;
 
   @override
   Widget build(BuildContext context) {
@@ -379,7 +398,9 @@ class _StatusCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Oturum: ${status?.label ?? 'bilinmiyor'}',
+                    _t('rhmi.ui.session', {
+                      'status': status?.label ?? _t('rhmi.ui.sessionUnknown'),
+                    }),
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -389,8 +410,9 @@ class _StatusCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'Takograf saati ${offset > 0 ? '+' : ''}$offset sn; istekler '
-                  'takograf saatiyle imzalanıyor.',
+                  _t('rhmi.ui.clockOffset', {
+                    'offset': '${offset > 0 ? '+' : ''}$offset',
+                  }),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
@@ -416,29 +438,24 @@ class _StatusCard extends StatelessWidget {
               children: [
                 if (!open)
                   FilledButton(
-                    onPressed: idle && paired ? c.openSession : null,
-                    child: const Text('Oturumu aç'),
+                    onPressed: idle ? c.openSession : null,
+                    child: Text(_t('rhmi.ui.openSession')),
                   )
                 else
                   OutlinedButton(
                     onPressed: idle ? c.closeSession : null,
-                    child: const Text('Oturumu kapat'),
+                    child: Text(_t('rhmi.ui.closeSession')),
                   ),
                 TextButton(
                   onPressed: idle ? c.refreshSessionStatus : null,
-                  child: const Text('Durumu yenile'),
+                  child: Text(_t('rhmi.ui.refresh')),
                 ),
                 TextButton(
                   onPressed: idle ? c.checkClocks : null,
-                  child: const Text('Saati kontrol et'),
+                  child: Text(_t('rhmi.ui.checkClock')),
                 ),
               ],
             ),
-            if (!paired)
-              Text(
-                'Oturum açmak için önce eşleştirin.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
           ],
         ),
       ),
@@ -446,13 +463,21 @@ class _StatusCard extends StatelessWidget {
   }
 }
 
+/// Yuva 1 and Yuva 2, in the app language.
+List<ButtonSegment<int>> _slotSegments() => [
+  for (final n in const [1, 2])
+    ButtonSegment(value: n, label: Text(_t('rhmi.ui.slot', {'n': n}))),
+];
+
 class _Section extends StatelessWidget {
   const _Section({
+    required this.storageId,
     required this.icon,
     required this.title,
     required this.children,
     this.initiallyExpanded = false,
   });
+  final String storageId;
   final IconData icon;
   final String title;
   final List<Widget> children;
@@ -462,6 +487,8 @@ class _Section extends StatelessWidget {
   Widget build(BuildContext context) => Card(
     clipBehavior: Clip.antiAlias,
     child: ExpansionTile(
+      // Expansion booleans must not share the ancestor scroll offset entry.
+      key: PageStorageKey('rhmi-section-$storageId'),
       leading: Icon(icon),
       title: Text(title),
       initiallyExpanded: initiallyExpanded,
@@ -504,7 +531,7 @@ class _CountryPicker extends StatelessWidget {
       DropdownButtonFormField<int>(
         initialValue: country,
         isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Ülke'),
+        decoration: InputDecoration(labelText: _t('rhmi.ui.country')),
         items: [
           for (final (code, label) in Rhmi.countries)
             DropdownMenuItem(value: code, child: Text(label)),
@@ -517,7 +544,7 @@ class _CountryPicker extends StatelessWidget {
         DropdownButtonFormField<int>(
           initialValue: region == 0 ? null : region,
           isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Bölge'),
+          decoration: InputDecoration(labelText: _t('rhmi.ui.region')),
           items: [
             for (final (code, label) in Rhmi.regions)
               DropdownMenuItem(value: code, child: Text(label)),
@@ -562,13 +589,13 @@ class _PlaceEntryState extends State<_PlaceEntry> {
             onPressed: widget.enabled
                 ? () => widget.onSend(Rhmi.placeBegin, _country, _region)
                 : null,
-            child: const Text('Başlangıç'),
+            child: Text(_t('rhmi.ui.begin')),
           ),
           OutlinedButton(
             onPressed: widget.enabled
                 ? () => widget.onSend(Rhmi.placeEnd, _country, _region)
                 : null,
-            child: const Text('Bitiş'),
+            child: Text(_t('rhmi.ui.end')),
           ),
         ],
       ),
@@ -612,7 +639,7 @@ class _PrintoutPanelState extends State<_PrintoutPanel> {
   Widget build(BuildContext context) {
     final needsDate = Rhmi.printoutNeedsDate(_type);
     final dayLabel = _day == null
-        ? 'Gün seç'
+        ? _t('rhmi.ui.pickDay')
         : '${_day!.day.toString().padLeft(2, '0')}.'
               '${_day!.month.toString().padLeft(2, '0')}.${_day!.year}';
     return Column(
@@ -621,7 +648,7 @@ class _PrintoutPanelState extends State<_PrintoutPanel> {
         DropdownButtonFormField<int>(
           initialValue: _type,
           isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Çıktı türü'),
+          decoration: InputDecoration(labelText: _t('rhmi.ui.printType')),
           items: [
             for (final (code, label) in Rhmi.printoutTypes)
               DropdownMenuItem(value: code, child: Text(label)),
@@ -658,11 +685,11 @@ class _PrintoutPanelState extends State<_PrintoutPanel> {
                                 1000,
                     )
                   : null,
-              child: const Text('Yazdır'),
+              child: Text(_t('rhmi.ui.print')),
             ),
             TextButton(
               onPressed: widget.enabled ? widget.c.printoutStatus : null,
-              child: const Text('Durum'),
+              child: Text(_t('rhmi.ui.status')),
             ),
           ],
         ),
@@ -691,19 +718,16 @@ class _WithdrawalPanelState extends State<_WithdrawalPanel> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Kart çıkarılsın mı?'),
-        content: Text(
-          'Yuva $_slot\'taki kart, bitiş yeri kaydedilip çıkarılacak. Oturum '
-          'kartla birlikte kapanır.',
-        ),
+        title: Text(_t('rhmi.ui.withdrawTitle')),
+        content: Text(_t('rhmi.ui.withdrawBody', {'slot': _slot})),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Vazgeç'),
+            child: Text(_t('rhmi.ui.withdrawCancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Çıkar'),
+            child: Text(_t('rhmi.ui.withdrawDo')),
           ),
         ],
       ),
@@ -718,17 +742,14 @@ class _WithdrawalPanelState extends State<_WithdrawalPanel> {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       SegmentedButton<int>(
-        segments: const [
-          ButtonSegment(value: 1, label: Text('Yuva 1')),
-          ButtonSegment(value: 2, label: Text('Yuva 2')),
-        ],
+        segments: _slotSegments(),
         selected: {_slot},
         onSelectionChanged: widget.enabled
             ? (s) => setState(() => _slot = s.first)
             : null,
       ),
       const SizedBox(height: 8),
-      const _Label('Bitiş yeri'),
+      _Label(_t('rhmi.whatPlaceEnd')),
       _CountryPicker(
         country: _country,
         region: _region,
@@ -741,13 +762,19 @@ class _WithdrawalPanelState extends State<_WithdrawalPanel> {
       const SizedBox(height: 8),
       DropdownButtonFormField<int>(
         initialValue: _shift,
-        decoration: const InputDecoration(labelText: 'Günün kart çıktısı'),
-        items: const [
-          DropdownMenuItem(value: Rhmi.shiftPrintoutNone, child: Text('Yok')),
-          DropdownMenuItem(value: Rhmi.shiftPrintoutUtc, child: Text('UTC')),
+        decoration: InputDecoration(labelText: _t('rhmi.ui.shiftPrintout')),
+        items: [
+          DropdownMenuItem(
+            value: Rhmi.shiftPrintoutNone,
+            child: Text(_t('rhmi.ui.none')),
+          ),
+          const DropdownMenuItem(
+            value: Rhmi.shiftPrintoutUtc,
+            child: Text('UTC'),
+          ),
           DropdownMenuItem(
             value: Rhmi.shiftPrintoutLocal,
-            child: Text('Yerel saat'),
+            child: Text(_t('rhmi.ui.localTime')),
           ),
         ],
         onChanged: widget.enabled
@@ -756,7 +783,7 @@ class _WithdrawalPanelState extends State<_WithdrawalPanel> {
       ),
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
-        title: const Text('Teknik veri çıktısı'),
+        title: Text(_t('rhmi.ui.technical')),
         value: _technical,
         onChanged: widget.enabled
             ? (v) => setState(() => _technical = v)
@@ -767,7 +794,7 @@ class _WithdrawalPanelState extends State<_WithdrawalPanel> {
         child: FilledButton.icon(
           onPressed: widget.enabled ? _withdraw : null,
           icon: const Icon(Icons.eject),
-          label: const Text('Kartı çıkar'),
+          label: Text(_t('rhmi.ui.withdrawButton')),
         ),
       ),
     ],
@@ -844,16 +871,12 @@ class _ManualEntryPanelState extends State<_ManualEntryPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Kartın takılı olmadığı süreyi doldurur. Kart takıldıktan sonra '
-          'yaklaşık bir dakika içinde gönderilmelidir.',
+          _t('rhmi.ui.manualHint'),
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 8),
         SegmentedButton<int>(
-          segments: const [
-            ButtonSegment(value: 1, label: Text('Yuva 1')),
-            ButtonSegment(value: 2, label: Text('Yuva 2')),
-          ],
+          segments: _slotSegments(),
           selected: {_slot},
           onSelectionChanged: widget.enabled
               ? (s) => setState(() => _slot = s.first)
@@ -868,19 +891,21 @@ class _ManualEntryPanelState extends State<_ManualEntryPanel> {
               onPressed: widget.enabled
                   ? () => c.getInsertedCardType(_slot)
                   : null,
-              child: const Text('Kart tipi'),
+              child: Text(_t('rhmi.ui.cardType')),
             ),
             FilledButton.tonal(
               onPressed: widget.enabled ? () => c.getPeriod(_slot) : null,
-              child: const Text('Dönemi oku'),
+              child: Text(_t('rhmi.ui.readPeriod')),
             ),
           ],
         ),
         if (period != null) ...[
           const SizedBox(height: 8),
-          Text('Dönem: $usable dakika, doldurulan: $filled dakika'),
+          Text(
+            _t('rhmi.ui.periodFilled', {'usable': usable, 'filled': filled}),
+          ),
           const SizedBox(height: 12),
-          const _Label('Aktiviteler (sırayla, süreleriyle)'),
+          _Label(_t('rhmi.ui.activitiesLabel')),
           Wrap(
             spacing: 8,
             children: [
@@ -898,7 +923,7 @@ class _ManualEntryPanelState extends State<_ManualEntryPanel> {
                 child: TextField(
                   controller: _minutes,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Dakika'),
+                  decoration: InputDecoration(labelText: _t('rhmi.ui.minutes')),
                 ),
               ),
               const SizedBox(width: 8),
@@ -919,14 +944,19 @@ class _ManualEntryPanelState extends State<_ManualEntryPanel> {
             ListTile(
               dense: true,
               contentPadding: EdgeInsets.zero,
-              title: Text('${_segments[i].$1.label} · ${_segments[i].$2} dk'),
+              title: Text(
+                _t('rhmi.ui.segment', {
+                  'activity': _segments[i].$1.label,
+                  'minutes': _segments[i].$2,
+                }),
+              ),
               trailing: IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: () => setState(() => _segments.removeAt(i)),
               ),
             ),
           const SizedBox(height: 12),
-          const _Label('Yerler (isteğe bağlı)'),
+          _Label(_t('rhmi.ui.placesLabel')),
           Row(
             children: [
               SizedBox(
@@ -934,18 +964,21 @@ class _ManualEntryPanelState extends State<_ManualEntryPanel> {
                 child: TextField(
                   controller: _placeMinute,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Dakika'),
+                  decoration: InputDecoration(labelText: _t('rhmi.ui.minutes')),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: SegmentedButton<int>(
-                  segments: const [
+                  segments: [
                     ButtonSegment(
                       value: Rhmi.placeBegin,
-                      label: Text('Başlangıç'),
+                      label: Text(_t('rhmi.ui.begin')),
                     ),
-                    ButtonSegment(value: Rhmi.placeEnd, label: Text('Bitiş')),
+                    ButtonSegment(
+                      value: Rhmi.placeEnd,
+                      label: Text(_t('rhmi.ui.end')),
+                    ),
                   ],
                   selected: {_placeType},
                   onSelectionChanged: (s) =>
@@ -972,7 +1005,7 @@ class _ManualEntryPanelState extends State<_ManualEntryPanel> {
                 setState(() => _places.add((m, _placeType, _country, _region)));
               },
               icon: const Icon(Icons.add_location_alt_outlined),
-              label: const Text('Yer ekle'),
+              label: Text(_t('rhmi.ui.addPlace')),
             ),
           ),
           for (var i = 0; i < _places.length; i++)
@@ -980,9 +1013,20 @@ class _ManualEntryPanelState extends State<_ManualEntryPanel> {
               dense: true,
               contentPadding: EdgeInsets.zero,
               title: Text(
-                '${_places[i].$1}. dk · '
-                '${_places[i].$2 == Rhmi.placeBegin ? 'Başlangıç' : 'Bitiş'} · '
-                '${Rhmi.countries.where((c) => c.$1 == _places[i].$3).firstOrNull?.$2 ?? _places[i].$3}',
+                _t('rhmi.ui.placeRow', {
+                  'minute': _places[i].$1,
+                  'type': _t(
+                    _places[i].$2 == Rhmi.placeBegin
+                        ? 'rhmi.ui.begin'
+                        : 'rhmi.ui.end',
+                  ),
+                  'country':
+                      Rhmi.countries
+                          .where((c) => c.$1 == _places[i].$3)
+                          .firstOrNull
+                          ?.$2 ??
+                      _places[i].$3,
+                }),
               ),
               trailing: IconButton(
                 icon: const Icon(Icons.close),
@@ -1006,13 +1050,13 @@ class _ManualEntryPanelState extends State<_ManualEntryPanel> {
                         onRebased: (_, _) {},
                       )
                     : null,
-                child: const Text('Gönder'),
+                child: Text(_t('rhmi.ui.send')),
               ),
               OutlinedButton(
                 onPressed: widget.enabled
                     ? () => c.stopManualEntry(_slot)
                     : null,
-                child: const Text('Girişi bitir'),
+                child: Text(_t('rhmi.ui.stopEntry')),
               ),
             ],
           ),

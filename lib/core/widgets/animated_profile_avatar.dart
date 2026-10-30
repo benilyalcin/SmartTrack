@@ -1,4 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../services/driving_time_calculator.dart';
 
@@ -224,6 +229,27 @@ void _showRulesDialog(BuildContext context) {
     ),
   ];
 
+  final pdfDocuments = [
+    (
+      'Kullanım Kılavuzu',
+      'STC-8255 Dijital Takograf Kullanım Kılavuzu',
+      'assets/pdfs/STC-8255-Operation-Manual.pdf',
+      Icons.menu_book_outlined,
+    ),
+    (
+      'Hazırlık Kılavuzu',
+      'STC-8255 Dijital Takograf Hazırlık Kılavuzu',
+      'assets/pdfs/STC-8255-Preparation-Manual.pdf',
+      Icons.build_outlined,
+    ),
+    (
+      'Takograf Dökümanı',
+      'STC-8255 Dijital Takograf Teknik Döküman',
+      'assets/pdfs/STC-8255-Tachograph.pdf',
+      Icons.description_outlined,
+    ),
+  ];
+
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
@@ -269,6 +295,33 @@ void _showRulesDialog(BuildContext context) {
                   color: scheme.outline,
                 ),
               ),
+              const SizedBox(height: 24),
+              Divider(color: scheme.outlineVariant),
+              const SizedBox(height: 16),
+              Text(
+                'Teknik Dökümanlar',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: scheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Aşağıdaki PDF dökümanlarına tıklayarak açabilirsiniz:',
+                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 12),
+              for (final doc in pdfDocuments) ...[
+                _PdfDocumentTile(
+                  title: doc.$1,
+                  subtitle: doc.$2,
+                  assetPath: doc.$3,
+                  icon: doc.$4,
+                  scheme: scheme,
+                ),
+                const SizedBox(height: 8),
+              ],
             ],
           ),
         ),
@@ -282,3 +335,133 @@ void _showRulesDialog(BuildContext context) {
     ),
   );
 }
+
+class _PdfDocumentTile extends StatefulWidget {
+  final String title;
+  final String subtitle;
+  final String assetPath;
+  final IconData icon;
+  final ColorScheme scheme;
+
+  const _PdfDocumentTile({
+    required this.title,
+    required this.subtitle,
+    required this.assetPath,
+    required this.icon,
+    required this.scheme,
+  });
+
+  @override
+  State<_PdfDocumentTile> createState() => _PdfDocumentTileState();
+}
+
+class _PdfDocumentTileState extends State<_PdfDocumentTile> {
+  bool _loading = false;
+
+  Future<void> _openPdf() async {
+    setState(() => _loading = true);
+    try {
+      final byteData = await rootBundle.load(widget.assetPath);
+      final tempDir = await getTemporaryDirectory();
+      final fileName = widget.assetPath.split('/').last;
+      final file = File('${tempDir.path}/$fileName');
+      await file.writeAsBytes(byteData.buffer.asUint8List(), flush: true);
+
+      final result = await OpenFilex.open(
+        file.path,
+        type: 'application/pdf',
+      );
+
+      if (result.type != ResultType.done && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF açılamadı: ${result.message}'),
+            backgroundColor: widget.scheme.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF açılırken hata oluştu: $e'),
+            backgroundColor: widget.scheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: widget.scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: _loading ? null : _openPdf,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: widget.scheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  widget.icon,
+                  color: widget.scheme.primary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: widget.scheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.subtitle,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: widget.scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_loading)
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: widget.scheme.primary,
+                  ),
+                )
+              else
+                Icon(
+                  Icons.open_in_new_rounded,
+                  color: widget.scheme.primary,
+                  size: 20,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

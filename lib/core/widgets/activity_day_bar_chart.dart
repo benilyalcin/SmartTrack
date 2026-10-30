@@ -81,12 +81,14 @@ class ActivityDayBarChart extends StatelessWidget {
       cursor = a.endTime;
     }
     final trailing = dayEnd.difference(cursor).inMinutes;
-    if (trailing > 0)
+    if (trailing > 0) {
       segments.add(
         _segment(context, trailing, unknownColor, segments.isNotEmpty),
       );
-    if (segments.isEmpty)
+    }
+    if (segments.isEmpty) {
       segments.add(_segment(context, 1440, unknownColor, false));
+    }
 
     final bar = Container(
       height: height,

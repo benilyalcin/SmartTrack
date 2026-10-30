@@ -144,8 +144,9 @@ class DrivingTimeCalculator {
     for (final act in activities) {
       if (act.type == ActivityType.rest) {
         pendingRests.add(act.duration);
-        if (satisfiesArticle7BreakRequirement(pendingRests))
+        if (satisfiesArticle7BreakRequirement(pendingRests)) {
           pendingRests.clear();
+        }
       }
     }
     return pendingRests.any((d) => d >= const Duration(minutes: 15));
@@ -159,8 +160,9 @@ class DrivingTimeCalculator {
     for (final act in activities) {
       if (act.type == ActivityType.rest) {
         pendingRests.add(act.duration);
-        if (satisfiesArticle7BreakRequirement(pendingRests))
+        if (satisfiesArticle7BreakRequirement(pendingRests)) {
           pendingRests.clear();
+        }
       }
     }
     return pendingRests.isNotEmpty;
@@ -316,8 +318,9 @@ class DrivingTimeCalculator {
 
     for (final act in sorted) {
       final gapSince = cursor;
-      if (gapSince != null && act.startTime.isAfter(gapSince))
+      if (gapSince != null && act.startTime.isAfter(gapSince)) {
         closeOpenEpisode(gapSince);
+      }
       if (act.type == ActivityType.unknown) {
         closeOpenEpisode(act.startTime);
         cursor = act.endTime;
@@ -619,8 +622,10 @@ class DrivingTimeCalculator {
     Duration total = Duration.zero;
     DateTime? crossing;
     for (final act in activities) {
-      if (act.type != ActivityType.driving || !act.endTime.isAfter(startOfWeek))
+      if (act.type != ActivityType.driving ||
+          !act.endTime.isAfter(startOfWeek)) {
         continue;
+      }
       final effectiveStart = act.startTime.isBefore(startOfWeek)
           ? startOfWeek
           : act.startTime;
@@ -654,8 +659,9 @@ class DrivingTimeCalculator {
     DateTime? crossing;
     for (final act in activities) {
       if (act.type != ActivityType.driving ||
-          !act.endTime.isAfter(startOfPreviousWeek))
+          !act.endTime.isAfter(startOfPreviousWeek)) {
         continue;
+      }
       final effectiveStart = act.startTime.isBefore(startOfPreviousWeek)
           ? startOfPreviousWeek
           : act.startTime;

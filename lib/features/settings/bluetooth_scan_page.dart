@@ -42,25 +42,24 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
   bool _looksLikeTachograph(AppBluetoothDevice d) =>
       AppBluetoothService.isVehicleUnit(id: d.id, name: d.name);
 
-  bool _looksLikeDongle(AppBluetoothDevice d) =>
-      d.id.toUpperCase() == AppBluetoothService.dongleDeviceId;
+  /// Everything the scan lists that is not a tachograph: the Classic
+  /// K-line dongle the phone is paired with, and BLE devices that name
+  /// themselves, among them a BLE dongle.
+  bool _looksLikeDongle(AppBluetoothDevice d) => !_looksLikeTachograph(d);
 
-  bool _isFeatured(AppBluetoothDevice d) =>
-      _looksLikeTachograph(d) || _looksLikeDongle(d);
+  List<AppBluetoothDevice> get _tachographs =>
+      _devices.where(_looksLikeTachograph).toList();
 
-  List<AppBluetoothDevice> get _featuredDevices =>
-      _devices.where(_isFeatured).toList();
+  List<AppBluetoothDevice> get _dongles {
+    final dongles = _devices.where(_looksLikeDongle);
+    if (!_filterNearOnly) return dongles.toList();
 
-  List<AppBluetoothDevice> get _otherDevices {
-    final others = _devices.where((d) => !_isFeatured(d));
-    if (!_filterNearOnly) return others.toList();
-
-    return others.where((d) => d.rssi >= -70).toList();
+    return dongles.where((d) => d.rssi >= -70).toList();
   }
 
   List<AppBluetoothDevice> get _visibleDevices => [
-    ..._featuredDevices,
-    ..._otherDevices,
+    ..._tachographs,
+    ..._dongles,
   ];
 
   @override
@@ -142,19 +141,16 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Ekran görüntüsü için mi bağlanıyorsun?'),
-        content: const Text(
-          'Evet dersen sadece EU 2016/799 Annex 1C, Ek 8, Tablo 28\'de (ücretsiz, resmi kaynak — ISO 16844-7 değil) '
-          'tanımlı alanlardan 4 tanesi okunur: VIN, tarih/saat, kilometre, izinli hız. Başka hiçbir alan sorulmaz.',
-        ),
+        title: Text(_t('scan.demoTitle')),
+        content: Text(_t('scan.demoBody')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Hayır'),
+            child: Text(_t('scan.demoNo')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Evet'),
+            child: Text(_t('scan.demoYes')),
           ),
         ],
       ),
@@ -171,7 +167,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
       if (mounted) {
         showAppSnackBar(
           context,
-          'Tamamlandı — Log ekranında görebilirsin.',
+          _t('scan.demoDone'),
           type: AppSnackBarType.success,
         );
         context.push('/kline-log');
@@ -357,20 +353,18 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Eşleşme kaldırılsın mı?'),
+        title: Text(_t('scan.removeBondTitle')),
         content: Text(
-          '${device.displayName} bu telefonun eşleşmiş cihazlarından '
-          'silinecek. Sonraki bağlantıda takograf ekranındaki kodu yeniden '
-          'onaylamanız gerekir.',
+          _t('scan.removeBondBody').replaceAll('{device}', device.displayName),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Vazgeç'),
+            child: Text(_t('conn.cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Kaldır'),
+            child: Text(_t('scan.removeBondConfirm')),
           ),
         ],
       ),
@@ -383,15 +377,16 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
       setState(() => _devices.removeWhere((d) => d.id == device.id));
       showAppSnackBar(
         context,
-        '${device.displayName}: eşleşme kaldırıldı.',
+        _t('scan.bondRemoved').replaceAll('{device}', device.displayName),
         type: AppSnackBarType.success,
       );
     } catch (e) {
       if (!mounted) return;
       showAppSnackBar(
         context,
-        '${device.displayName}: eşleşme kaldırılamadı '
-        '(${e is UnsupportedError ? e.message : e}).',
+        _t('scan.bondRemoveFailed')
+            .replaceAll('{device}', device.displayName)
+            .replaceAll('{error}', '${e is UnsupportedError ? e.message : e}'),
         type: AppSnackBarType.error,
       );
     }
@@ -399,22 +394,34 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
 
   String _friendlyConnectError(Object e) {
     if (e is TimeoutException) {
-      return e.message ?? 'Cihaz yanıt vermiyor (zaman aşımı)';
+      return e.message ?? _t('scan.timeout');
     }
     if (e is BleException) {
       return e.message;
     }
-    return 'Bağlanılamadı ($e)';
+    return _t('scan.connectFailed').replaceAll('{error}', '$e');
   }
 
   ({String label, IconData icon}) _signalInfo(int rssi) {
-    if (rssi >= -50)
-      return (label: 'Mükemmel Sinyal', icon: Icons.signal_cellular_4_bar);
-    if (rssi >= -70)
-      return (label: 'Güçlü Sinyal', icon: Icons.signal_cellular_alt_2_bar);
-    if (rssi >= -85)
-      return (label: 'Orta Sinyal', icon: Icons.signal_cellular_alt_1_bar);
-    return (label: 'Zayıf Sinyal', icon: Icons.signal_cellular_0_bar);
+    if (rssi >= -50) {
+      return (
+        label: _t('scan.signalExcellent'),
+        icon: Icons.signal_cellular_4_bar,
+      );
+    }
+    if (rssi >= -70) {
+      return (
+        label: _t('scan.signalStrong'),
+        icon: Icons.signal_cellular_alt_2_bar,
+      );
+    }
+    if (rssi >= -85) {
+      return (
+        label: _t('scan.signalMedium'),
+        icon: Icons.signal_cellular_alt_1_bar,
+      );
+    }
+    return (label: _t('scan.signalWeak'), icon: Icons.signal_cellular_0_bar);
   }
 
   @override
@@ -445,7 +452,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
         ),
         actions: [
           IconButton(
-            tooltip: 'Yeniden Ara',
+            tooltip: _t('scan.rescan'),
             onPressed: _isScanning ? null : _startScan,
             icon: _isScanning
                 ? SizedBox(
@@ -504,16 +511,18 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
     final String subtitle;
     final IconData icon;
     if (_isScanning) {
-      title = 'Cihazlar taranıyor...';
-      subtitle = 'Bluetooth kapsama alanındaki aygıtlar aranıyor';
+      title = _t('scan.scanning');
+      subtitle = _t('scan.scanningHint');
       icon = Icons.bluetooth_searching;
     } else if (_devices.isEmpty) {
-      title = 'Cihaz bulunamadı';
-      subtitle = 'Tekrar taramak için yukarıdaki simgeye dokunun';
+      title = _t('scan.noneFound');
+      subtitle = _t('scan.noneFoundHint');
       icon = Icons.bluetooth_disabled;
     } else {
-      title = 'Tarama tamamlandı';
-      subtitle = '${_devices.length} cihaz bulundu';
+      title = _t('scan.done');
+      subtitle = _t(
+        'scan.foundCount',
+      ).replaceAll('{count}', '${_devices.length}');
       icon = Icons.bluetooth_connected;
     }
 
@@ -614,7 +623,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            _filterNearOnly ? 'Yakındaki Cihazlar' : 'Tüm Cihazlar',
+            _filterNearOnly ? _t('scan.nearDevices') : _t('scan.allDevices'),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -645,7 +654,9 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    _filterNearOnly ? 'Filtreyi Kaldır' : 'Filtrele',
+                    _filterNearOnly
+                        ? _t('scan.clearFilter')
+                        : _t('scan.filter'),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -672,10 +683,10 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
           child: Center(
             child: Text(
               _isScanning
-                  ? 'Aranıyor...'
+                  ? _t('scan.searching')
                   : (_devices.isEmpty
-                        ? 'Cihaz bulunamadı'
-                        : 'Yakında cihaz yok'),
+                        ? _t('scan.noneFound')
+                        : _t('scan.noneNear')),
               style: TextStyle(color: scheme.outline),
             ),
           ),
@@ -683,27 +694,35 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
       ];
     }
 
-    final featured = _featuredDevices;
-    final others = _otherDevices;
+    final tachographs = _tachographs;
+    final dongles = _dongles;
     final widgets = <Widget>[];
 
-    if (featured.isNotEmpty) {
-      widgets.add(_sectionLabel(scheme, 'Öne Çıkan Cihazlar'));
+    if (tachographs.isNotEmpty) {
+      widgets.add(_sectionLabel(scheme, _t('scan.sectionTachographs')));
       widgets.add(const SizedBox(height: 8));
-      for (final d in featured) {
+      for (final d in tachographs) {
         widgets.add(_buildDeviceCard(scheme, d, featured: true));
-        widgets.add(const SizedBox(height: 8));
-      }
-      if (others.isNotEmpty) {
-        widgets.add(const SizedBox(height: 16));
-        widgets.add(_sectionLabel(scheme, 'Diğer Cihazlar'));
         widgets.add(const SizedBox(height: 8));
       }
     }
 
-    for (final d in others) {
-      widgets.add(_buildDeviceCard(scheme, d, featured: false));
-      widgets.add(const SizedBox(height: 8));
+    if (dongles.isNotEmpty) {
+      if (tachographs.isNotEmpty) widgets.add(const SizedBox(height: 16));
+      widgets.add(_sectionLabel(scheme, _t('scan.sectionDongles')));
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
+          child: Text(
+            _t('scan.donglesHint'),
+            style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+          ),
+        ),
+      );
+      for (final d in dongles) {
+        widgets.add(_buildDeviceCard(scheme, d, featured: false));
+        widgets.add(const SizedBox(height: 8));
+      }
     }
 
     return widgets;
@@ -766,9 +785,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              featured
-                  ? (isDongle ? Icons.developer_board : Icons.speed)
-                  : (isBle ? Icons.bluetooth_searching : Icons.bluetooth),
+              isDongle ? Icons.developer_board : Icons.speed,
               color: featured
                   ? scheme.onPrimaryContainer
                   : scheme.onSurfaceVariant,
@@ -797,7 +814,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
                   spacing: 6,
                   runSpacing: 4,
                   children: [
-                    if (featured) ...[
+                    ...[
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
@@ -808,7 +825,9 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          isDongle ? 'DONGLE' : 'TAKOGRAF',
+                          isDongle
+                              ? _t('scan.tagDongle')
+                              : _t('scan.tagTachograph'),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
@@ -828,7 +847,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          'EŞLEŞTİ',
+                          _t('scan.tagPaired'),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
@@ -879,7 +898,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
           const SizedBox(width: 8),
           if (d.isPaired && !isConnecting && _connectingDeviceId == null)
             IconButton(
-              tooltip: 'Eşleşmeyi kaldır',
+              tooltip: _t('scan.removeBondTooltip'),
               icon: Icon(Icons.link_off, color: scheme.error),
               onPressed: () => _removeBond(d),
             ),
@@ -899,9 +918,12 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
-              child: const Text(
-                'Bağlan',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              child: Text(
+                _t('scan.connect'),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             )
           else
@@ -913,9 +935,12 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
-              child: const Text(
-                'Bağlan',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              child: Text(
+                _t('scan.connect'),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
         ],
@@ -931,15 +956,11 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
       builder: (context, phase, _) {
         final (text, highlight) = switch (phase) {
           VuLinkPhase.disconnected ||
-          VuLinkPhase.connecting => ('Bağlanılıyor...', false),
-          VuLinkPhase.discovering => ('Servisler aranıyor...', false),
-          VuLinkPhase.bonding => (
-            'Takograf ekranındaki 6 haneli kod telefondakiyle aynıysa iki '
-                'tarafta da onaylayın (25 sn).',
-            true,
-          ),
-          VuLinkPhase.subscribing => ('Veri kanalı açılıyor...', false),
-          VuLinkPhase.ready => ('Takograf verileri okunuyor...', false),
+          VuLinkPhase.connecting => (_t('scan.phaseConnecting'), false),
+          VuLinkPhase.discovering => (_t('scan.phaseDiscovering'), false),
+          VuLinkPhase.bonding => (_t('scan.phaseBonding'), true),
+          VuLinkPhase.subscribing => (_t('scan.phaseSubscribing'), false),
+          VuLinkPhase.ready => (_t('scan.phaseReading'), false),
         };
         return Text(
           text,
@@ -963,14 +984,14 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
             Icon(Icons.bluetooth_disabled, size: 40, color: scheme.error),
             const SizedBox(height: 16),
             Text(
-              'Bluetooth taraması için gerekli izin verilmedi. Lütfen uygulama ayarlarından "Yakındaki cihazlar" iznini verin.',
+              _t('scan.permissionDenied'),
               textAlign: TextAlign.center,
               style: TextStyle(color: scheme.outline),
             ),
             const SizedBox(height: 16),
             OutlinedButton(
               onPressed: () => openAppSettings(),
-              child: const Text('Ayarları Aç'),
+              child: Text(_t('scan.openSettings')),
             ),
           ],
         ),
@@ -980,7 +1001,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage>
 
   Widget _buildHelpFooter(ColorScheme scheme) {
     return Text(
-      'Takografınızı listede göremiyor musunuz? Bluetooth yalnızca kontak açıkken yayın yapar; takograf "TACHOGRAPH-" ile başlayan adıyla görünür.',
+      _t('scan.helpFooter'),
       textAlign: TextAlign.center,
       style: TextStyle(
         fontSize: 12,

@@ -10,6 +10,7 @@ import '../models/ble_gatt_service.dart';
 import '../models/log_entry.dart';
 import '../repositories/ble_connection_repository.dart' hide BleConnectionState;
 import '../repositories/ble_connection_repository.dart' as repo;
+import '../../localization/localization.dart';
 import '../vu/vu_app_link.dart';
 import '../vu/vu_link_profile.dart';
 
@@ -283,10 +284,8 @@ class VuAppConnectionService implements BleConnectionRepository {
         .firstOrNull;
 
     if (_rx == null || _tx == null) {
-      throw const BleConnectionException(
-        message:
-            'Cihazda SmartTrack uygulama servisi bulunamadı. Takograf '
-            'yazılımı bu servisi desteklemiyor olabilir.',
+      throw BleConnectionException(
+        message: AppLocalizations.text('link.noAppService'),
       );
     }
     _log('${raw.length} servis bulundu, uygulama servisi var.', LogLevel.info);
@@ -344,10 +343,7 @@ class VuAppConnectionService implements BleConnectionRepository {
       }
     } catch (e) {
       throw BleConnectionException(
-        message:
-            'Eşleşme tamamlanmadı. Takograf ekranındaki 6 haneli kodu '
-            'telefondakiyle karşılaştırıp 25 saniye içinde iki tarafta da '
-            'onaylayın.',
+        message: AppLocalizations.text('link.bondFailed'),
         cause: e,
       );
     }
@@ -409,7 +405,9 @@ class VuAppConnectionService implements BleConnectionRepository {
     final char = _itsChars[uuid];
     if (char == null) {
       throw BleCharacteristicException(
-        message: 'ITS karakteristiği yok: $uuid',
+        message: AppLocalizations.text('link.noItsCharacteristic', {
+          'uuid': uuid,
+        }),
       );
     }
     await char.write(value);
@@ -428,7 +426,9 @@ class VuAppConnectionService implements BleConnectionRepository {
     final rx = _rx;
     if (rx == null || _phase != VuLinkPhase.ready) {
       return Future.error(
-        const BleCharacteristicException(message: 'Bağlantı hazır değil.'),
+        BleCharacteristicException(
+          message: AppLocalizations.text('link.notReady'),
+        ),
       );
     }
 
@@ -448,7 +448,10 @@ class VuAppConnectionService implements BleConnectionRepository {
     _writeChain = send.catchError((_) {});
 
     return send.catchError((Object e) {
-      throw BleCharacteristicException(message: 'Yazma başarısız.', cause: e);
+      throw BleCharacteristicException(
+        message: AppLocalizations.text('link.writeFailed'),
+        cause: e,
+      );
     });
   }
 
@@ -471,8 +474,11 @@ class VuAppConnectionService implements BleConnectionRepository {
   /// Neither app characteristic is readable; the unit answers a read with an
   /// empty value.
   @override
-  Future<List<int>> readCharacteristic(String charUuid) =>
-      Future.error(BleCharacteristicException(message: '$charUuid okunamaz.'));
+  Future<List<int>> readCharacteristic(String charUuid) => Future.error(
+    BleCharacteristicException(
+      message: AppLocalizations.text('link.unreadable', {'uuid': charUuid}),
+    ),
+  );
 
   @override
   Future<void> disconnect() async {
@@ -516,7 +522,10 @@ class VuAppConnectionService implements BleConnectionRepository {
   void _requireKwpChannel(String charUuid) {
     if (charUuid != kwpChannel) {
       throw BleCharacteristicException(
-        message: 'Bilinmeyen kanal: $charUuid (yalnızca $kwpChannel)',
+        message: AppLocalizations.text('link.unknownChannel', {
+          'uuid': charUuid,
+          'channel': kwpChannel,
+        }),
       );
     }
   }
@@ -535,13 +544,13 @@ class VuAppConnectionService implements BleConnectionRepository {
 
   String _describe(Object e) {
     if (e is FlutterBluePlusException) {
-      return 'Takografa bağlanılamadı: ${e.description ?? e.function}. '
-          'Kontağın açık ve cihazın menzilde olduğundan emin olun.';
+      return AppLocalizations.text('link.connectFailedDetail', {
+        'detail': e.description ?? e.function,
+      });
     }
     if (e is TimeoutException) {
-      return 'Takograf yanıt vermiyor (zaman aşımı). Kontağın açık olduğundan '
-          'emin olun; kontak kapalıyken Bluetooth yayını yapılmaz.';
+      return AppLocalizations.text('link.timeout');
     }
-    return 'Takografa bağlanılamadı ($e).';
+    return AppLocalizations.text('link.connectFailed', {'error': e});
   }
 }

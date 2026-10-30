@@ -1,3 +1,6 @@
+import '../../localization/localization.dart';
+import '../eu_nation_codes.dart';
+
 /// Remote HMI request construction, against the ATC's own
 /// CalibrationProtocol::respondRhmiRoutine - a port of AvuItsTester's
 /// Rhmi.kt, RhmiCrc32.kt and PlaceCodes.kt.
@@ -91,10 +94,10 @@ class Rhmi {
   static int cardSlotNumber(int slot) => slot - 1;
 
   static String clientName(int client) => switch (client) {
-    clientInVehicle => 'Araç içi',
-    clientCardSlot1 => 'Yuva 1 (sürücü)',
-    clientCardSlot2 => 'Yuva 2 (yardımcı sürücü)',
-    _ => 'İstemci $client',
+    clientInVehicle => AppLocalizations.text('rhmi.client.vehicle'),
+    clientCardSlot1 => AppLocalizations.text('rhmi.client.slot1'),
+    clientCardSlot2 => AppLocalizations.text('rhmi.client.slot2'),
+    _ => AppLocalizations.text('rhmi.client.other', {'n': client}),
   };
 
   /// A bare routine request: service, sub-function, routine identifier,
@@ -209,16 +212,11 @@ class Rhmi {
     );
   }
 
-  /// PrintoutType, as far as this unit prints them.
-  static const List<(int, String)> printoutTypes = [
-    (0x01, 'Sürücü aktiviteleri (kart), günlük'),
-    (0x02, 'Yardımcı sürücü aktiviteleri (kart), günlük'),
-    (0x03, 'Sürücü olay ve arızaları (kart)'),
-    (0x04, 'Yardımcı sürücü olay ve arızaları (kart)'),
-    (0x05, 'Sürücü aktiviteleri (VU), günlük'),
-    (0x06, 'VU olay ve arızaları'),
-    (0x07, 'Teknik veri'),
-    (0x08, 'Hız aşımı'),
+  /// PrintoutType, as far as this unit prints them: 0x01-0x08, named
+  /// `rhmi.printout.<type>`.
+  static List<(int, String)> get printoutTypes => [
+    for (var type = 0x01; type <= 0x08; type++)
+      (type, AppLocalizations.text('rhmi.printout.$type')),
   ];
 
   static bool printoutNeedsDate(int type) =>
@@ -226,114 +224,133 @@ class Rhmi {
 
   static String printoutName(int type) =>
       printoutTypes.where((p) => p.$1 == type).firstOrNull?.$2 ??
-      'tip 0x${type.toRadixString(16).padLeft(2, '0').toUpperCase()}';
+      AppLocalizations.text('rhmi.printout.other', {'code': _hex(type)});
+
+  static String _hex(int v) =>
+      '0x${v.toRadixString(16).padLeft(2, '0').toUpperCase()}';
+
+  /// The EventFaultType codes with a name of their own, `rhmi.ef.<XX>`.
+  static const Set<int> _namedEventFaults = {
+    0x00,
+    0x01,
+    0x02,
+    0x03,
+    0x04,
+    0x05,
+    0x06,
+    0x07,
+    0x08,
+    0x09,
+    0x0A,
+    0x0B,
+    0x0C,
+    0x0D,
+    0x0E,
+    0x30,
+    0x31,
+    0x32,
+    0x33,
+    0x34,
+    0x35,
+    0x36,
+    0x37,
+    0x38,
+    0x39,
+    0x40,
+    0x81,
+    0x82,
+    0x83,
+    0x86,
+    0x87,
+    0x88,
+    0x92,
+    0x93,
+    0xAE,
+  };
 
   /// EventFaultType for the codes a warning can carry.
   static String eventFaultName(int code) {
-    if (code >= 0x10 && code <= 0x1F) return 'güvenlik ihlali girişimi';
-    if (code >= 0x96 && code <= 0x9C) return 'sürüş / dinlenme süresi uyarısı';
-    return switch (code) {
-      0x00 => 'ayrıntı yok',
-      0x01 => 'geçersiz kart takıldı',
-      0x02 => 'kart çakışması',
-      0x03 => 'zaman çakışması',
-      0x04 => 'uygun kart olmadan sürüş',
-      0x05 => 'sürüş sırasında kart takıldı',
-      0x06 => 'son kart oturumu düzgün kapanmadı',
-      0x07 => 'hız aşımı',
-      0x08 => 'güç kesintisi',
-      0x09 => 'hareket verisi hatası',
-      0x0A => 'araç hareketi çakışması',
-      0x0B => 'zaman çakışması (GNSS / VU saati)',
-      0x0C => 'uzak iletişim birimi hatası',
-      0x0D => 'GNSS konum bilgisi yok',
-      0x0E => 'harici GNSS birimi hatası',
-      0x30 => 'kayıt cihazı arızası',
-      0x31 => 'VU iç arızası',
-      0x32 => 'yazıcı arızası',
-      0x33 => 'ekran arızası',
-      0x34 => 'indirme arızası',
-      0x35 => 'sensör arızası',
-      0x36 => 'dahili GNSS alıcısı',
-      0x37 => 'harici GNSS birimi',
-      0x38 => 'uzak iletişim birimi',
-      0x39 => 'ITS arayüzü',
-      0x40 => 'kart arızası',
-      0x81 => 'hız aşımı ön uyarısı',
-      0x82 => 'kart süresi doluyor',
-      0x83 => 'kalibrasyon / servis zamanı',
-      0x86 => 'yanlış kart tipi',
-      0x87 => 'PIN bloke',
-      0x88 => 'kayıt tutarsız',
-      0x92 => 'kart indirme zamanı',
-      0x93 => 'VU indirme zamanı',
-      0xAE => 'kontakta kart yok',
-      _ => 'kod 0x${code.toRadixString(16).padLeft(2, '0').toUpperCase()}',
-    };
+    if (code >= 0x10 && code <= 0x1F) {
+      return AppLocalizations.text('rhmi.ef.security');
+    }
+    if (code >= 0x96 && code <= 0x9C) {
+      return AppLocalizations.text('rhmi.ef.drivingTime');
+    }
+    if (_namedEventFaults.contains(code)) {
+      final key = code.toRadixString(16).padLeft(2, '0').toUpperCase();
+      return AppLocalizations.text('rhmi.ef.$key');
+    }
+    return AppLocalizations.text('rhmi.ef.other', {'code': _hex(code)});
   }
 
-  /// NationNumeric, from the unit's own CountryInfo.cpp. Zero is "no
-  /// information available".
-  static const List<(int, String)> countries = [
-    (0x30, 'TR - Türkiye'),
-    (0x01, 'A - Avusturya'),
-    (0x02, 'AL - Arnavutluk'),
-    (0x03, 'AND - Andorra'),
-    (0x04, 'ARM - Ermenistan'),
-    (0x05, 'AZ - Azerbaycan'),
-    (0x06, 'B - Belçika'),
-    (0x07, 'BG - Bulgaristan'),
-    (0x08, 'BIH - Bosna-Hersek'),
-    (0x09, 'BY - Belarus'),
-    (0x0A, 'CH - İsviçre'),
-    (0x0B, 'CY - Kıbrıs'),
-    (0x0C, 'CZ - Çekya'),
-    (0x0D, 'D - Almanya'),
-    (0x0E, 'DK - Danimarka'),
-    (0x0F, 'E - İspanya'),
-    (0x10, 'EST - Estonya'),
-    (0x11, 'F - Fransa'),
-    (0x12, 'FIN - Finlandiya'),
-    (0x13, 'FL - Lihtenştayn'),
-    (0x14, 'FO - Faroe Adaları'),
-    (0x15, 'UK - Birleşik Krallık'),
-    (0x16, 'GE - Gürcistan'),
-    (0x17, 'GR - Yunanistan'),
-    (0x18, 'H - Macaristan'),
-    (0x19, 'HR - Hırvatistan'),
-    (0x1A, 'I - İtalya'),
-    (0x1B, 'IRL - İrlanda'),
-    (0x1C, 'IS - İzlanda'),
-    (0x1D, 'KZ - Kazakistan'),
-    (0x1E, 'L - Lüksemburg'),
-    (0x1F, 'LT - Litvanya'),
-    (0x20, 'LV - Letonya'),
-    (0x21, 'M - Malta'),
-    (0x22, 'MC - Monako'),
-    (0x23, 'MD - Moldova'),
-    (0x24, 'MK - Kuzey Makedonya'),
-    (0x25, 'N - Norveç'),
-    (0x26, 'NL - Hollanda'),
-    (0x27, 'P - Portekiz'),
-    (0x28, 'PL - Polonya'),
-    (0x29, 'RO - Romanya'),
-    (0x2A, 'RSM - San Marino'),
-    (0x2B, 'RUS - Rusya'),
-    (0x2C, 'S - İsveç'),
-    (0x2D, 'SK - Slovakya'),
-    (0x2E, 'SLO - Slovenya'),
-    (0x2F, 'TM - Türkmenistan'),
-    (0x31, 'UA - Ukrayna'),
-    (0x32, 'V - Vatikan'),
-    (0x34, 'MNE - Karadağ'),
-    (0x35, 'SRB - Sırbistan'),
-    (0x36, 'UZ - Özbekistan'),
-    (0x37, 'TJ - Tacikistan'),
-    (0x38, 'KG - Kırgızistan'),
-    (0x39, 'IL - İsrail'),
-    (0xFD, 'EC - Avrupa Topluluğu'),
-    (0xFE, 'EUR - Avrupa\'nın geri kalanı'),
-    (0xFF, 'WLD - Dünyanın geri kalanı'),
+  /// NationNumeric, from the unit's own CountryInfo.cpp, with the
+  /// distinguishing sign it is shown with. Zero is "no information
+  /// available". The names are EuNationCodes', in the app language.
+  static const List<(int, String)> _countrySigns = [
+    (0x30, 'TR'),
+    (0x01, 'A'),
+    (0x02, 'AL'),
+    (0x03, 'AND'),
+    (0x04, 'ARM'),
+    (0x05, 'AZ'),
+    (0x06, 'B'),
+    (0x07, 'BG'),
+    (0x08, 'BIH'),
+    (0x09, 'BY'),
+    (0x0A, 'CH'),
+    (0x0B, 'CY'),
+    (0x0C, 'CZ'),
+    (0x0D, 'D'),
+    (0x0E, 'DK'),
+    (0x0F, 'E'),
+    (0x10, 'EST'),
+    (0x11, 'F'),
+    (0x12, 'FIN'),
+    (0x13, 'FL'),
+    (0x14, 'FO'),
+    (0x15, 'UK'),
+    (0x16, 'GE'),
+    (0x17, 'GR'),
+    (0x18, 'H'),
+    (0x19, 'HR'),
+    (0x1A, 'I'),
+    (0x1B, 'IRL'),
+    (0x1C, 'IS'),
+    (0x1D, 'KZ'),
+    (0x1E, 'L'),
+    (0x1F, 'LT'),
+    (0x20, 'LV'),
+    (0x21, 'M'),
+    (0x22, 'MC'),
+    (0x23, 'MD'),
+    (0x24, 'MK'),
+    (0x25, 'N'),
+    (0x26, 'NL'),
+    (0x27, 'P'),
+    (0x28, 'PL'),
+    (0x29, 'RO'),
+    (0x2A, 'RSM'),
+    (0x2B, 'RUS'),
+    (0x2C, 'S'),
+    (0x2D, 'SK'),
+    (0x2E, 'SLO'),
+    (0x2F, 'TM'),
+    (0x31, 'UA'),
+    (0x32, 'V'),
+    (0x34, 'MNE'),
+    (0x35, 'SRB'),
+    (0x36, 'UZ'),
+    (0x37, 'TJ'),
+    (0x38, 'KG'),
+    (0x39, 'IL'),
+    (0xFD, 'EC'),
+    (0xFE, 'EUR'),
+    (0xFF, 'WLD'),
+  ];
+
+  static List<(int, String)> get countries => [
+    for (final (code, sign) in _countrySigns)
+      (code, '$sign - ${EuNationCodes.label(code)}'),
   ];
 
   /// NationNumeric for Spain, the only country the region field applies to.
@@ -363,16 +380,17 @@ class Rhmi {
 
 /// RHMIsessionStatus, as the unit's RhmiSession::Status defines it.
 enum RhmiSessionStatus {
-  closedOpenPossible(0x00, 'Kapalı, açılabilir'),
-  closedUserDecisionPending(0x01, 'Takograf ekranında onay bekleniyor'),
-  open(0x10, 'Açık'),
-  closedUserRejected(0x20, 'Kapalı, bir kullanıcı reddetti'),
-  closedLocalHmiIsUsed(0x21, 'Kapalı, takograf menüsü kullanımda'),
-  closedGeneralConditionsNotMet(0x2F, 'Kapalı, koşullar sağlanmıyor');
+  closedOpenPossible(0x00),
+  closedUserDecisionPending(0x01),
+  open(0x10),
+  closedUserRejected(0x20),
+  closedLocalHmiIsUsed(0x21),
+  closedGeneralConditionsNotMet(0x2F);
 
-  const RhmiSessionStatus(this.code, this.label);
+  const RhmiSessionStatus(this.code);
   final int code;
-  final String label;
+
+  String get label => AppLocalizations.text('rhmi.session.$name');
 
   static RhmiSessionStatus? of(int code) =>
       values.where((s) => s.code == code).firstOrNull;

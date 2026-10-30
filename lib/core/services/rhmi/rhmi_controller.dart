@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../bluetooth/vu/its_link.dart';
+import '../../localization/localization.dart';
 import '../bluetooth_service.dart';
 import '../kline_protocol.dart';
 import 'manual_entry.dart';
@@ -42,6 +43,19 @@ class RhmiController extends ChangeNotifier {
 
   /// Set when the unit answered the current action negatively.
   bool _refused = false;
+
+  /// Set when nothing usable came back for the current action, or the
+  /// channel would not open - neither the unit's yes nor its no.
+  bool _failedFlag = false;
+
+  static String _t(String key, [Map<String, Object?> args = const {}]) =>
+      AppLocalizations.text(key, args);
+
+  /// A message for an outcome that is a failure rather than an answer.
+  String _fail(String key, [Map<String, Object?> args = const {}]) {
+    _failedFlag = true;
+    return _t(key, args);
+  }
 
   void _report(String text, RhmiOutcomeKind kind) {
     message = text;
@@ -101,45 +115,34 @@ class RhmiController extends ChangeNotifier {
   Future<void> _run(String what, Future<String> Function(ItsLink) block) async {
     final link = _link;
     if (link == null) {
-      _report("Bir ATC 8256'ya bağlı değil.", RhmiOutcomeKind.notSent);
+      _report(_t('rhmi.notConnected'), RhmiOutcomeKind.notSent);
       return;
     }
     if (busy != null) return;
 
     busy = what;
     _refused = false;
+    _failedFlag = false;
     message = null;
     notifyListeners();
 
     String outcome;
     try {
       if (!link.isOpen && !await link.open()) {
-        outcome =
-            'Diagnostik kanalı açılamadı: takograf reddetti ya da yanıt '
-            'vermedi. Ön konektör kullanımda olabilir.';
+        outcome = _fail('rhmi.channelFailed');
       } else {
         outcome = await block(link);
       }
     } catch (e) {
-      outcome = 'Başarısız: $e';
+      outcome = _fail('rhmi.failed', {'error': e});
     }
     debugPrint('RHMI: $what -> $outcome');
     busy = null;
     _report(
       outcome,
-      _refused || _failed(outcome)
-          ? RhmiOutcomeKind.refused
-          : RhmiOutcomeKind.done,
+      _refused || _failedFlag ? RhmiOutcomeKind.refused : RhmiOutcomeKind.done,
     );
   }
-
-  /// The outcomes that are neither the unit's yes nor its no - nothing came
-  /// back, or the channel would not open.
-  static bool _failed(String outcome) =>
-      outcome.startsWith('Yanıt yok') ||
-      outcome.startsWith('Başarısız') ||
-      outcome.contains('açılamadı') ||
-      outcome.contains('okunamadı');
 
   /// The same, for requests that need an identifier to sign with.
   Future<void> _signed(
@@ -154,7 +157,7 @@ class RhmiController extends ChangeNotifier {
         : await RhmiPairingStore.instance.get(device, asClient ?? client);
     if (pairing == null) {
       _report(
-        '${Rhmi.clientName(asClient ?? client)} eşleştirilmemiş.',
+        _t('rhmi.notPaired', {'client': Rhmi.clientName(asClient ?? client)}),
         RhmiOutcomeKind.notSent,
       );
       return;
@@ -178,12 +181,10 @@ class RhmiController extends ChangeNotifier {
 
   String? _sessionNotOpen() => switch (sessionStatus) {
     RhmiSessionStatus.open => null,
-    RhmiSessionStatus.closedUserDecisionPending =>
-      'Oturum bekliyor: takograf ekranındaki soruyu yanıtlayın.',
-    RhmiSessionStatus.closedUserRejected =>
-      'Bir kullanıcı oturumu reddetti. Oturumu kapatıp yeniden açın.',
-    null => 'Oturum durumu bilinmiyor: önce oturumu açın.',
-    final s => 'Oturum açık değil (${s.label}). Önce oturumu açın.',
+    RhmiSessionStatus.closedUserDecisionPending => _t('rhmi.sessionPending'),
+    RhmiSessionStatus.closedUserRejected => _t('rhmi.sessionRejected'),
+    null => _t('rhmi.sessionUnknown'),
+    final s => _t('rhmi.sessionNotOpen', {'status': s.label}),
   };
 
   Future<List<int>?> _request(
@@ -215,23 +216,24 @@ class RhmiController extends ChangeNotifier {
   static String _hex2(int v) =>
       '0x${v.toRadixString(16).padLeft(2, '0').toUpperCase()}';
 
-  String _negative(List<int> r) {
+  /// The refusal itself: the unit's code, by its name.
+  String _refusal(List<int> r) {
     _refused = true;
     final nrc = _nrc(r);
-    final base =
-        'Reddedildi: ${RdbiResponseParser.describeNrc(nrc)} (${_hex2(nrc)})';
-    return switch (nrc) {
-      0x35 =>
-        '$base\nTakograf bu telefonun kimliğini tanımıyor: eşleştirme '
-            'kaybolmuş ya da yuvadaki kart değişmiş. Yeniden eşleştirin.',
-      0x37 =>
-        '$base\nYanlış imzalı bir istek nedeniyle takograf 10 sn boyunca RHMI '
-            'isteklerini reddediyor. Bekleyip tekrar deneyin.',
+    return _t('rhmi.refused', {
+      'nrc': RdbiResponseParser.describeNrc(nrc),
+      'code': _hex2(nrc),
+    });
+  }
+
+  String _negative(List<int> r) {
+    final base = _refusal(r);
+    return switch (_nrc(r)) {
+      0x35 => '$base\n${_t('rhmi.nrc35')}',
+      0x37 => '$base\n${_t('rhmi.nrc37')}',
       0x31 =>
-        '$base\nGenellikle saat farkı: takograf ve telefon saati '
-            '${Rhmi.timestampToleranceSeconds} sn\'den fazla farklı olabilir.',
-      0x21 =>
-        '$base\nTakografta başka bir RHMI işlemi sürüyor, tekrar deneyin.',
+        '$base\n${_t('rhmi.nrc31', {'seconds': Rhmi.timestampToleranceSeconds})}',
+      0x21 => '$base\n${_t('rhmi.nrc21')}',
       _ => base,
     };
   }
@@ -265,15 +267,15 @@ class RhmiController extends ChangeNotifier {
     return offset;
   }
 
-  Future<void> checkClocks() => _run('Takograf saati okunuyor', (link) async {
+  Future<void> checkClocks() => _run(_t('rhmi.busyClock'), (link) async {
     final drift = await _readClockOffset(link);
-    if (drift == null) return 'Takograf saati okunamadı.';
-    final dir = drift >= 0 ? 'ileride' : 'geride';
-    final abs = drift.abs();
-    return abs <= Rhmi.timestampToleranceSeconds
-        ? 'Takograf saati telefondan $abs sn $dir; tolerans içinde.'
-        : 'Takograf saati telefondan $abs sn $dir; tolerans dışında. İstekler '
-              'takograf saatiyle imzalanacak.';
+    if (drift == null) return _fail('rhmi.clockUnreadable');
+    final ahead = drift >= 0;
+    final within = drift.abs() <= Rhmi.timestampToleranceSeconds;
+    final key = ahead
+        ? (within ? 'rhmi.clockAheadOk' : 'rhmi.clockAheadOut')
+        : (within ? 'rhmi.clockBehindOk' : 'rhmi.clockBehindOut');
+    return _t(key, {'seconds': drift.abs()});
   });
 
   // ---------------------------------------------------------------------
@@ -283,22 +285,22 @@ class RhmiController extends ChangeNotifier {
   /// PairRHMIclient. The unit draws a fresh identifier, returns it -
   /// obfuscated unless it is unactivated or in calibration mode - and shows
   /// a token on its display, so somebody has to be standing at the vehicle.
-  Future<void> pairClient() => _run('Eşleştiriliyor', (link) async {
+  Future<void> pairClient() => _run(_t('rhmi.busyPairing'), (link) async {
     final r = await _request(
       link,
       Rhmi.routine(Rhmi.routineStart, Rhmi.ridPairClient, [client]),
     );
-    if (r == null) return 'Yanıt yok.';
+    if (r == null) return _fail('rhmi.noAnswer');
     if (_isNegative(r)) return _negative(r);
     final pairing = Rhmi.parsePairingResponse(_data(r));
-    if (pairing == null) return 'Eşleştirme yanıtı okunamadı.';
+    if (pairing == null) return _fail('rhmi.pairingUnreadable');
 
     if (pairing.isPlain) {
       await _store(client, pairing.transmittedSessionId);
-      return 'Eşleştirildi (açık aktarım, kod gerekmedi).';
+      return _t('rhmi.pairedPlain');
     }
     awaitingToken = pairing;
-    return 'Takograf ekranındaki 8 haneli kodu girin.';
+    return _t('rhmi.enterToken');
   });
 
   /// The second half of an obfuscated pairing: the token recovers the
@@ -309,25 +311,25 @@ class RhmiController extends ChangeNotifier {
     if (pairing == null) return;
     final token = Rhmi.tokenFromDigits(digits);
     if (token == null) {
-      message = 'Kod 8 rakamdan oluşur.';
+      message = _t('rhmi.tokenDigits');
       notifyListeners();
       return;
     }
     final sessionId = Rhmi.deobfuscate(pairing.transmittedSessionId, token);
     if (Rhmi.transportChecksum(sessionId, token) != pairing.transportChecksum) {
-      message = 'Kod yanlış (doğrulama tutmadı). Tekrar girin.';
+      message = _t('rhmi.tokenWrong');
       notifyListeners();
       return;
     }
     awaitingToken = null;
     await _store(pairing.client, sessionId);
-    message = '${Rhmi.clientName(pairing.client)} eşleştirildi.';
+    message = _t('rhmi.paired', {'client': Rhmi.clientName(pairing.client)});
     notifyListeners();
   }
 
   void cancelToken() {
     awaitingToken = null;
-    message = 'Eşleştirme iptal edildi.';
+    message = _t('rhmi.pairingCancelled');
     notifyListeners();
   }
 
@@ -338,9 +340,7 @@ class RhmiController extends ChangeNotifier {
     pairings = await RhmiPairingStore.instance.all(device);
     verifiedClients = {...verifiedClients}..remove(client);
     awaitingToken = null;
-    message =
-        'Kimlik bu telefondan silindi. Takograf kendi kopyasını sonraki '
-        'eşleştirmeye kadar tutar.';
+    message = _t('rhmi.pairingForgotten');
     notifyListeners();
   }
 
@@ -355,27 +355,27 @@ class RhmiController extends ChangeNotifier {
   /// VerifyRHMIsessionId: whether the unit still holds the identifier this
   /// phone has. Run after a power cycle it proves the identifier reached
   /// flash.
-  Future<void>
-  verifySessionId() => _signed('Kimlik doğrulanıyor', needsSession: false, (
-    link,
-    pairing,
-  ) async {
-    final r = await _request(
-      link,
-      _signedRoutine(pairing, Rhmi.routineStart, Rhmi.ridVerifySessionId, [
-        client,
-      ]),
-    );
-    if (r == null) return 'Yanıt yok.';
-    if (_isNegative(r)) {
-      verifiedClients = {...verifiedClients}..remove(client);
-      return _nrc(r) == 0x22
-          ? '${_negative(r)}\nTakograf menüsü kullanımda; menüden çıkıp tekrar deneyin.'
-          : _negative(r);
-    }
-    verifiedClients = {...verifiedClients, client};
-    return 'Kimlik doğrulandı: takograf aynı kimliği tutuyor.';
-  });
+  Future<void> verifySessionId() => _signed(
+    _t('rhmi.busyVerify'),
+    needsSession: false,
+    (link, pairing) async {
+      final r = await _request(
+        link,
+        _signedRoutine(pairing, Rhmi.routineStart, Rhmi.ridVerifySessionId, [
+          client,
+        ]),
+      );
+      if (r == null) return _fail('rhmi.noAnswer');
+      if (_isNegative(r)) {
+        verifiedClients = {...verifiedClients}..remove(client);
+        return _nrc(r) == 0x22
+            ? '${_negative(r)}\n${_t('rhmi.menuInUseRetry')}'
+            : _negative(r);
+      }
+      verifiedClients = {...verifiedClients, client};
+      return _t('rhmi.verified');
+    },
+  );
 
   // ---------------------------------------------------------------------
   // Session
@@ -384,30 +384,29 @@ class RhmiController extends ChangeNotifier {
   /// OpenRHMIsession, then wait for the card holders to answer on the unit.
   /// A refusal the unit still holds from earlier is cleared and asked again
   /// once - it otherwise answers Open positively without asking anyone.
-  Future<void> openSession() =>
-      _run('Oturum açılıyor — takograf ekranında onaylayın', (link) async {
-        final problem = await _requestOpen(link);
-        if (problem != null) return problem;
+  Future<void> openSession() => _run(_t('rhmi.busyOpen'), (link) async {
+    final problem = await _requestOpen(link);
+    if (problem != null) return problem;
 
-        final first = await _readSessionStatus(link);
-        if (first == null) return 'Durum okunamadı.';
-        if (first == RhmiSessionStatus.closedUserRejected) {
-          await _request(
-            link,
-            Rhmi.routine(Rhmi.routineStart, Rhmi.ridCloseSession),
-          );
-          final again = await _requestOpen(link);
-          if (again != null) return again;
-        }
-        return _waitForDecision(link);
-      });
+    final first = await _readSessionStatus(link);
+    if (first == null) return _fail('rhmi.statusUnreadable');
+    if (first == RhmiSessionStatus.closedUserRejected) {
+      await _request(
+        link,
+        Rhmi.routine(Rhmi.routineStart, Rhmi.ridCloseSession),
+      );
+      final again = await _requestOpen(link);
+      if (again != null) return again;
+    }
+    return _waitForDecision(link);
+  });
 
   Future<String?> _requestOpen(ItsLink link) async {
     final r = await _request(
       link,
       Rhmi.routine(Rhmi.routineStart, Rhmi.ridOpenSession),
     );
-    if (r == null) return 'Yanıt yok.';
+    if (r == null) return _fail('rhmi.noAnswer');
     return _isNegative(r) ? _negative(r) : null;
   }
 
@@ -427,37 +426,25 @@ class RhmiController extends ChangeNotifier {
   Future<String> _waitForDecision(ItsLink link) async {
     for (var i = 0; i < 45; i++) {
       final status = await _readSessionStatus(link);
-      if (status == null) return 'Durum okunamadı.';
+      if (status == null) return _fail('rhmi.statusUnreadable');
       if (status != RhmiSessionStatus.closedUserDecisionPending) {
         return _describeStatus(status);
       }
       await Future.delayed(const Duration(seconds: 2));
     }
-    return 'Bir buçuk dakikadır onay bekleniyor; takograf ekranında soru var mı?';
+    return _t('rhmi.waitTimeout');
   }
 
-  String _describeStatus(RhmiSessionStatus s) => switch (s) {
-    RhmiSessionStatus.open => 'Oturum açık.',
-    RhmiSessionStatus.closedOpenPossible => 'Oturum kapalı; açılabilir.',
-    RhmiSessionStatus.closedUserDecisionPending =>
-      'Takograf ekranındaki soruyu yanıtlayın.',
-    RhmiSessionStatus.closedUserRejected =>
-      'Reddedildi (ya da soru 25 sn içinde yanıtlanmadı). Kapatıp yeniden '
-          'açın ve takografta Evet deyin.',
-    RhmiSessionStatus.closedLocalHmiIsUsed =>
-      'Takograf menüsü kullanımda; menüden çıkıp yeniden açın.',
-    RhmiSessionStatus.closedGeneralConditionsNotMet =>
-      'Geçerli bir sürücü ya da atölye kartı hazır değil; kart doğrulanınca '
-          'yeniden açın.',
-  };
+  /// What to do about each state - `rhmi.status.<name>`.
+  String _describeStatus(RhmiSessionStatus s) => _t('rhmi.status.${s.name}');
 
   Future<void> refreshSessionStatus() =>
-      _run('Oturum durumu okunuyor', (link) async {
+      _run(_t('rhmi.busyStatus'), (link) async {
         final s = await _readSessionStatus(link);
-        return s == null ? 'Durum okunamadı.' : _describeStatus(s);
+        return s == null ? _fail('rhmi.statusUnreadable') : _describeStatus(s);
       });
 
-  Future<void> closeSession() => _run('Oturum kapatılıyor', (link) async {
+  Future<void> closeSession() => _run(_t('rhmi.busyClose'), (link) async {
     final r = await _request(
       link,
       Rhmi.routine(Rhmi.routineStart, Rhmi.ridCloseSession),
@@ -465,8 +452,8 @@ class RhmiController extends ChangeNotifier {
     sessionStatus = null;
     period = null;
     cardType = null;
-    if (r == null) return 'Yanıt yok.';
-    return _isNegative(r) ? _negative(r) : 'Oturum kapatıldı.';
+    if (r == null) return _fail('rhmi.noAnswer');
+    return _isNegative(r) ? _negative(r) : _t('rhmi.sessionClosed');
   });
 
   // ---------------------------------------------------------------------
@@ -474,7 +461,7 @@ class RhmiController extends ChangeNotifier {
   // ---------------------------------------------------------------------
 
   Future<void> getInsertedCardType(int slot) =>
-      _signed('Kart tipi okunuyor', (link, pairing) async {
+      _signed(_t('rhmi.busyCardType'), (link, pairing) async {
         final r = await _request(
           link,
           _signedRoutine(
@@ -484,28 +471,28 @@ class RhmiController extends ChangeNotifier {
             [Rhmi.optionGetInsertedCardType, Rhmi.cardSlotNumber(slot)],
           ),
         );
-        if (r == null) return 'Yanıt yok.';
+        if (r == null) return _fail('rhmi.noAnswer');
         if (_isNegative(r)) return _negative(r);
         final d = _data(r);
-        if (d.length < 6) return 'Yanıt kısa.';
+        if (d.length < 6) return _t('rhmi.shortAnswer');
         cardType = d[5];
         return switch (d[5]) {
-          Rhmi.cardTypeDriver => 'Sürücü kartı',
-          Rhmi.cardTypeWorkshop => 'Atölye kartı',
-          final t => 'Kart tipi ${_hex2(t)}',
+          Rhmi.cardTypeDriver => _t('rhmi.cardDriver'),
+          Rhmi.cardTypeWorkshop => _t('rhmi.cardWorkshop'),
+          final t => _t('rhmi.cardOther', {'code': _hex2(t)}),
         };
       });
 
   /// GetManualEntryPeriod. Only answered while the card insertion procedure
   /// is running on the unit - the only time the period exists.
   Future<void> getPeriod(int slot) =>
-      _signed('Manuel giriş dönemi okunuyor', (link, pairing) async {
+      _signed(_t('rhmi.busyPeriod'), (link, pairing) async {
         final p = await _readPeriod(link, pairing, slot);
         if (p is String) return p;
         final usable = _usableMinutes(p as ManualEntryPeriod);
         return usable < 1
-            ? 'Dönem bir dakikadan kısa; girilecek bir şey yok.'
-            : 'Dönem $usable dakika.';
+            ? _t('rhmi.periodTooShort')
+            : _t('rhmi.periodMinutes', {'minutes': usable});
       });
 
   Future<Object> _readPeriod(
@@ -520,16 +507,14 @@ class RhmiController extends ChangeNotifier {
         Rhmi.cardSlotNumber(slot),
       ]),
     );
-    if (r == null) return 'Yanıt yok.';
+    if (r == null) return _fail('rhmi.noAnswer');
     if (_isNegative(r)) {
       return _nrc(r) == 0x22
-          ? '${_negative(r)}\nTakograf manuel giriş beklemiyor: yuva $slot için '
-                'kart takma işlemi sürmüyor. Kartı takıp takograf boşluğu '
-                'sorarken tekrar deneyin.'
+          ? '${_negative(r)}\n${_t('rhmi.periodNotExpected', {'slot': slot})}'
           : _negative(r);
     }
     final p = Rhmi.parseManualEntryPeriod(_data(r));
-    if (p == null) return 'Dönem yanıtı okunamadı.';
+    if (p == null) return _fail('rhmi.periodUnreadable');
     period = p;
     return p;
   }
@@ -548,10 +533,10 @@ class RhmiController extends ChangeNotifier {
     List<ManualActivity> activities,
     List<ManualPlace> places, {
     required void Function(List<ManualActivity>, List<ManualPlace>) onRebased,
-  }) => _signed('Manuel giriş gönderiliyor', (link, pairing) async {
-    if (activities.isEmpty) return 'En az bir aktivite ekleyin.';
+  }) => _signed(_t('rhmi.busySendEntry'), (link, pairing) async {
+    if (activities.isEmpty) return _t('rhmi.entryNeedsActivity');
     final previous = period;
-    if (previous == null) return 'Önce dönemi okuyun.';
+    if (previous == null) return _t('rhmi.entryReadPeriodFirst');
 
     final p = await _readPeriod(link, pairing, slot);
     if (p is String) return p;
@@ -577,8 +562,10 @@ class RhmiController extends ChangeNotifier {
 
     final invalid = ManualEntry.validate(moved, movedPlaces, fresh);
     if (invalid != null) {
-      return 'Yeni dönem ${_usableMinutes(fresh)} dakika ve hazırlanan giriş '
-          'sığmıyor: $invalid.';
+      return _t('rhmi.entryDoesNotFit', {
+        'minutes': _usableMinutes(fresh),
+        'reason': invalid,
+      });
     }
 
     final r = await _request(
@@ -588,34 +575,30 @@ class RhmiController extends ChangeNotifier {
         ...ManualEntry.build(moved, movedPlaces),
       ]),
     );
-    if (r == null) return 'Yanıt yok.';
+    if (r == null) return _fail('rhmi.noAnswer');
     if (!_isNegative(r)) {
-      return 'Kabul edildi: ${moved.length} aktivite, ${movedPlaces.length} yer.';
+      return _t('rhmi.entryAccepted', {
+        'activities': moved.length,
+        'places': movedPlaces.length,
+      });
     }
     return switch (_nrc(r)) {
-      0x22 =>
-        '${_negative(r)}\nTakograf artık giriş almıyor: kart takıldıktan '
-            'sonraki bir dakika geçti, ya da takograf ekranından yanıt '
-            'verilmeye başlandı. Kartı çıkarıp tekrar takın ve ilk dakikada '
-            'gönderin.',
-      0x31 =>
-        'Reddedildi: requestOutOfRange (0x31)\nGiriş takografın kabul etmediği '
-            'bir şey içeriyor: ülkesiz yer, dönemin son dakikasında bitiş '
-            'yeri, sırasız yerler ya da dönem dışında aktivite.',
+      0x22 => '${_negative(r)}\n${_t('rhmi.entryClosed')}',
+      0x31 => '${_refusal(r)}\n${_t('rhmi.entryOutOfRange')}',
       _ => _negative(r),
     };
   });
 
   Future<void> stopManualEntry(int slot) =>
-      _signed('Manuel giriş bitiriliyor', (link, pairing) async {
+      _signed(_t('rhmi.busyStopEntry'), (link, pairing) async {
         final r = await _request(
           link,
           _signedRoutine(pairing, Rhmi.routineStop, Rhmi.ridManualEntry, [
             Rhmi.cardSlotNumber(slot),
           ]),
         );
-        if (r == null) return 'Yanıt yok.';
-        return _isNegative(r) ? _negative(r) : 'Manuel giriş bitirildi.';
+        if (r == null) return _fail('rhmi.noAnswer');
+        return _isNegative(r) ? _negative(r) : _t('rhmi.entryStopped');
       });
 
   // ---------------------------------------------------------------------
@@ -624,31 +607,35 @@ class RhmiController extends ChangeNotifier {
 
   Future<void> enterPlace(int slot, int entryType, int country, int region) =>
       _userEntry(
-        entryType == Rhmi.placeBegin ? 'Başlangıç yeri' : 'Bitiş yeri',
+        _t(
+          entryType == Rhmi.placeBegin
+              ? 'rhmi.whatPlaceBegin'
+              : 'rhmi.whatPlaceEnd',
+        ),
         Rhmi.ridEntryOfPlace,
         [Rhmi.cardSlotNumber(slot), entryType, country, region],
-        "Yer VU'da ve yuva $slot kartında kaydedildi.",
+        _t('rhmi.placeSaved', {'slot': slot}),
       );
 
   Future<void> enterSpecificCondition(int type) => _userEntry(
-    'Özel durum',
+    _t('rhmi.whatCondition'),
     Rhmi.ridEntryOfSpecificCondition,
     [type],
-    "Özel durum VU'da ve takılı kartlarda kaydedildi.",
+    _t('rhmi.conditionSaved'),
   );
 
   Future<void> setActivity(int slot, int activity) => _userEntry(
-    'Aktivite',
+    _t('rhmi.whatActivity'),
     Rhmi.ridSetActivity,
     [Rhmi.cardSlotNumber(slot), activity],
-    "Aktivite değiştirildi; VU'da ve kartta kaydedildi.",
+    _t('rhmi.activitySaved'),
   );
 
   Future<void> loadUnload(int operation) => _userEntry(
-    'Yükleme/boşaltma',
+    _t('rhmi.whatLoad'),
     Rhmi.ridLoadUnload,
     [operation],
-    "Yükleme/boşaltma VU'da kaydedildi.",
+    _t('rhmi.loadSaved'),
   );
 
   Future<void> _userEntry(
@@ -656,17 +643,15 @@ class RhmiController extends ChangeNotifier {
     int routineId,
     List<int> body,
     String accepted,
-  ) => _signed('$what gönderiliyor', (link, pairing) async {
+  ) => _signed(_t('rhmi.busySending', {'what': what}), (link, pairing) async {
     final r = await _request(
       link,
       _signedRoutine(pairing, Rhmi.routineStart, routineId, body),
     );
-    if (r == null) return 'Yanıt yok.';
+    if (r == null) return _fail('rhmi.noAnswer');
     if (!_isNegative(r)) return accepted;
     return _nrc(r) == 0x22
-        ? '${_negative(r)}\nŞu an mümkün değil: yuvada kart yok, kart '
-              'takılıyor/çıkarılıyor, araç hareket halinde, ya da aynı türden '
-              'bir giriş bu dakika zaten yapıldı.'
+        ? '${_negative(r)}\n${_t('rhmi.entryNotPossible')}'
         : _negative(r);
   });
 
@@ -683,7 +668,7 @@ class RhmiController extends ChangeNotifier {
     int region,
     int shiftPrintout,
     bool technicalPrintout,
-  ) => _signed('Kart çıkarılıyor', (link, pairing) async {
+  ) => _signed(_t('rhmi.busyWithdraw'), (link, pairing) async {
     final r = await _request(
       link,
       _signedRoutine(pairing, Rhmi.routineStart, Rhmi.ridCardWithdrawal, [
@@ -694,18 +679,12 @@ class RhmiController extends ChangeNotifier {
         technicalPrintout ? 1 : 0,
       ]),
     );
-    if (r == null) return 'Yanıt yok.';
+    if (r == null) return _fail('rhmi.noAnswer');
     if (_isNegative(r)) {
       return switch (_nrc(r)) {
-        0x21 =>
-          '${_negative(r)}\nŞu an mümkün değil: diğer kart takılıyor/çıkarılıyor, '
-              'gece yarısı işlemleri ya da yazıcı kullanımda.',
-        0x22 =>
-          '${_negative(r)}\nMümkün değil: yuvada kart yok ya da kart işleniyor, '
-              'araç hareket halinde, ya da çıktı istendiyse kağıt yok.',
-        0x31 =>
-          '${_negative(r)}\nAralık dışı: ülke yok, bölge ülkeye uymuyor ya da '
-              'saat farkı fazla.',
+        0x21 => '${_negative(r)}\n${_t('rhmi.withdraw21')}',
+        0x22 => '${_negative(r)}\n${_t('rhmi.withdraw22')}',
+        0x31 => '${_negative(r)}\n${_t('rhmi.withdraw31')}',
         _ => _negative(r),
       };
     }
@@ -714,47 +693,49 @@ class RhmiController extends ChangeNotifier {
       await Future.delayed(const Duration(seconds: 2));
       final s = await _readSessionStatus(link);
       if (s != null && s != RhmiSessionStatus.open) {
-        return 'Kart çıkarıldı; oturum kapandı. Yuva $slot kimliği kartla '
-            'gitti: sonraki takmada yeniden eşleştirin.';
+        return _t('rhmi.withdrawn', {'slot': slot});
       }
     }
-    return 'Çıkarma kabul edildi, ama oturum üç dakikadır açık: kart henüz '
-        'çıkmamış olabilir (çıktı, kağıt bitti).';
+    return _t('rhmi.withdrawPending');
   });
 
   // ---------------------------------------------------------------------
   // Warnings, F202
   // ---------------------------------------------------------------------
 
-  Future<void> readWarnings() => _signed('Uyarılar okunuyor', (link, p) async {
-    final list = await _readWarningList(link, p);
-    return list == null ? 'Uyarılar okunamadı.' : _describeWarnings(list);
-  });
+  Future<void> readWarnings() =>
+      _signed(_t('rhmi.busyWarnings'), (link, p) async {
+        final list = await _readWarningList(link, p);
+        return list == null
+            ? _fail('rhmi.warningsUnreadable')
+            : _describeWarnings(list);
+      });
 
-  Future<void> acknowledgeWarning(int index) => _signed('Uyarı onaylanıyor', (
-    link,
-    pairing,
-  ) async {
-    final r = await _request(
-      link,
-      _signedRoutine(pairing, Rhmi.routineStart, Rhmi.ridAcknowledgeWarnings, [
-        (index >> 8) & 0xFF,
-        index & 0xFF,
-      ]),
-    );
-    if (r == null) return 'Yanıt yok.';
-    if (_isNegative(r)) {
-      return switch (_nrc(r)) {
-        0x21 => '${_negative(r)}\nÖnceki onay sürüyor, tekrar deneyin.',
-        0x31 => '${_negative(r)}\nUyarı artık takografta yok.',
-        _ => _negative(r),
-      };
-    }
-    // The unit acknowledges on its keypad thread, a moment after.
-    await Future.delayed(const Duration(milliseconds: 500));
-    final list = await _readWarningList(link, pairing);
-    return 'Uyarı onaylandı.${list == null ? '' : '\n${_describeWarnings(list)}'}';
-  });
+  Future<void> acknowledgeWarning(int index) =>
+      _signed(_t('rhmi.busyAck'), (link, pairing) async {
+        final r = await _request(
+          link,
+          _signedRoutine(
+            pairing,
+            Rhmi.routineStart,
+            Rhmi.ridAcknowledgeWarnings,
+            [(index >> 8) & 0xFF, index & 0xFF],
+          ),
+        );
+        if (r == null) return _fail('rhmi.noAnswer');
+        if (_isNegative(r)) {
+          return switch (_nrc(r)) {
+            0x21 => '${_negative(r)}\n${_t('rhmi.ack21')}',
+            0x31 => '${_negative(r)}\n${_t('rhmi.ack31')}',
+            _ => _negative(r),
+          };
+        }
+        // The unit acknowledges on its keypad thread, a moment after.
+        await Future.delayed(const Duration(milliseconds: 500));
+        final list = await _readWarningList(link, pairing);
+        final done = _t('rhmi.acknowledged');
+        return list == null ? done : '$done\n${_describeWarnings(list)}';
+      });
 
   Future<List<VuWarning>?> _readWarningList(
     ItsLink link,
@@ -796,15 +777,15 @@ class RhmiController extends ChangeNotifier {
   }
 
   String _describeWarnings(List<VuWarning> list) => list.isEmpty
-      ? 'Takografta bekleyen uyarı yok.'
-      : '${list.length} uyarı bekliyor.';
+      ? _t('rhmi.noWarnings')
+      : _t('rhmi.warningsPending', {'count': list.length});
 
   // ---------------------------------------------------------------------
   // Printout, F210
   // ---------------------------------------------------------------------
 
   Future<void> getPrintoutPeriod(int type) =>
-      _signed('Çıktı günleri okunuyor', (link, pairing) async {
+      _signed(_t('rhmi.busyPrintDays'), (link, pairing) async {
         final r = await _request(
           link,
           _signedRoutine(pairing, Rhmi.routineStart, Rhmi.ridPrintout, [
@@ -812,23 +793,26 @@ class RhmiController extends ChangeNotifier {
             type,
           ]),
         );
-        if (r == null) return 'Yanıt yok.';
+        if (r == null) return _fail('rhmi.noAnswer');
         if (_isNegative(r)) return _printoutRefused(r);
         final d = _data(r);
-        if (d.length < 13) return 'Yanıt kısa.';
+        if (d.length < 13) return _t('rhmi.shortAnswer');
         final oldest = Rhmi.readU32(d, 5), newest = Rhmi.readU32(d, 9);
         printoutPeriod = PrintoutPeriod(type, oldest, newest);
-        if (!Rhmi.printoutNeedsDate(type)) return 'Bu çıktı tarih istemez.';
-        if (newest == 0) return 'Yazdırılacak gün yok.';
-        return 'Günler: ${_utcDay(oldest)} – ${_utcDay(newest)}';
+        if (!Rhmi.printoutNeedsDate(type)) return _t('rhmi.printNoDate');
+        if (newest == 0) return _t('rhmi.printNoDays');
+        return _t('rhmi.printDays', {
+          'from': _utcDay(oldest),
+          'to': _utcDay(newest),
+        });
       });
 
   /// StartPrintout, then the status until it has ended - the unit answers
   /// the start at once and prints afterwards.
   Future<void> startPrintout(int type, int? daySeconds) =>
-      _signed('Yazdırılıyor', (link, pairing) async {
+      _signed(_t('rhmi.busyPrinting'), (link, pairing) async {
         if (Rhmi.printoutNeedsDate(type) && daySeconds == null) {
-          return 'Önce bir gün seçin.';
+          return _t('rhmi.printPickDay');
         }
         final r = await _request(
           link,
@@ -840,26 +824,28 @@ class RhmiController extends ChangeNotifier {
             0x00,
           ]),
         );
-        if (r == null) return 'Yanıt yok.';
+        if (r == null) return _fail('rhmi.noAnswer');
         if (_isNegative(r)) return _printoutRefused(r);
 
         // A paper end can hold a printout well over a minute.
         for (var i = 0; i < 150; i++) {
           await Future.delayed(const Duration(seconds: 2));
           final status = await _readPrintoutStatus(link, pairing);
-          if (status == null) return 'Başladı, ama durum okunamadı.';
+          if (status == null) return _fail('rhmi.printStartedUnknown');
           if (status.$1 != Rhmi.printoutOngoing) {
             return _describePrintout(status);
           }
         }
-        return 'Başladı; beş dakikadır yazdırıyor.';
+        return _t('rhmi.printLong');
       });
 
-  Future<void> printoutStatus() =>
-      _signed('Çıktı durumu okunuyor', (link, pairing) async {
-        final s = await _readPrintoutStatus(link, pairing);
-        return s == null ? 'Durum okunamadı.' : _describePrintout(s);
-      });
+  Future<void> printoutStatus() => _signed(_t('rhmi.busyPrintStatus'), (
+    link,
+    pairing,
+  ) async {
+    final s = await _readPrintoutStatus(link, pairing);
+    return s == null ? _fail('rhmi.statusUnreadable') : _describePrintout(s);
+  });
 
   Future<(int, int, int)?> _readPrintoutStatus(
     ItsLink link,
@@ -883,28 +869,21 @@ class RhmiController extends ChangeNotifier {
   String _describePrintout((int, int, int) s) {
     final (info, type, end) = s;
     final what = type == Rhmi.printoutTypeNotRemote
-        ? 'Takografta başlatılan çıktı'
+        ? _t('rhmi.printFromUnit')
         : Rhmi.printoutName(type);
     return switch (info) {
-      Rhmi.printoutNormalExit => '$what tamamlandı.',
-      Rhmi.printoutAbnormalExit =>
-        '$what tamamlanmadı: yazıcı sıcak, düşük voltaj, kağıt bitti, iptal '
-            'ya da yazıcı arızası.',
-      Rhmi.printoutOngoing => '$what yazdırılıyor.',
-      Rhmi.printoutNoStatus => 'Takograf açıldığından beri çıktı yok.',
-      _ => 'Bilinmeyen çıktı durumu ${_hex2(info)} ($end).',
+      Rhmi.printoutNormalExit => _t('rhmi.printDone', {'what': what}),
+      Rhmi.printoutAbnormalExit => _t('rhmi.printAbnormal', {'what': what}),
+      Rhmi.printoutOngoing => _t('rhmi.printOngoing', {'what': what}),
+      Rhmi.printoutNoStatus => _t('rhmi.printNone'),
+      _ => _t('rhmi.printUnknownStatus', {'code': _hex2(info), 'end': end}),
     };
   }
 
   String _printoutRefused(List<int> r) => switch (_nrc(r)) {
-    0x21 => '${_negative(r)}\nTakografta bir çıktı zaten sürüyor.',
-    0x22 =>
-      '${_negative(r)}\nŞu an mümkün değil: oturum kapalı, ilgili yuvada '
-          'geçerli kart yok, kart takma işlemi bitmemiş, araç hareket halinde '
-          'ya da kağıt yok.',
-    0x31 =>
-      '${_negative(r)}\nO gün için kayıt yok, bu tip yazdırılmıyor ya da saat '
-          'farkı fazla.',
+    0x21 => '${_negative(r)}\n${_t('rhmi.print21')}',
+    0x22 => '${_negative(r)}\n${_t('rhmi.print22')}',
+    0x31 => '${_negative(r)}\n${_t('rhmi.print31')}',
     _ => _negative(r),
   };
 

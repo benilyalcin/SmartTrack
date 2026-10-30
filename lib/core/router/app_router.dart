@@ -7,8 +7,6 @@ import '../../features/alerts/alerts_page.dart';
 import '../../features/analysis/analysis_page.dart';
 import '../../features/onboarding/tachograph_select_page.dart';
 import '../../features/its_calibration/its_calibration_page.dart';
-import '../../features/its_download/its_download_page.dart';
-import '../../features/rhmi/rhmi_page.dart';
 import '../../features/vu_tools/vu_tools_page.dart';
 import '../../features/dashboard/dashboard_page.dart';
 import '../../features/dashboard/driver_mode_page.dart';
@@ -69,22 +67,15 @@ final goRouter = GoRouter(
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: AlertsPage()),
         ),
-        // The ATC 8256's tools: one tab, each tool a page under it.
+        // The ATC 8256's tools share one page; old category links return here.
         GoRoute(
           path: '/vu',
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: VuToolsPage()),
           routes: [
-            GoRoute(
-              path: 'rhmi',
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: RhmiPage()),
-            ),
-            GoRoute(
-              path: 'download',
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: ItsDownloadPage()),
-            ),
+            GoRoute(path: 'rhmi', redirect: (context, state) => '/vu'),
+            GoRoute(path: 'download', redirect: (context, state) => '/vu'),
+            GoRoute(path: 'advanced', redirect: (context, state) => '/vu'),
             GoRoute(
               path: 'calibration',
               pageBuilder: (context, state) =>

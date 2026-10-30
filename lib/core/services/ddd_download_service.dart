@@ -154,6 +154,7 @@ class DddDownloadService {
             sendAndReceive,
             activityRangeStart,
             activityRangeEnd,
+            downloadable: downloadablePeriod(overview),
             onProgress: safeProgress,
           );
         }
@@ -199,11 +200,47 @@ class DddDownloadService {
     }
   }
 
+  /// StartCommunication, the diagnostic session and RequestUpload again,
+  /// after the unit has dropped the download session. True when it takes
+  /// the upload request.
+  Future<bool> _reopenSession(SendAndReceive sendAndReceive) async {
+    debugPrint('DDP: oturum kapanmış görünüyor, yeniden açılıyor.');
+    await sendAndReceive(
+      KLineFrame.startCommunication,
+      waitMs: _maxSpecWaitMs,
+      label: 'DDP-Reopen-StartComm',
+      prefixOverride: 0x0D,
+    );
+    final session = await sendAndReceive(
+      KLineFrame.sessionStandard,
+      waitMs: _maxSpecWaitMs,
+      label: 'DDP-Reopen-Session',
+      prefixOverride: 0x0D,
+    );
+    if (session.isEmpty || RdbiResponseParser.isNegativeResponse(session)) {
+      return false;
+    }
+    final upload = await sendAndReceive(
+      KLineFrame.requestUpload,
+      waitMs: _maxSpecWaitMs,
+      label: 'DDP-Reopen-RequestUpload',
+      prefixOverride: 0x0D,
+    );
+    return CardDownloadResponseParser.isUploadRequestAccepted(upload);
+  }
+
   String _describeRejection(List<int> response) {
     final nrc = RdbiResponseParser.extractNrc(response);
     if (nrc == null) return 'NRC=? (ayrıştırılamadı)';
     return 'NRC=0x${nrc.toRadixString(16).padLeft(2, '0').toUpperCase()} (${RdbiResponseParser.describeNrc(nrc)})';
   }
+
+  /// The negative response code of the last request _drainTransferData
+  /// had refused, or null when it was not refused.
+  int? _lastRefusal;
+
+  /// Whether the last request _drainTransferData sent got no answer at all.
+  bool _lastUnanswered = false;
 
   Future<Uint8List?> _drainTransferData(
     SendAndReceive sendAndReceive,
@@ -211,13 +248,17 @@ class DddDownloadService {
     String label, {
     bool includeTrepHeader = false,
   }) async {
+    _lastRefusal = null;
+    _lastUnanswered = false;
     final resp = await sendAndReceive(
       requestFrame,
       waitMs: _maxSpecWaitMs,
       label: '$label-Req',
       prefixOverride: 0x0D,
     );
+    _lastUnanswered = resp.isEmpty;
     if (RdbiResponseParser.isNegativeResponse(resp)) {
+      _lastRefusal = RdbiResponseParser.extractNrc(resp);
       debugPrint('DDP: $label reddedildi — ${_describeRejection(resp)}.');
       return null;
     }
@@ -293,22 +334,58 @@ class DddDownloadService {
     }
   }
 
+  /// VuDownloadablePeriod of a Gen1 overview block (with its `76 01`
+  /// header): the first and the last moment the unit holds data for. Null
+  /// when the block is not there or does not hold a sensible period.
+  static ({DateTime first, DateTime last})? downloadablePeriod(
+    Uint8List? overview,
+  ) {
+    // Header, two certificates, VIN, registration, current time.
+    const at = 2 + 194 + 194 + 17 + 15 + 4;
+    if (overview == null || overview.length < at + 8) return null;
+    int u32(int i) =>
+        (overview[i] << 24) |
+        (overview[i + 1] << 16) |
+        (overview[i + 2] << 8) |
+        overview[i + 3];
+    final first = u32(at), last = u32(at + 4);
+    if (first == 0 || first == 0xFFFFFFFF || last == 0xFFFFFFFF) return null;
+    if (last < first) return null;
+    DateTime time(int s) =>
+        DateTime.fromMillisecondsSinceEpoch(s * 1000, isUtc: true);
+    return (first: time(first), last: time(last));
+  }
+
+  /// The days [start]..[end] (calendar days, either clock) one by one, as
+  /// the unit hands out activities a day at a time. Only the days inside
+  /// the [downloadable] period are asked - a unit in service since June has
+  /// nothing for the months before - and of a longer range the newest
+  /// [_activityProbeMaxDaysBack] days.
   Future<Uint8List?> _probeActivities(
     SendAndReceive sendAndReceive,
     DateTime start,
     DateTime end, {
+    ({DateTime first, DateTime last})? downloadable,
     void Function(String message)? onProgress,
   }) async {
-    final totalDays =
-        end.difference(DateTime(start.year, start.month, start.day)).inDays + 1;
-    final dayCount = totalDays.clamp(0, _activityProbeMaxDaysBack);
+    DateTime day(DateTime t) => DateTime.utc(t.year, t.month, t.day);
+    var from = day(start);
+    var to = day(end);
+    if (downloadable != null) {
+      final first = day(downloadable.first);
+      final last = day(downloadable.last);
+      if (from.isBefore(first)) from = first;
+      if (to.isAfter(last)) to = last;
+    }
+    final earliest = to.subtract(
+      const Duration(days: _activityProbeMaxDaysBack - 1),
+    );
+    if (from.isBefore(earliest)) from = earliest;
+    final dayCount = to.isBefore(from) ? 0 : to.difference(from).inDays + 1;
     final found = <int, Uint8List>{};
+    var reopened = false;
     for (var i = 0; i < dayCount; i++) {
-      final date = DateTime(
-        start.year,
-        start.month,
-        start.day,
-      ).add(Duration(days: i));
+      final date = from.add(Duration(days: i));
       final dateLabel =
           '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
       onProgress?.call(
@@ -327,7 +404,33 @@ class DddDownloadService {
               ? 'DDP-Activities-$dateLabel'
               : 'DDP-Activities-$dateLabel-retry$attempt',
         );
+        // dataNotAvailable is the unit's answer for a day with nothing
+        // recorded, not a failure: asking again only doubled the time a
+        // long range took. A lost or garbled answer is asked again.
+        if (_lastRefusal == 0xFA) break;
+        // Waiting out a silent unit already passed its session timeout:
+        // asking again in the same session would only wait again.
+        if (_lastUnanswered) break;
       }
+      // No answer at all: a unit left waiting longer than its P3 timeout
+      // closes the download session and stays silent to everything after,
+      // which cost two full waits on every remaining day. Open the session
+      // again once and ask this day again; if it stays silent, stop here
+      // and keep what came.
+      if (bytes == null && _lastUnanswered) {
+        // Reopened and silent again before a single answer: the line is
+        // gone, not just the session.
+        if (reopened || !await _reopenSession(sendAndReceive)) {
+          debugPrint(
+            'DDP: Takograf yanıt vermiyor, aktivite indirmesi $dateLabel gününde durduruldu.',
+          );
+          break;
+        }
+        reopened = true;
+        i--;
+        continue;
+      }
+      reopened = false;
       if (bytes != null && bytes.isNotEmpty) {
         debugPrint(
           'DDP: Activities verisi bulundu: $dateLabel (${bytes.length} byte).',

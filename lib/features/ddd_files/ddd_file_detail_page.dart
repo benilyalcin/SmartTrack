@@ -2071,12 +2071,13 @@ class _DddFileDetailPageState extends State<DddFileDetailPage> {
 
       try {
         await Printing.layoutPdf(onLayout: (_) async => bytes);
-        if (mounted)
+        if (mounted) {
           showAppSnackBar(
             context,
             _t('ddd.exportSuccess'),
             type: AppSnackBarType.success,
           );
+        }
       } catch (e, st) {
         debugPrint('Printing.layoutPdf failed, falling back to share: $e\n$st');
         final fileName =
@@ -2085,12 +2086,13 @@ class _DddFileDetailPageState extends State<DddFileDetailPage> {
           [XFile.fromData(bytes, name: fileName, mimeType: 'application/pdf')],
           fileNameOverrides: [fileName],
         );
-        if (mounted)
+        if (mounted) {
           showAppSnackBar(
             context,
             _t('ddd.exportSuccess'),
             type: AppSnackBarType.success,
           );
+        }
       }
     } catch (e, st) {
       debugPrint('PDF export failed: $e\n$st');

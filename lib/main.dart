@@ -1,12 +1,16 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'core/localization/localization.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/providers/app_state.dart';
 import 'core/services/app_log_service.dart';
+import 'core/services/gap_card_download.dart';
 
 void main() {
+  AppState.cardDownloader = downloadCardForGap;
+
   final defaultDebugPrint = debugPrint;
   debugPrint = (String? message, {int? wrapWidth}) {
     if (message != null) AppLogService.instance.add(message);
@@ -50,8 +54,13 @@ class SmartTrackApp extends StatelessWidget {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            supportedLocales: const [Locale('tr'), Locale('en'), Locale('de')],
-            locale: const Locale('tr'),
+            // Date pickers and other built-in dialogs follow the app's own
+            // language choice, not the phone's.
+            supportedLocales: [
+              for (final lang in AppLocalizations.languages)
+                Locale(lang.toLowerCase()),
+            ],
+            locale: Locale(appState.selectedLanguage.toLowerCase()),
           );
         },
       ),

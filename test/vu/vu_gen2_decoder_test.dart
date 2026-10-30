@@ -52,8 +52,9 @@ void main() {
         ActivityType.work,
         ActivityType.rest,
       ]);
-      expect(day.activities[2].startTime, DateTime(2026, 10, 5, 17, 44));
-      expect(day.activities[2].endTime, DateTime(2026, 10, 5, 19, 11));
+      // On the card's clock: inserted 17:40:02 UTC, work from 17:44 UTC.
+      expect(day.activities[2].startTime, DateTime.utc(2026, 10, 5, 17, 44));
+      expect(day.activities[2].endTime, DateTime.utc(2026, 10, 5, 19, 11));
 
       final place = day.places.single;
       expect(place.entryTime, DateTime.utc(2026, 10, 5, 17, 40));

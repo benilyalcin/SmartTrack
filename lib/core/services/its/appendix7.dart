@@ -1,3 +1,5 @@
+import '../../localization/localization.dart';
+
 /// Annex 7 data download as the ATC's DataDownloadProtocol implements it - a
 /// port of AvuItsTester's Appendix7.kt.
 ///
@@ -138,7 +140,9 @@ class Appendix7 {
     sidRequestTransferExit => 'RequestTransferExit',
     sidStopCommunication => 'StopCommunication',
     sidAcknowledgeSubmessage => 'AcknowledgeSubmessage',
-    _ => 'servis 0x${sid.toRadixString(16).padLeft(2, '0').toUpperCase()}',
+    _ => AppLocalizations.text('its.serviceHex', {
+      'hex': '0x${sid.toRadixString(16).padLeft(2, '0').toUpperCase()}',
+    }),
   };
 
   /// What a refusal of a download step means here, where the bare KWP2000
@@ -146,19 +150,16 @@ class Appendix7 {
   /// 0x50 (KWP2000Package::respondNegativeUploadNotAccepted).
   static String? explain(int sid, int nrc) {
     if (nrc == 0x50 || nrc == 0x70) {
-      return 'Takograf operasyonel modda yalnız sürücü kartı indirmesine izin '
-          'verir; kart sahibi ITS onayı vermediyse onu da reddeder. Araç '
-          'verisi için atölye, şirket ya da kontrol kartı gerekir.';
+      return AppLocalizations.text('its.explainNotAccepted');
     }
     if (nrc == 0x31 && sid == sidTransferData) {
-      return 'Gönderilecek veri yok: kart indirmesinde yuvada kart yok, ya da '
-          'istenen günde kayıt yok.';
+      return AppLocalizations.text('its.explainNoData');
     }
     if (nrc == 0x24) {
-      return 'Adımlar sırayla gitmeli; oturum baştan başlatılmalı.';
+      return AppLocalizations.text('its.explainSequence');
     }
     if (nrc == 0x22) {
-      return 'Kişisel veri: sürücü ITS onayı vermemiş olabilir.';
+      return AppLocalizations.text('its.explainPersonal');
     }
     return null;
   }

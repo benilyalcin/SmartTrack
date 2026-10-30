@@ -46,8 +46,9 @@ class _DongleLogPageState extends State<DongleLogPage> {
   @override
   void dispose() {
     _scrollController.dispose();
-    if (_downloadPanelOpen)
+    if (_downloadPanelOpen) {
       AppBluetoothService.instance.endDongleDownloadTest();
+    }
     super.dispose();
   }
 

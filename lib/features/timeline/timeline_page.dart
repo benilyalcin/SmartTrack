@@ -63,7 +63,6 @@ class _TimelinePageState extends State<TimelinePage> {
                   const CardSlotWarningBanner(),
 
                   _buildPageHeader(context, isDesktop),
-                  _buildLiveOnlyDataNote(context),
                   const SizedBox(height: 40),
 
                   if (isDesktop)
@@ -125,28 +124,38 @@ class _TimelinePageState extends State<TimelinePage> {
   }
 
   Widget _buildDateRow(BuildContext context) {
-    return InkWell(
-      onTap: () => _pickDate(context),
-      borderRadius: BorderRadius.circular(4),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _formatDate(_selectedDate),
-              style: TextStyle(
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) => InkWell(
+        onTap: () => _pickDate(context),
+        borderRadius: BorderRadius.circular(4),
+        child: SizedBox(
+          width: constraints.maxWidth,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    _formatDate(_selectedDate),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.arrow_drop_down,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.arrow_drop_down,
-              size: 20,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -168,8 +177,10 @@ class _TimelinePageState extends State<TimelinePage> {
   }
 
   Widget _buildHeaderNavigation(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 4,
+      runSpacing: 4,
       children: [
         _buildNavButton(
           context,
@@ -181,7 +192,6 @@ class _TimelinePageState extends State<TimelinePage> {
             });
           },
         ),
-        const SizedBox(width: 4),
         _buildNavButton(
           context,
           label: _t('timeline.today'),
@@ -189,7 +199,6 @@ class _TimelinePageState extends State<TimelinePage> {
             _pickDate(context);
           },
         ),
-        const SizedBox(width: 4),
         _buildNavButton(
           context,
           label: _t('timeline.next'),
@@ -248,41 +257,6 @@ class _TimelinePageState extends State<TimelinePage> {
               color: Theme.of(context).colorScheme.onSurface,
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLiveOnlyDataNote(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final appState = AppStateProvider.of(context);
-    final file = appState.activeDddFile;
-    final usingDdd = file != null && !file.isSimulated;
-    final text = usingDdd
-        ? _t('timeline.showingFileNote').replaceFirst(
-            '{file}',
-            file.cardHolderName.isNotEmpty
-                ? file.cardHolderName
-                : _formatDate(file.downloadedAt),
-          )
-        : _t('timeline.liveOnlyDataNote');
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            usingDdd ? Icons.folder_open_outlined : Icons.verified_outlined,
-            size: 16,
-            color: scheme.outline,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(fontSize: 12, color: scheme.outline),
-            ),
-          ),
         ],
       ),
     );
@@ -353,22 +327,44 @@ class _TimelinePageState extends State<TimelinePage> {
             child: Row(children: _buildChartSegments(context)),
           ),
           const SizedBox(height: 6),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                for (int i = 0; i <= 24; i += 2)
-                  Text(
-                    i.toString().padLeft(2, '0'),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: scheme.outline,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final tickStyle = TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: scheme.outline,
+              );
+              final textScaler = MediaQuery.textScalerOf(context);
+              final textDirection = Directionality.of(context);
+              final widths = <int, double>{
+                for (var hour = 0; hour <= 24; hour += 2)
+                  hour: (TextPainter(
+                    text: TextSpan(
+                      text: hour.toString().padLeft(2, '0'),
+                      style: tickStyle,
                     ),
-                  ),
-              ],
-            ),
+                    textDirection: textDirection,
+                    textScaler: textScaler,
+                  )..layout()).width,
+              };
+              final interval = [2, 4, 6, 8, 12, 24].firstWhere((step) {
+                final requiredWidth = [
+                  for (var hour = 0; hour <= 24; hour += step) widths[hour]!,
+                ].fold<double>(0, (total, width) => total + width);
+                return requiredWidth <= constraints.maxWidth - 8;
+              }, orElse: () => 24);
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    for (var hour = 0; hour <= 24; hour += interval)
+                      Text(hour.toString().padLeft(2, '0'), style: tickStyle),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -384,8 +380,10 @@ class _TimelinePageState extends State<TimelinePage> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: scheme.surfaceContainerHigh),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 2,
+        runSpacing: 2,
         children: [
           _buildDriverToggleOption(
             context,
@@ -444,12 +442,16 @@ class _TimelinePageState extends State<TimelinePage> {
           ),
         ),
         const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ],
@@ -627,25 +629,35 @@ class _TimelinePageState extends State<TimelinePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: iconColor, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+          Expanded(
+            child: Row(
+              children: [
+                Icon(icon, color: iconColor, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: valueColor ?? Theme.of(context).colorScheme.onSurface,
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: valueColor ?? Theme.of(context).colorScheme.onSurface,
+              ),
             ),
           ),
         ],
@@ -751,9 +763,12 @@ class _TimelinePageState extends State<TimelinePage> {
               style: TextStyle(color: color),
             ),
           ),
-          Text(
-            _activityLabel(context, a),
-            style: TextStyle(fontWeight: FontWeight.w600, color: color),
+          Flexible(
+            child: Text(
+              _activityLabel(context, a),
+              textAlign: TextAlign.end,
+              style: TextStyle(fontWeight: FontWeight.w600, color: color),
+            ),
           ),
           if (a.isCrew) ...[
             const SizedBox(width: 6),

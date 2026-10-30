@@ -1,9 +1,8 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 
 import '../../bluetooth/vu/its_link.dart';
 import '../../bluetooth/vu/vu_app_link.dart';
+import '../../localization/localization.dart';
 import '../kline_protocol.dart';
 import 'appendix7.dart';
 
@@ -97,13 +96,10 @@ class ItsDownloadService {
     }
 
     final openedHere = !link.isOpen;
-    progress('İndirme kanalı açılıyor…');
+    progress(AppLocalizations.text('its.progressOpening'));
     if (!await link.open()) {
-      return const ItsDownloadResult(
-        problem:
-            'İndirme kanalı açılamadı: takograf reddetti ya da yanıt vermedi. '
-            'Ön konektörden indirme sürüyor olabilir, ya da takılı kartlar '
-            'ITS\'e izin vermiyor olabilir.',
+      return ItsDownloadResult(
+        problem: AppLocalizations.text('its.channelRefused'),
       );
     }
 
@@ -115,14 +111,18 @@ class ItsDownloadService {
 
     try {
       if (request.card) {
-        progress('Sürücü kartı indiriliyor…');
+        progress(AppLocalizations.text('its.progressCard'));
         final card = await _session(link, steps, (sessionSteps) async {
           final result = await _transfer(
             link,
             VuTransfer.cardDownload,
             request.generation,
           );
-          sessionSteps.add('Kart: ${result.describe()}');
+          sessionSteps.add(
+            AppLocalizations.text('its.stepCard', {
+              'result': result.describe(),
+            }),
+          );
           return result.payload;
         });
         if (card.problem != null) problems.add(card.problem!);
@@ -142,13 +142,21 @@ class ItsDownloadService {
 
           // Mandatory (DDP_054) and first: it carries the certificates a
           // reader needs to check the rest.
-          progress('Genel bakış indiriliyor…');
+          final overviewName = AppLocalizations.text('its.transferOverview');
+          progress(
+            AppLocalizations.text('its.progressNamed', {'name': overviewName}),
+          );
           final overview = await _transfer(
             link,
             VuTransfer.overview,
             request.generation,
           );
-          sessionSteps.add('Genel bakış: ${overview.describe()}');
+          sessionSteps.add(
+            AppLocalizations.text('its.stepNamed', {
+              'name': overviewName,
+              'result': overview.describe(),
+            }),
+          );
           append(VuTransfer.overview, overview.payload);
           period = request.generation == DownloadGeneration.gen1
               ? null
@@ -158,14 +166,26 @@ class ItsDownloadService {
             final days = _days(request, period);
             for (var i = 0; i < days.length; i++) {
               final label = _dayLabel(days[i]);
-              progress('Aktiviteler $label (${i + 1}/${days.length})…');
+              progress(
+                AppLocalizations.text('its.progressActivities', {
+                  'day': label,
+                  'n': i + 1,
+                  'total': days.length,
+                }),
+              );
               final day = await _transfer(
                 link,
                 VuTransfer.activities,
                 request.generation,
                 daySeconds: days[i],
               );
-              sessionSteps.add('Aktiviteler $label: ${day.describe()}');
+              sessionSteps.add(
+                AppLocalizations.text('its.stepNamed', {
+                  'name':
+                      '${AppLocalizations.text('its.transferActivities')} $label',
+                  'result': day.describe(),
+                }),
+              );
               append(VuTransfer.activities, day.payload);
             }
           }
@@ -174,15 +194,30 @@ class ItsDownloadService {
             (
               request.eventsAndFaults,
               VuTransfer.eventsAndFaults,
-              'Olaylar ve arızalar',
+              AppLocalizations.text('its.transferEvents'),
             ),
-            (request.detailedSpeed, VuTransfer.detailedSpeed, 'Detaylı hız'),
-            (request.technicalData, VuTransfer.technicalData, 'Teknik veri'),
+            (
+              request.detailedSpeed,
+              VuTransfer.detailedSpeed,
+              AppLocalizations.text('its.transferSpeed'),
+            ),
+            (
+              request.technicalData,
+              VuTransfer.technicalData,
+              AppLocalizations.text('its.transferTechnical'),
+            ),
           ]) {
             if (!wanted) continue;
-            progress('$name indiriliyor…');
+            progress(
+              AppLocalizations.text('its.progressNamed', {'name': name}),
+            );
             final result = await _transfer(link, transfer, request.generation);
-            sessionSteps.add('$name: ${result.describe()}');
+            sessionSteps.add(
+              AppLocalizations.text('its.stepNamed', {
+                'name': name,
+                'result': result.describe(),
+              }),
+            );
             append(transfer, result.payload);
           }
           return file;
@@ -225,7 +260,9 @@ class ItsDownloadService {
       if (answer == null) {
         return (
           bytes: const <int>[],
-          problem: '${Appendix7.describeService(sid)} yanıtsız kaldı.',
+          problem: AppLocalizations.text('its.stepNoAnswer', {
+            'service': Appendix7.describeService(sid),
+          }),
         );
       }
       final nrc = KwpFrame.negativeCode(answer);
@@ -238,7 +275,9 @@ class ItsDownloadService {
       final bytes = await body(steps);
       return (
         bytes: bytes,
-        problem: bytes.isEmpty ? 'Takograf veri göndermedi.' : null,
+        problem: bytes.isEmpty
+            ? AppLocalizations.text('its.unitSentNoData')
+            : null,
       );
     } finally {
       await link.request(
@@ -275,7 +314,7 @@ class ItsDownloadService {
         return _TransferResult(
           collected,
           blocks,
-          '${blocks + 1}. blok yanıtsız',
+          AppLocalizations.text('its.blockNoAnswer', {'n': blocks + 1}),
         );
       }
 
@@ -292,7 +331,7 @@ class ItsDownloadService {
         return _TransferResult(
           collected,
           blocks,
-          '${blocks + 1}. blok okunamadı',
+          AppLocalizations.text('its.blockUnreadable', {'n': blocks + 1}),
         );
       }
       if (block.counter != null) counted = true;
@@ -343,10 +382,11 @@ class ItsDownloadService {
   }
 
   static String _refusal(int sid, int nrc) {
-    final base =
-        '${Appendix7.describeService(sid)} reddedildi: '
-        '${RdbiResponseParser.describeNrc(nrc)} '
-        '(0x${nrc.toRadixString(16).padLeft(2, '0').toUpperCase()})';
+    final base = AppLocalizations.text('its.refused', {
+      'service': Appendix7.describeService(sid),
+      'nrc': RdbiResponseParser.describeNrc(nrc),
+      'code': '0x${nrc.toRadixString(16).padLeft(2, '0').toUpperCase()}',
+    });
     final why = Appendix7.explain(sid, nrc);
     return why == null ? base : '$base\n$why';
   }
@@ -358,5 +398,10 @@ class _TransferResult {
   final int blocks;
   final String? problem;
 
-  String describe() => problem ?? '${payload.length} bayt, $blocks blok';
+  String describe() =>
+      problem ??
+      AppLocalizations.text('its.resultBytes', {
+        'bytes': payload.length,
+        'blocks': blocks,
+      });
 }

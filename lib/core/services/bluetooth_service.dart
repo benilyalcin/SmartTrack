@@ -17,6 +17,7 @@ import '../bluetooth/services/vu_app_connection_service.dart';
 import '../bluetooth/vu/its_link.dart';
 import '../bluetooth/vu/vu_app_link.dart';
 import '../exceptions/ble_connection_exception.dart';
+import '../localization/localization.dart';
 import '../models/ddd_file.dart';
 import '../models/tachograph_type.dart';
 import '../providers/app_state.dart';
@@ -45,16 +46,9 @@ class AppBluetoothDevice {
     this.isPaired = false,
   });
 
-  String get distanceEstimation {
-    if (rssi >= -50) return "Çok Yakın (<1m)";
-    if (rssi >= -70) return "Yakın (1-3m)";
-    if (rssi >= -85) return "Orta (3-5m)";
-    return "Uzak (>5m)";
-  }
-
   String get displayName {
     if (name.isNotEmpty) return name;
-    return "Bilinmeyen Cihaz ($id)";
+    return AppLocalizations.text('bt.unknownDevice', {'id': id});
   }
 }
 
@@ -183,12 +177,17 @@ class AppBluetoothService {
         for (final device in bonded) {
           final id = device.remoteId.str;
           final name = device.platformName;
-          if (!isVehicleUnit(id: id, name: name)) continue;
+          // The K-line dongle is a Classic SPP module the phone has paired
+          // with; it is reached over the Classic path, not BLE.
+          final isClassicDongle = id.toUpperCase() == dongleDeviceId;
+          if (!isVehicleUnit(id: id, name: name) && !isClassicDongle) continue;
           _discoveredDevices[id] = AppBluetoothDevice(
             id: id,
             name: name,
             rssi: -50,
-            type: AppBluetoothType.le,
+            type: isClassicDongle
+                ? AppBluetoothType.classic
+                : AppBluetoothType.le,
             isPaired: true,
           );
         }
@@ -201,8 +200,16 @@ class AppBluetoothService {
     _bleScanSubscription?.cancel();
     _bleScanSubscription = _bleScanner.scanResults.listen((results) {
       for (final r in results) {
-        if (!isVehicleUnit(id: r.deviceId, name: r.name)) continue;
+        // Tachographs, and any other device that names itself - a BLE
+        // dongle does not advertise as TACHOGRAPH-, so the connect screen
+        // lists these under dongles. Nameless advertisers are left out.
         final known = _discoveredDevices[r.deviceId];
+        if (!isVehicleUnit(id: r.deviceId, name: r.name) &&
+            r.name.trim().isEmpty &&
+            (known == null || known.name.isEmpty)) {
+          continue;
+        }
+        if (known?.type == AppBluetoothType.classic) continue;
         _discoveredDevices[r.deviceId] = AppBluetoothDevice(
           id: r.deviceId,
           // The advertised name follows the plate, so it is the fresher one.
@@ -241,10 +248,7 @@ class AppBluetoothService {
   /// afresh with Numeric Comparison.
   Future<void> removeBond(String deviceId) async {
     if (!Platform.isAndroid) {
-      throw UnsupportedError(
-        'Eşleşme yalnızca Android\'de uygulamadan kaldırılabilir; iOS\'ta '
-        'Ayarlar > Bluetooth üzerinden kaldırın.',
-      );
+      throw UnsupportedError(AppLocalizations.text('bt.removeBondIos'));
     }
     if (_activeDeviceId == deviceId) await disconnect();
 
@@ -291,6 +295,12 @@ class AppBluetoothService {
           }
         }
       });
+      for (final d in _discoveredDevices.values) {
+        if (d.id.toUpperCase() == dongleDeviceId) {
+          completer.complete(d);
+          break;
+        }
+      }
       final found = await completer.future.timeout(
         timeout,
         onTimeout: () => null,
@@ -483,6 +493,103 @@ class AppBluetoothService {
     }
   }
 
+  /// Whether the live link is an STC 8255's dongle - the BLE one (the app
+  /// service with a prefix byte and no ITS) or the Classic K-line one. The
+  /// download goes over that same link, on the dongle's download path
+  /// (prefix 0x0D): the dongle holds one connection at a time, so a second
+  /// one opened for the download fails ("SPP connection failed").
+  bool get stcDongleLinked {
+    final conn = _activeConnection;
+    if (conn == null) return false;
+    if (conn is VuAppConnectionService) {
+      return !conn.profile.subscribeIts && conn.profile.wirePrefix != null;
+    }
+    return _wrapKLineForDongle;
+  }
+
+  /// Downloads .ddd data over the STC dongle the phone is already connected
+  /// to. The live reads stop for the length of it - they would interleave
+  /// with the transfer on the one K-line - and start again afterwards.
+  Future<({DddFile? card, DddFile? vehicleUnit})> downloadDddOverStcLink(
+    AppState appState, {
+    DddFetchKind kind = DddFetchKind.both,
+    DateTime? activityRangeStart,
+    DateTime? activityRangeEnd,
+    bool includeEventsFaults = true,
+    bool includeDetailedSpeed = true,
+    bool includeTechnicalData = true,
+    void Function(String message)? onProgress,
+  }) async {
+    final conn = _activeConnection;
+    if (conn == null || !stcDongleLinked) {
+      throw StateError('No STC dongle link');
+    }
+
+    // No new read cycle, and the one under way - the connect handshake can
+    // take most of a minute - finished first: the download and the reads
+    // would otherwise take turns on the one K-line and spoil each other.
+    _liveRefreshTimer?.cancel();
+    _speedRefreshTimer?.cancel();
+    var waited = Duration.zero;
+    while (_refreshInFlight && waited < const Duration(seconds: 90)) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      waited += const Duration(milliseconds: 200);
+    }
+    _stopLiveRefresh();
+    if (!identical(_activeConnection, conn)) {
+      throw StateError('The dongle disconnected');
+    }
+    // Held for the whole transfer, so nothing else starts on the line.
+    _refreshInFlight = true;
+
+    final transport = conn is VuAppConnectionService
+        ? _buildVuAppTransport(conn)
+        : _buildKLineTransport(conn, wirePrefix: 0x0D);
+
+    // 0x0D is the dongle's documented download path, but it has not been
+    // seen answering on the hardware yet; 0x0C has. One StartComm on 0x0D
+    // tells which one to use.
+    var downloadPrefix = 0x0D;
+    final probe = await transport.sendAndReceive(
+      KLineFrame.startCommunication,
+      waitMs: 1500,
+      label: 'DDP-Probe-0x0D',
+      prefixOverride: 0x0D,
+    );
+    if (probe.isEmpty) {
+      _log('$_lineTag DDP: 0x0D yanıt vermedi, indirme 0x0C ile deneniyor.');
+      downloadPrefix = 0x0C;
+    }
+    Future<List<int>> send(
+      List<int> cmd, {
+      int waitMs = 800,
+      String label = '',
+      int? prefixOverride,
+    }) => transport.sendAndReceive(
+      cmd,
+      waitMs: waitMs,
+      label: label,
+      prefixOverride: prefixOverride ?? downloadPrefix,
+    );
+
+    try {
+      return await appState.downloadRealDddFromTachograph(
+        sendAndReceive: send,
+        kind: kind,
+        activityRangeStart: activityRangeStart,
+        activityRangeEnd: activityRangeEnd,
+        includeEventsFaults: includeEventsFaults,
+        includeDetailedSpeed: includeDetailedSpeed,
+        includeTechnicalData: includeTechnicalData,
+        onProgress: onProgress,
+      );
+    } finally {
+      await transport.rxSub.cancel();
+      _refreshInFlight = false;
+      if (identical(_activeConnection, conn)) _startLiveRefresh(conn, appState);
+    }
+  }
+
   Future<void> performLegalOnlyDemo(AppBluetoothDevice device) async {
     if (!await ensurePermissions()) {
       throw const BleConnectionException(
@@ -606,8 +713,9 @@ class AppBluetoothService {
           if (rxBuffer.length == lastLen) {
             if (rxBuffer.isNotEmpty &&
                 !knownIncomplete &&
-                ++quietSlices >= quietSlicesRequired)
+                ++quietSlices >= quietSlicesRequired) {
               break;
+            }
           } else {
             quietSlices = 0;
             lastLen = rxBuffer.length;
@@ -632,7 +740,16 @@ class AppBluetoothService {
           _log(
             '$_lineTag [$resolvedLabel]: RESPONSE PENDING (0x78) — bekleniyor ($pendingRetries/$maxPendingRetries)',
           );
-          rxBuffer.clear();
+          // Drop the pending frame only. The real answer often follows it
+          // within milliseconds, and its first bytes may already be here:
+          // clearing the whole buffer cut them off, the rest never made a
+          // frame, and the wait that followed outlasted the unit's P3
+          // timeout - it closed the download session and answered nothing
+          // more, so a long download went silent part way through.
+          final pendingLength = rxBuffer.length >= 4
+              ? rxBuffer[3] + 5
+              : rxBuffer.length;
+          rxBuffer.removeRange(0, pendingLength.clamp(0, rxBuffer.length));
           continue;
         }
         break;
@@ -888,8 +1005,9 @@ class AppBluetoothService {
   String _traceValue(Object? value) {
     if (value == null) return '(yok)';
     if (value is String) return value.isEmpty ? '(boş)' : value;
-    if (value is Duration)
+    if (value is Duration) {
       return '${value.inHours}s ${(value.inMinutes % 60).toString().padLeft(2, '0')}dk';
+    }
     if (value is DateTime) {
       final d = value;
       return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year} '
@@ -917,6 +1035,11 @@ class AppBluetoothService {
     BleConnectionRepository conn,
     AppState appState,
   ) async {
+    // The handshake holds the K-line. The 2 s speed cycle opens and closes
+    // its own communication with the tachograph, and one of its StopComms
+    // landing in the middle of the handshake left the unit silent to
+    // everything after it - the reads, the live cycles and a download alike.
+    _refreshInFlight = true;
     try {
       final transport = _buildKLineTransport(conn);
       final sendAndReceive = transport.sendAndReceive;
@@ -2012,10 +2135,13 @@ class AppBluetoothService {
 
       transport.rxSub.cancel();
 
+      _refreshInFlight = false;
       _startLiveRefresh(conn, appState);
     } catch (e) {
       _log('Tachograph Handshake Error: $e');
       appState.setTachographDataStatus(false, reason: 'Bağlantı hatası: $e');
+    } finally {
+      _refreshInFlight = false;
     }
   }
 
@@ -2212,8 +2338,9 @@ class AppBluetoothService {
         return;
       }
       if (spdKmh != null) appState.tachographLiveData.speedKmh = spdKmh;
-      if (odoMeters != null)
+      if (odoMeters != null) {
         appState.tachographLiveData.odometerMeters = odoMeters;
+      }
       appState.setTachographLiveData(appState.tachographLiveData);
       _recordRefreshOutcome(true, appState);
     } catch (e) {

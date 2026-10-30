@@ -1,97 +1,112 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
+import '../../core/localization/localization.dart';
+import '../../core/models/tachograph_type.dart';
 import '../../core/providers/app_state.dart';
+import '../ddd_files/ddd_files_page.dart';
+import '../its_advanced/its_advanced_page.dart';
+import '../its_download/its_download_page.dart';
+import '../rhmi/rhmi_page.dart';
 
-/// The ATC 8256's tools in one tab, so the bottom bar does not grow with
-/// each of them: Remote HMI, data download, and calibration to come. Each is
-/// a card that opens its own page.
+/// The ATC's ITS tools share one scrolling page. The STC keeps its files view.
 class VuToolsPage extends StatelessWidget {
   const VuToolsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final its = AppStateProvider.of(context).tachographType?.hasIts ?? false;
-    return ListView(
+    final appState = AppStateProvider.of(context);
+    if (appState.tachographType == TachographType.stc8255 ||
+        !(appState.tachographType?.hasIts ?? false)) {
+      return const DddFilesPage();
+    }
+
+    String t(String key) =>
+        AppLocalizations.getText(appState.selectedLanguage, key);
+    return SingleChildScrollView(
+      key: const PageStorageKey('its-tools-scroll'),
       padding: const EdgeInsets.all(16),
-      children: [
-        if (its) ...[
-          _ToolCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ToolSection(
             icon: Icons.settings_remote_outlined,
-            title: 'Uzaktan kumanda',
-            subtitle:
-                'Aktivite, yer, özel durum, uyarılar, çıktı, kart çıkarma ve '
-                'manuel giriş',
-            onTap: () => context.go('/vu/rhmi'),
+            title: t('its.toolRhmiTitle'),
+            subtitle: t('its.toolRhmiSubtitle'),
+            child: const RhmiPage(embedded: true),
           ),
-          _ToolCard(
+          const SizedBox(height: 24),
+          _ToolSection(
             icon: Icons.download_outlined,
-            title: 'Veri indirme',
-            subtitle:
-                'Sürücü kartı ve araç ünitesi verisini ITS üzerinden indir',
-            onTap: () => context.go('/vu/download'),
+            title: t('its.toolDownloadTitle'),
+            subtitle: t('its.toolDownloadSubtitle'),
+            child: const ItsDownloadPage(embedded: true),
+          ),
+          const SizedBox(height: 24),
+          _ToolSection(
+            icon: Icons.settings_suggest_outlined,
+            title: t('its.toolAdvancedTitle'),
+            subtitle: t('its.toolAdvancedSubtitle'),
+            child: const ItsAdvancedPage(embedded: true),
           ),
         ],
-        // On an ATC the downloaded files are reached from Veri indirme; the
-        // STC 8255 keeps them here.
-        if (!its)
-          _ToolCard(
-            icon: Icons.folder_outlined,
-            title: 'İndirilen dosyalar',
-            subtitle: 'Kaydedilen .ddd dosyaları: aç, paylaş, sil',
-            onTap: () => context.go('/ddd-files'),
-          ),
-        if (its)
-          _ToolCard(
-            icon: Icons.tune_outlined,
-            title: 'Kalibrasyon',
-            subtitle:
-                'Diagnostik kanalında Ek-8 istekleri ve çözülmüş yanıtlar',
-            onTap: () => context.go('/vu/calibration'),
-          ),
-      ],
+      ),
     );
   }
 }
 
-class _ToolCard extends StatelessWidget {
-  const _ToolCard({
+class _ToolSection extends StatelessWidget {
+  const _ToolSection({
     required this.icon,
     required this.title,
     required this.subtitle,
-    this.onTap,
+    required this.child,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-
-  /// Null for a tool that is not there yet.
-  final VoidCallback? onTap;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final enabled = onTap != null;
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        enabled: enabled,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: enabled
-              ? scheme.primaryContainer
-              : scheme.surfaceContainerHighest,
-          foregroundColor: enabled
-              ? scheme.onPrimaryContainer
-              : scheme.onSurfaceVariant,
-          child: Icon(icon),
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: scheme.primaryContainer,
+                foregroundColor: scheme.onPrimaryContainer,
+                child: Icon(icon),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: theme.textTheme.bodySmall),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle),
-        trailing: enabled ? const Icon(Icons.chevron_right) : null,
-        onTap: onTap,
-      ),
+        child,
+      ],
     );
   }
 }

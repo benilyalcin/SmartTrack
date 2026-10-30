@@ -123,8 +123,10 @@ class _SpeedPainter extends CustomPainter {
       double? lastX;
       for (var i = 0; i < samples.length; i++) {
         final secondsSinceMidnight = sessionStartOffset + i;
-        if (secondsSinceMidnight < 0 || secondsSinceMidnight >= _secondsPerDay)
+        if (secondsSinceMidnight < 0 ||
+            secondsSinceMidnight >= _secondsPerDay) {
           continue;
+        }
 
         final x = secondsSinceMidnight / _secondsPerDay * size.width;
         final speed = samples[i].clamp(0, maxScaleInt);

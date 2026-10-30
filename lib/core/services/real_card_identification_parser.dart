@@ -20,8 +20,9 @@ class RealCardIdentificationParser {
 
   static CardIdentity? parse(Uint8List efIdentification) {
     if (efIdentification.length <
-        _cardIdentificationLen + _driverHolderIdentificationLen)
+        _cardIdentificationLen + _driverHolderIdentificationLen) {
       return null;
+    }
 
     var offset = 0;
     final nationCode = efIdentification[offset];
@@ -105,8 +106,9 @@ class RealCardIdentificationParser {
         month < 1 ||
         month > 12 ||
         day < 1 ||
-        day > 31)
+        day > 31) {
       return null;
+    }
     return DateTime(year, month, day);
   }
 

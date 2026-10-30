@@ -142,7 +142,10 @@ class VuActivityDecoder {
     if (!reader.canRead(noOfActivityChanges * 2)) return null;
 
     final dayStart = DateTime(date.year, date.month, date.day);
-    final activities = buildActivities(dayStart, [
+    // ActivityChangeInfo minutes count from 00:00 UTC of the record's day
+    // (Annex 1B): a local midnight here put every activity off by the
+    // phone's UTC offset - three hours early in Türkiye.
+    final activities = buildActivities(utcDayStart(date), [
       for (var i = 0; i < noOfActivityChanges; i++) reader.readUint16(),
     ]);
 
@@ -180,8 +183,9 @@ class VuActivityDecoder {
     for (var i = 0; i < noOfSpecificConditions; i++) {
       final t = _tightTimeReal(reader, now);
       final type = reader.readUint8();
-      if (t != null)
+      if (t != null) {
         specificConditions.add(SpecificConditionRecord(time: t, type: type));
+      }
     }
 
     if (!reader.canRead(_signatureLength)) return null;
@@ -200,8 +204,16 @@ class VuActivityDecoder {
     );
   }
 
+  /// 00:00 UTC of the day [date] falls on, which a day record's activity
+  /// minutes count from.
+  static DateTime utcDayStart(DateTime date) {
+    final utc = date.isUtc ? date : date.toUtc();
+    return DateTime.utc(utc.year, utc.month, utc.day);
+  }
+
   /// A day's ActivityChangeInfo words as activity segments, per slot. The
   /// encoding is the same in every generation, so Gen2 uses this too.
+  /// [dayStart] is 00:00 UTC of the record's day (see [utcDayStart]).
   static List<TachographActivity> buildActivities(
     DateTime dayStart,
     List<int> changes,

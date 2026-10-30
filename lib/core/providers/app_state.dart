@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../localization/localization.dart';
 import '../models/ddd_file.dart';
 import '../models/role_permissions.dart';
 import '../models/vehicle_unit_data.dart';
@@ -138,7 +139,10 @@ class AppState extends ChangeNotifier {
 
   DateTime? _lastKnownActivityTime;
 
-  ActivityGap? _pendingRealGap;
+  /// Stretches of a gap that neither the unit's current activity nor the
+  /// active card file accounts for, oldest first; the driver is asked about
+  /// them one at a time.
+  final List<ActivityGap> _pendingRealGaps = [];
 
   ComplianceNotice? _pendingComplianceNotice;
   final Set<String> _shownNoticeIds = {};
@@ -151,6 +155,12 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
+    final storedLanguage = prefs.getString('selectedLanguage');
+    if (storedLanguage != null &&
+        AppLocalizations.languages.contains(storedLanguage)) {
+      _selectedLanguage = storedLanguage;
+      AppLocalizations.current = storedLanguage;
+    }
     if (prefs.containsKey('tachographMode')) {
       _tachographMode = prefs.getString('tachographMode') ?? 'Sürücü';
     }
@@ -302,7 +312,9 @@ class AppState extends ChangeNotifier {
   List<Violation> get violations => List.unmodifiable(_violations);
   List<ActivityGap> get pendingGaps => List.unmodifiable(_pendingGaps);
   DateTime? get lastKnownActivityTime => _lastKnownActivityTime;
-  ActivityGap? get pendingRealGap => _pendingRealGap;
+  ActivityGap? get pendingRealGap =>
+      _pendingRealGaps.isEmpty ? null : _pendingRealGaps.first;
+  int get pendingRealGapCount => _pendingRealGaps.length;
 
   ComplianceNotice? get pendingComplianceNotice => _pendingComplianceNotice;
 
@@ -443,8 +455,9 @@ class AppState extends ChangeNotifier {
   Duration? get activeOpenRestElapsed {
     if (!_isActiveDriver1) return null;
     if (_liveOpenSegmentType != ActivityType.rest ||
-        _liveOpenSegmentStart == null)
+        _liveOpenSegmentStart == null) {
       return null;
+    }
     return DateTime.now().difference(_liveOpenSegmentStart!);
   }
 
@@ -493,7 +506,11 @@ class AppState extends ChangeNotifier {
   void setLanguage(String lang) {
     if (_selectedLanguage != lang) {
       _selectedLanguage = lang;
+      AppLocalizations.current = lang;
       notifyListeners();
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setString('selectedLanguage', lang);
+      });
     }
   }
 
@@ -711,31 +728,41 @@ class AppState extends ChangeNotifier {
       _drivingRules,
       DateTime.now(),
     );
-    if (currentSessionDuration != null)
+    if (currentSessionDuration != null) {
       _liveSessionDuration = currentSessionDuration;
+    }
     if (currentActivityKey != null) _currentActivity = currentActivityKey;
     if (cardExpiryDate != null) _driverCardExpiryDate = cardExpiryDate;
-    if (cardNumber != null && cardNumber.isNotEmpty)
+    if (cardNumber != null && cardNumber.isNotEmpty) {
       _driverCardNumber = cardNumber;
+    }
 
-    if (remaining10hDrivingTimes != null)
+    if (remaining10hDrivingTimes != null) {
       _remaining10hDrivingTimes = remaining10hDrivingTimes;
-    if (remainingReducedDailyRestPeriods != null)
+    }
+    if (remainingReducedDailyRestPeriods != null) {
       _remainingReducedDailyRestPeriods = remainingReducedDailyRestPeriods;
-    if (nextBreakRestDuration != null)
+    }
+    if (nextBreakRestDuration != null) {
       _nextBreakRestDuration = nextBreakRestDuration;
-    if (currentBreakRestRemaining != null)
+    }
+    if (currentBreakRestRemaining != null) {
       _currentBreakRestRemaining = currentBreakRestRemaining;
-    if (timeUntilNextBreakOrRest != null)
+    }
+    if (timeUntilNextBreakOrRest != null) {
       _timeUntilNextBreakOrRest = timeUntilNextBreakOrRest;
+    }
     if (lastDailyRestEnd != null) _lastDailyRestEnd = lastDailyRestEnd;
     if (lastWeeklyRestEnd != null) _lastWeeklyRestEnd = lastWeeklyRestEnd;
-    if (compensationLastWeek != null)
+    if (compensationLastWeek != null) {
       _compensationLastWeek = compensationLastWeek;
-    if (compensationWeekBeforeLast != null)
+    }
+    if (compensationWeekBeforeLast != null) {
       _compensationWeekBeforeLast = compensationWeekBeforeLast;
-    if (compensation2ndWeekBeforeLast != null)
+    }
+    if (compensation2ndWeekBeforeLast != null) {
       _compensation2ndWeekBeforeLast = compensation2ndWeekBeforeLast;
+    }
     if (minimumDailyRest != null) _minimumDailyRest = minimumDailyRest;
     if (minimumWeeklyRest != null) _minimumWeeklyRest = minimumWeeklyRest;
 
@@ -893,28 +920,37 @@ class AppState extends ChangeNotifier {
     }
     _drivingRules2 = mergedRules2;
     if (cumulativeBreak != null) _totalBreakTime2 = cumulativeBreak;
-    if (currentSessionDuration != null)
+    if (currentSessionDuration != null) {
       _liveSessionDuration2 = currentSessionDuration;
+    }
     if (currentActivityKey != null) _currentActivity2 = currentActivityKey;
 
-    if (remaining10hDrivingTimes != null)
+    if (remaining10hDrivingTimes != null) {
       _remaining10hDrivingTimes2 = remaining10hDrivingTimes;
-    if (remainingReducedDailyRestPeriods != null)
+    }
+    if (remainingReducedDailyRestPeriods != null) {
       _remainingReducedDailyRestPeriods2 = remainingReducedDailyRestPeriods;
-    if (nextBreakRestDuration != null)
+    }
+    if (nextBreakRestDuration != null) {
       _nextBreakRestDuration2 = nextBreakRestDuration;
-    if (currentBreakRestRemaining != null)
+    }
+    if (currentBreakRestRemaining != null) {
       _currentBreakRestRemaining2 = currentBreakRestRemaining;
-    if (timeUntilNextBreakOrRest != null)
+    }
+    if (timeUntilNextBreakOrRest != null) {
       _timeUntilNextBreakOrRest2 = timeUntilNextBreakOrRest;
+    }
     if (lastDailyRestEnd != null) _lastDailyRestEnd2 = lastDailyRestEnd;
     if (lastWeeklyRestEnd != null) _lastWeeklyRestEnd2 = lastWeeklyRestEnd;
-    if (compensationLastWeek != null)
+    if (compensationLastWeek != null) {
       _compensationLastWeek2 = compensationLastWeek;
-    if (compensationWeekBeforeLast != null)
+    }
+    if (compensationWeekBeforeLast != null) {
       _compensationWeekBeforeLast2 = compensationWeekBeforeLast;
-    if (compensation2ndWeekBeforeLast != null)
+    }
+    if (compensation2ndWeekBeforeLast != null) {
       _compensation2ndWeekBeforeLast2 = compensation2ndWeekBeforeLast;
+    }
     if (minimumDailyRest != null) _minimumDailyRest2 = minimumDailyRest;
     if (minimumWeeklyRest != null) _minimumWeeklyRest2 = minimumWeeklyRest;
 
@@ -1246,7 +1282,7 @@ class AppState extends ChangeNotifier {
       );
     } catch (e) {
       debugPrint('Real DDD download failed: $e');
-      return (card: null, vehicleUnit: null);
+      rethrow;
     } finally {
       _isDownloadingDdd = false;
       notifyListeners();
@@ -1283,8 +1319,9 @@ class AppState extends ChangeNotifier {
       }
     }
 
-    if (cardBytes == null && vuBytes == null)
+    if (cardBytes == null && vuBytes == null) {
       return (card: null, vehicleUnit: null);
+    }
 
     DddFile? savedCard;
     DddFile? savedVu;
@@ -1364,8 +1401,9 @@ class AppState extends ChangeNotifier {
     final latestByTrep = <int, DongleDownloadResult>{};
     for (final r in results) {
       final existing = latestByTrep[r.trep];
-      if (existing == null || r.timestamp.isAfter(existing.timestamp))
+      if (existing == null || r.timestamp.isAfter(existing.timestamp)) {
         latestByTrep[r.trep] = r;
+      }
     }
 
     final cardBytes = latestByTrep[0x06]?.bytes;
@@ -1545,67 +1583,99 @@ class AppState extends ChangeNotifier {
       currentActivityDuration,
     );
     if (afterCurrentDuration == null) return;
+    unawaited(_fillGapFromCard(afterCurrentDuration));
+  }
 
-    if (_tryFillGapFromRealCardData(afterCurrentDuration)) return;
-    _pendingRealGap = afterCurrentDuration;
+  /// Fetches a driver card file from the connected unit for a gap the live
+  /// data cannot explain (see [checkForRealGap]); null bytes when there is
+  /// none to be had. Set at startup; left null - as in tests - the card file
+  /// the app already has is used as it is.
+  static Future<Uint8List?> Function()? cardDownloader;
+
+  bool _downloadingCardForGap = false;
+
+  /// The card file is trusted wherever it has records; the driver is asked
+  /// only about what it does not cover - all of it when it covers nothing.
+  /// The card is downloaded from the unit first, when it can be, so the file
+  /// runs up to now rather than to the last time somebody downloaded it.
+  Future<void> _fillGapFromCard(ActivityGap gap) async {
+    final download = cardDownloader;
+    if (download != null && !_downloadingCardForGap) {
+      _downloadingCardForGap = true;
+      try {
+        final bytes = await download();
+        if (bytes != null) await saveRealDddBytes(cardBytes: bytes);
+      } catch (e) {
+        debugPrint('Kopukluk için kart indirilemedi: $e');
+      } finally {
+        _downloadingCardForGap = false;
+      }
+    }
+
+    // What the card covers goes straight into the timeline, warnings and
+    // analysis; what it does not is asked about.
+    _pendingRealGaps.addAll(_fillGapFromRealCardData(gap));
+    _recomputeDerivedState();
     notifyListeners();
   }
 
+  /// The unit reports how long its current activity has run, which explains
+  /// the end of the gap. The segment that was open when contact was lost ends
+  /// where the gap starts, unless the same activity has run all through it.
+  /// Returns what is left unexplained, or null when nothing is.
   ActivityGap? _tryFillGapFromCurrentDuration(
     ActivityGap gap,
     ActivityType? currentType,
     Duration? currentDuration,
   ) {
-    if (currentType == null || currentDuration == null) return gap;
+    if (currentType == null ||
+        currentDuration == null ||
+        currentDuration <= Duration.zero) {
+      _closeOpenSegmentBefore(gap.start);
+      _persistLiveSegments();
+      return gap;
+    }
     final currentSegmentStart = gap.end.subtract(currentDuration);
-    if (!currentSegmentStart.isBefore(gap.end)) return gap;
+    final coversWholeGap = !currentSegmentStart.isAfter(gap.start);
 
-    final coveredStart = currentSegmentStart.isBefore(gap.start)
-        ? gap.start
-        : currentSegmentStart;
-    _liveOpenSegmentType = currentType;
-    _liveOpenSegmentStart = coveredStart;
-    unawaited(_persistLiveSegmentState());
+    final continuesOpenSegment =
+        coversWholeGap &&
+        _liveOpenSegmentType == currentType &&
+        _liveOpenSegmentStart != null;
+    if (!continuesOpenSegment) {
+      _closeOpenSegmentBefore(gap.start);
+      _liveOpenSegmentType = currentType;
+      _liveOpenSegmentStart = coversWholeGap ? gap.start : currentSegmentStart;
+    }
+    _persistLiveSegments();
 
-    if (!currentSegmentStart.isAfter(gap.start)) return null;
-
+    if (coversWholeGap) return null;
     return ActivityGap(start: gap.start, end: currentSegmentStart);
   }
 
-  bool _tryFillGapFromRealCardData(ActivityGap gap) {
+  /// Copies the active card file's records inside [gap] into the live log and
+  /// returns the stretches it has no record for, oldest first.
+  List<ActivityGap> _fillGapFromRealCardData(ActivityGap gap) {
     final active = _activeDddFile;
     final parsed = _currentParsedData;
-    if (active == null || active.isSimulated || parsed == null) return false;
+    if (active == null || active.isSimulated || parsed == null) return [gap];
 
-    final covering = parsed.activityLog
-        .where(
-          (a) => a.startTime.isBefore(gap.end) && a.endTime.isAfter(gap.start),
-        )
-        .toList();
-    if (!DrivingTimeCalculator.segmentsFullyCoverRange(
-      covering,
-      gap.start,
-      gap.end,
-    ))
-      return false;
-
-    for (final segment in covering) {
-      _liveActivityLog.add(
-        TachographActivity(
-          type: segment.type,
-          startTime: segment.startTime.isBefore(gap.start)
-              ? gap.start
-              : segment.startTime,
-          endTime: segment.endTime.isAfter(gap.end) ? gap.end : segment.endTime,
-        ),
-      );
+    final coverage = GapCoverage.of(
+      gap,
+      parsed.activityLog,
+      recordedUntil: active.downloadedAt,
+    );
+    if (coverage.covered.isNotEmpty) {
+      _liveActivityLog.addAll(coverage.covered);
+      _persistLiveSegments();
     }
+    return coverage.holes;
+  }
 
-    _closeOpenSegmentBefore(gap.start);
+  void _persistLiveSegments() {
     _liveActivityLog.sort((a, b) => a.startTime.compareTo(b.startTime));
     unawaited(_persistLiveActivityLog());
     unawaited(_persistLiveSegmentState());
-    return true;
   }
 
   void _closeOpenSegmentBefore(DateTime cutoff) {
@@ -1624,18 +1694,23 @@ class AppState extends ChangeNotifier {
     _liveOpenSegmentStart = null;
   }
 
-  Future<void> resolveRealGap(ActivityType type) async {
-    final gap = _pendingRealGap;
-    if (gap == null) return;
-    await addManualActivityEntry(
-      TachographActivity(type: type, startTime: gap.start, endTime: gap.end),
-    );
-    _pendingRealGap = null;
-
-    _closeOpenSegmentBefore(gap.start);
-    _liveActivityLog.sort((a, b) => a.startTime.compareTo(b.startTime));
-    unawaited(_persistLiveActivityLog());
-    await _persistLiveSegmentState();
+  /// Records the driver's account of [pendingRealGap]: one or more
+  /// activities, back to back, that cover it.
+  Future<void> resolveRealGap(List<TachographActivity> segments) async {
+    if (_pendingRealGaps.isEmpty) return;
+    _pendingRealGaps.removeAt(0);
+    for (final segment in segments) {
+      _manualEntries.add(
+        TachographActivity(
+          type: segment.type,
+          startTime: segment.startTime,
+          endTime: segment.endTime,
+          isManualEntry: true,
+        ),
+      );
+    }
+    await _persistManualEntries();
+    _recomputeDerivedState();
 
     await recordActivityCheckpoint();
     notifyListeners();
@@ -1712,8 +1787,9 @@ class AppState extends ChangeNotifier {
   }
 
   List<TachographActivity> get _liveActivityLogWithOpenSegment {
-    if (_liveOpenSegmentType == null || _liveOpenSegmentStart == null)
+    if (_liveOpenSegmentType == null || _liveOpenSegmentStart == null) {
       return _liveActivityLog;
+    }
     final visibleEnd = _isBluetoothConnected
         ? DateTime.now()
         : (_lastKnownActivityTime ?? DateTime.now());
@@ -1903,8 +1979,9 @@ class AppState extends ChangeNotifier {
   }
 
   List<TachographActivity> get _liveActivityLogWithOpenSegment2 {
-    if (_liveOpenSegmentType2 == null || _liveOpenSegmentStart2 == null)
+    if (_liveOpenSegmentType2 == null || _liveOpenSegmentStart2 == null) {
       return _liveActivityLog2;
+    }
     final visibleEnd = _isBluetoothConnected
         ? DateTime.now()
         : (_lastKnownActivityTime ?? DateTime.now());

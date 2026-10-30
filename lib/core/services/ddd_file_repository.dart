@@ -89,8 +89,9 @@ class DddFileRepository {
   }
 
   Future<Uint8List> readSecondaryFileBytes(DddFile f) async {
-    if (f.secondaryWebBytesBase64 != null)
+    if (f.secondaryWebBytesBase64 != null) {
       return base64Decode(f.secondaryWebBytesBase64!);
+    }
     if (f.secondaryLocalPath.isEmpty) return Uint8List(0);
     return readDddBytes(f.secondaryLocalPath);
   }
@@ -116,8 +117,9 @@ class DddFileRepository {
 
   Future<void> permanentlyDelete(DddFile f) async {
     if (f.localPath.isNotEmpty) await deleteDddBytes(f.localPath);
-    if (f.secondaryLocalPath.isNotEmpty)
+    if (f.secondaryLocalPath.isNotEmpty) {
       await deleteDddBytes(f.secondaryLocalPath);
+    }
     final files = await _readIndex();
     files.removeWhere((x) => x.id == f.id);
     await _persistIndex(files);

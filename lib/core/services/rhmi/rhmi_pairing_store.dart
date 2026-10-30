@@ -28,8 +28,7 @@ class RhmiPairingStore {
   }
 
   Future<List<RhmiPairing>> all(String device) async => [
-    for (final c in const [0, 1, 2])
-      if (await get(device, c) case final p?) p,
+    for (final c in const [0, 1, 2]) ?await get(device, c),
   ];
 
   Future<void> put(String device, int client, List<int> sessionId) async {

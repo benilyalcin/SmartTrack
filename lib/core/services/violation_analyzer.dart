@@ -63,6 +63,68 @@ class ActivityGap {
   Duration get duration => end.difference(start);
 }
 
+/// What a card file says about a gap: its records clipped to the gap, and the
+/// stretches it has no record for, both oldest first.
+class GapCoverage {
+  final List<TachographActivity> covered;
+  final List<ActivityGap> holes;
+
+  const GapCoverage({required this.covered, required this.holes});
+
+  /// [records] are trusted wherever they fall inside [gap], up to
+  /// [recordedUntil] - when the file was downloaded. A card file ends each
+  /// day's last activity at midnight, so without it the activity under way
+  /// at the download would seem to have run to the end of that day.
+  ///
+  /// A record of unknown activity counts as no record, and a hole shorter
+  /// than [tolerance] comes from records kept in whole minutes, so is not one.
+  factory GapCoverage.of(
+    ActivityGap gap,
+    Iterable<TachographActivity> records, {
+    DateTime? recordedUntil,
+    Duration tolerance = const Duration(minutes: 1),
+  }) {
+    final limit = recordedUntil != null && recordedUntil.isBefore(gap.end)
+        ? recordedUntil
+        : gap.end;
+    final inside =
+        records
+            .where(
+              (a) =>
+                  a.type != ActivityType.unknown &&
+                  a.startTime.isBefore(limit) &&
+                  a.endTime.isAfter(gap.start),
+            )
+            .toList()
+          ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+    final covered = <TachographActivity>[];
+    final holes = <ActivityGap>[];
+    var coveredUntil = gap.start;
+    for (final record in inside) {
+      // Clipped to what is already covered too, so overlapping records are
+      // not counted twice.
+      final start = record.startTime.isAfter(coveredUntil)
+          ? record.startTime
+          : coveredUntil;
+      final end = record.endTime.isAfter(limit) ? limit : record.endTime;
+      if (!end.isAfter(start)) continue;
+
+      if (start.difference(coveredUntil) >= tolerance) {
+        holes.add(ActivityGap(start: coveredUntil, end: start));
+      }
+      covered.add(
+        TachographActivity(type: record.type, startTime: start, endTime: end),
+      );
+      coveredUntil = end;
+    }
+    if (gap.end.difference(coveredUntil) >= tolerance) {
+      holes.add(ActivityGap(start: coveredUntil, end: gap.end));
+    }
+    return GapCoverage(covered: covered, holes: holes);
+  }
+}
+
 /// A continuous stretch of rest (or of unrecorded time, see [_restBlocks]).
 class _RestBlock {
   final DateTime start;
@@ -474,8 +536,12 @@ class ViolationAnalyzer {
             hadFirstPartBefore;
         violations.add(
           _dailyRestViolation(
-            start: taken?.block.start ?? periodEnd,
-            end: taken?.block.end ?? periodEnd,
+            start: _clamp(
+              taken?.block.start ?? periodEnd,
+              periodStart,
+              periodEnd,
+            ),
+            end: _clamp(taken?.block.end ?? periodEnd, periodStart, periodEnd),
             rest: rest,
             reducible: reducible,
           ),
@@ -486,8 +552,8 @@ class ViolationAnalyzer {
         } else {
           violations.add(
             _dailyRestViolation(
-              start: taken.block.start,
-              end: taken.block.end,
+              start: _clamp(taken.block.start, periodStart, periodEnd),
+              end: _clamp(taken.block.end, periodStart, periodEnd),
               rest: taken.overlap,
               reducible: false,
             ),
@@ -513,6 +579,13 @@ class ViolationAnalyzer {
     }
     return violations;
   }
+
+  /// A daily rest violation belongs to its 24h period. The rest block it is
+  /// measured on can run far past that period (a long stretch without data
+  /// counts as rest), so the violation's times are kept inside the period;
+  /// otherwise it would still count toward a risk score weeks later.
+  static DateTime _clamp(DateTime t, DateTime from, DateTime to) =>
+      t.isBefore(from) ? from : (t.isAfter(to) ? to : t);
 
   Violation _dailyRestViolation({
     required DateTime start,

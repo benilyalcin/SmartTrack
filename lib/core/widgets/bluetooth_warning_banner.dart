@@ -44,8 +44,9 @@ class _BluetoothWarningBannerState extends State<BluetoothWarningBanner>
   @override
   Widget build(BuildContext context) {
     final appState = AppStateProvider.of(context);
-    if (appState.isBluetoothConnected || appState.bluetoothWarningDismissed)
+    if (appState.isBluetoothConnected || appState.bluetoothWarningDismissed) {
       return const SizedBox.shrink();
+    }
 
     final lang = appState.selectedLanguage;
     final scheme = Theme.of(context).colorScheme;

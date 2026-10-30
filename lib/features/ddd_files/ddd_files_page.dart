@@ -6,7 +6,9 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/localization/localization.dart';
 import '../../core/models/ddd_file.dart';
+import '../../core/models/tachograph_type.dart';
 import '../../core/providers/app_state.dart';
+import '../../core/services/bluetooth_service.dart';
 import '../../core/services/ddd_file_repository.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -15,6 +17,7 @@ import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/bluetooth_warning_banner.dart';
 
 import '../../core/widgets/card_slot_warning_banner.dart';
+import 'stc_download_sheet.dart';
 
 class DddFilesPage extends StatefulWidget {
   const DddFilesPage({super.key});
@@ -29,6 +32,8 @@ class _DddFilesPageState extends State<DddFilesPage> {
   bool _newestFirst = true;
 
   bool _isSharing = false;
+  bool _isDownloadingFromDongle = false;
+  String? _dongleDownloadStatus;
 
   String _t(String key) => AppLocalizations.getText(
     AppStateProvider.of(context).selectedLanguage,
@@ -139,25 +144,138 @@ class _DddFilesPageState extends State<DddFilesPage> {
         }
       }
       if (xFiles.isEmpty) {
-        if (mounted)
+        if (mounted) {
           showAppSnackBar(
             context,
             _t('ddd.shareError'),
             type: AppSnackBarType.error,
           );
+        }
         return;
       }
       await Share.shareXFiles(xFiles, fileNameOverrides: fileNames);
       if (mounted) _exitSelectionMode();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         showAppSnackBar(
           context,
           _t('ddd.shareError'),
           type: AppSnackBarType.error,
         );
+      }
     } finally {
       if (mounted) setState(() => _isSharing = false);
+    }
+  }
+
+  void _reportDownload(({DddFile? card, DddFile? vehicleUnit}) result) {
+    if (result.card == null && result.vehicleUnit == null) {
+      showAppSnackBar(
+        context,
+        _t('ddd.downloadNoData'),
+        type: AppSnackBarType.error,
+      );
+      return;
+    }
+    final successKey = result.card != null && result.vehicleUnit != null
+        ? 'ddd.samplePairSuccess'
+        : result.card != null
+        ? 'ddd.cardOnlySuccess'
+        : 'ddd.vehicleUnitOnlySuccess';
+    showAppSnackBar(context, _t(successKey), type: AppSnackBarType.success);
+  }
+
+  Future<void> _downloadFromDongle(AppState appState) async {
+    if (_isDownloadingFromDongle) return;
+    // The chooser the screen had before the ATC download moved out: the
+    // vehicle unit block by block, and the card.
+    final options = await showStcDownloadSheet(context);
+    if (options == null || !mounted) return;
+    final kind = options.includeCard && options.includeVehicleUnit
+        ? DddFetchKind.both
+        : options.includeCard
+        ? DddFetchKind.card
+        : DddFetchKind.vehicleUnit;
+
+    setState(() {
+      _isDownloadingFromDongle = true;
+      _dongleDownloadStatus = _t('ddd.connectingStatus');
+    });
+    try {
+      final bluetooth = AppBluetoothService.instance;
+      if (!await bluetooth.ensurePermissions()) {
+        if (mounted) {
+          showAppSnackBar(
+            context,
+            _t('ddd.bluetoothPermissionRequired'),
+            type: AppSnackBarType.error,
+          );
+        }
+        return;
+      }
+      // Already connected to the dongle for live data: download over that
+      // link. A second connection to it would be refused.
+      if (bluetooth.stcDongleLinked) {
+        setState(() => _dongleDownloadStatus = _t('ddd.receivingDataStatus'));
+        final result = await bluetooth.downloadDddOverStcLink(
+          appState,
+          kind: kind,
+          activityRangeStart: options.activityRange?.start,
+          activityRangeEnd: options.activityRange?.end,
+          includeEventsFaults: options.includeEventsFaults,
+          includeDetailedSpeed: options.includeDetailedSpeed,
+          includeTechnicalData: options.includeTechnicalData,
+          onProgress: (message) {
+            if (mounted) setState(() => _dongleDownloadStatus = message);
+          },
+        );
+        if (mounted) _reportDownload(result);
+        return;
+      }
+
+      final dongle = await bluetooth.findDongle();
+      if (dongle == null) {
+        if (mounted) {
+          showAppSnackBar(
+            context,
+            _t('ddd.dongleNotPaired'),
+            type: AppSnackBarType.error,
+          );
+        }
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _dongleDownloadStatus = _t('ddd.receivingDataStatus'));
+
+      final result = await bluetooth.downloadRealDddFromDongle(
+        dongle,
+        appState,
+        kind: kind,
+        activityRangeStart: options.activityRange?.start,
+        activityRangeEnd: options.activityRange?.end,
+        includeEventsFaults: options.includeEventsFaults,
+        includeDetailedSpeed: options.includeDetailedSpeed,
+        includeTechnicalData: options.includeTechnicalData,
+        onProgress: (message) {
+          if (mounted) setState(() => _dongleDownloadStatus = message);
+        },
+      );
+      if (mounted) _reportDownload(result);
+    } catch (error) {
+      if (mounted) {
+        showAppSnackBar(
+          context,
+          _t('ddd.downloadFailed').replaceFirst('{error}', '$error'),
+          type: AppSnackBarType.error,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloadingFromDongle = false;
+          _dongleDownloadStatus = null;
+        });
+      }
     }
   }
 
@@ -189,6 +307,44 @@ class _DddFilesPageState extends State<DddFilesPage> {
                   const BluetoothWarningBanner(),
                   const CardSlotWarningBanner(),
                   _buildHeader(scheme, isDesktop),
+                  if (appState.tachographType == TachographType.stc8255) ...[
+                    const SizedBox(height: 16),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            FilledButton.icon(
+                              onPressed: _isDownloadingFromDongle
+                                  ? null
+                                  : () => _downloadFromDongle(appState),
+                              icon: _isDownloadingFromDongle
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.download_outlined),
+                              label: Text(_t('ddd.fetchRealData')),
+                            ),
+                            if (_dongleDownloadStatus case final status?) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                status,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

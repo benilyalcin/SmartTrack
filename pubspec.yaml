@@ -57,6 +57,7 @@ dependencies:
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
   geolocator: ^13.0.2
+  open_filex: ^5.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -95,6 +96,9 @@ flutter:
     - assets/ddd_samples/tachograph/1.ddd
     - assets/ddd_samples/tachograph/2.ddd
     - assets/ddd_samples/tachograph/3.ddd
+    - assets/pdfs/STC-8255-Operation-Manual.pdf
+    - assets/pdfs/STC-8255-Preparation-Manual.pdf
+    - assets/pdfs/STC-8255-Tachograph.pdf
 
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package

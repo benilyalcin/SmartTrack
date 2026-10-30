@@ -134,18 +134,19 @@ void main() {
         expect(segments.length, 3);
         expect(segments[0].type, ActivityType.driving);
         expect(segments[0].slot, DriverSlot.driver);
-        expect(segments[0].startTime, DateTime(2025, 6, 15, 8, 0));
-        expect(segments[0].endTime, DateTime(2025, 6, 15, 10, 0));
+        // The minutes count from 00:00 UTC of the record's day.
+        expect(segments[0].startTime, DateTime.utc(2025, 6, 15, 8, 0));
+        expect(segments[0].endTime, DateTime.utc(2025, 6, 15, 10, 0));
 
         expect(segments[1].type, ActivityType.rest);
-        expect(segments[1].startTime, DateTime(2025, 6, 15, 10, 0));
-        expect(segments[1].endTime, DateTime(2025, 6, 15, 11, 40));
+        expect(segments[1].startTime, DateTime.utc(2025, 6, 15, 10, 0));
+        expect(segments[1].endTime, DateTime.utc(2025, 6, 15, 11, 40));
 
         expect(segments[2].type, ActivityType.work);
         expect(segments[2].slot, DriverSlot.coDriver);
-        expect(segments[2].startTime, DateTime(2025, 6, 15, 11, 40));
+        expect(segments[2].startTime, DateTime.utc(2025, 6, 15, 11, 40));
 
-        expect(segments[2].endTime, DateTime(2025, 6, 16, 0, 0));
+        expect(segments[2].endTime, DateTime.utc(2025, 6, 16, 0, 0));
       },
     );
 
@@ -160,8 +161,8 @@ void main() {
         final ef = _driverActivityEf([_dailyRecord(day, entries)]);
         final segments = RealCardActivityParser.parse(ef);
 
-        final dayStart = DateTime(2025, 6, 15);
-        final dayEnd = DateTime(2025, 6, 16);
+        final dayStart = DateTime.utc(2025, 6, 15);
+        final dayEnd = DateTime.utc(2025, 6, 16);
         expect(
           DrivingTimeCalculator.segmentsFullyCoverRange(
             segments,

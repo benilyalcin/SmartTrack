@@ -204,9 +204,10 @@ class VuGen2Decoder {
             odometerAtWithdrawalKm: _u24(r, 107),
           ),
       ],
-      activities: VuActivityDecoder.buildActivities(dayStart, [
-        for (final r in block.each(_activityChangeInfo, 2)) _u16(r, 0),
-      ]),
+      activities: VuActivityDecoder.buildActivities(
+        VuActivityDecoder.utcDayStart(date),
+        [for (final r in block.each(_activityChangeInfo, 2)) _u16(r, 0)],
+      ),
       places: [
         // FullCardNumberAndGeneration (19), then the PlaceAuthRecord.
         for (final r in block.each(_placeDailyWorkPeriod, 29))

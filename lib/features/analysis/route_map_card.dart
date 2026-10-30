@@ -39,8 +39,9 @@ class _RouteMapCardState extends State<RouteMapCard> {
             _autoFollow &&
             points.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted)
+            if (mounted) {
               _mapController.move(points.last, _mapController.camera.zoom);
+            }
           });
         }
 

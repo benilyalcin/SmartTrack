@@ -53,8 +53,9 @@ class RealCardFileScanner {
     for (var offset = 0; offset + 5 <= data.length; offset++) {
       if (data[offset] != hi ||
           data[offset + 1] != lo ||
-          data[offset + 2] != _gen1Data)
+          data[offset + 2] != _gen1Data) {
         continue;
+      }
       final length = (data[offset + 3] << 8) | data[offset + 4];
       final dataStart = offset + 5;
       final dataEnd = dataStart + length;
@@ -121,7 +122,9 @@ class RealCardActivityParser {
       result.addAll(
         _decodeRecord(
           record,
-          DateTime(date.year, date.month, date.day),
+          // The activity minutes count from 00:00 UTC of the record's
+          // date (Annex 1C), not from local midnight.
+          DateTime.utc(date.year, date.month, date.day),
           (record[8] << 8) | record[9],
         ),
       );
