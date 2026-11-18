@@ -1001,9 +1001,9 @@ class _DashboardPageState extends State<DashboardPage> {
       hint: _t('compliance.cumulativeBreakHint'),
       faded: stale,
       footnote: stale
-          ? _t('compliance.lastReadAt', {
-              'time': DisplayTime.fromConfig().hm(readAt),
-            })
+          ? _t(
+              'compliance.lastReadAt',
+            ).replaceAll('{time}', DisplayTime.fromConfig().hm(readAt))
           : null,
     );
   }
