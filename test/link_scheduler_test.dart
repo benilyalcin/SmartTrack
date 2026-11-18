@@ -10,8 +10,14 @@ import 'package:smarttrack_mine/core/services/link/motion_source.dart';
 import 'package:smarttrack_mine/core/services/link/quiet_window.dart';
 
 class FakeMotion implements MotionSource {
+  FakeMotion({this.available = true});
+
   void Function()? _onMoving;
   bool watching = false;
+  bool available;
+
+  @override
+  Future<bool> isAvailable() async => available;
 
   void move() => _onMoving?.call();
 
@@ -29,7 +35,11 @@ class FakeMotion implements MotionSource {
 }
 
 class Harness {
-  Harness({SyncConfig config = SyncConfig.defaults, bool vu = false}) {
+  Harness({
+    SyncConfig config = SyncConfig.defaults,
+    bool vu = false,
+    bool motionAvailable = true,
+  }) : motion = FakeMotion(available: motionAvailable) {
     scheduler = LinkScheduler(
       config: config,
       clock: () => now,
@@ -58,10 +68,11 @@ class Harness {
           : null,
       onVuData: vu ? (day, outcome) async {} : null,
     );
+    unawaited(scheduler.refreshMotionAvailability());
   }
 
   DateTime now = DateTime.utc(2026, 11, 18, 10);
-  final motion = FakeMotion();
+  final FakeMotion motion;
   late final LinkScheduler scheduler;
   int cardStarts = 0;
   final tokens = <DownloadCancelToken>[];
@@ -350,6 +361,24 @@ void main() {
       await h.finishDownload();
       expect(h.imported, isEmpty);
       expect(h.scheduler.queue.hasCardJob, isTrue);
+    });
+
+    test('without a motion signal only rest/break opens a window', () async {
+      final h = Harness(motionAvailable: false);
+      await h.scheduler.refreshMotionAvailability();
+      h.scheduler.onConnected();
+      // Stopped for half an hour, but other work: no download, as nothing
+      // could see the vehicle move off once it runs.
+      h.sample(speed: 0, activity: ActivityType.work);
+      h.advance(const Duration(minutes: 30));
+      h.sample(speed: 0, activity: ActivityType.work);
+      await h.settle();
+      expect(h.cardStarts, 0);
+
+      h.advance(const Duration(minutes: 1));
+      h.sample(speed: 0, activity: ActivityType.rest);
+      await h.settle();
+      expect(h.cardStarts, 1);
     });
   });
 }

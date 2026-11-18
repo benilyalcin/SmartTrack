@@ -62,8 +62,13 @@ class QuietWindowDetector {
   /// Whether a download may start at [now]. [mandatory] (stale card data)
   /// is content with the shorter stop of
   /// [SyncConfig.forcedQuietSpeedZeroFor]; driving still never qualifies.
-  bool isOpen(DateTime now, {bool mandatory = false}) {
+  ///
+  /// [restOnly]: nothing can see the vehicle move once the download runs,
+  /// so only rest/break qualifies (see
+  /// SyncConfig.restOnlyWithoutMotionSignal).
+  bool isOpen(DateTime now, {bool mandatory = false, bool restOnly = false}) {
     if (_lastSampleAt == null || !_cardInserted || isMoving) return false;
+    if (restOnly) return _activity == ActivityType.rest;
     if (_ignitionOn == false) return true;
     if (_activity == ActivityType.rest) return true;
     final since = _stoppedSince;

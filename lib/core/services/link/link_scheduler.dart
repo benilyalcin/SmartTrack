@@ -78,6 +78,10 @@ class LinkScheduler extends ChangeNotifier {
 
   bool _connected = false;
   DddJob? _current;
+
+  /// Whether [motion] can see the vehicle move; refreshed with each live
+  /// sample. False until known: a stop alone is then not enough.
+  bool _motionAvailable = false;
   DownloadCancelToken? _token;
   DateTime? _lastJobEndedAt;
   DateTime? _retryAfter;
@@ -141,6 +145,7 @@ class LinkScheduler extends ChangeNotifier {
     if (last == null || now.difference(last) >= config.periodicSyncInterval) {
       _queueMissing(now);
     }
+    unawaited(_refreshMotionAvailability());
     unawaited(tick());
   }
 
@@ -156,9 +161,24 @@ class LinkScheduler extends ChangeNotifier {
     final ended = _lastJobEndedAt;
     final sample = quiet.lastSampleAt;
     if (ended != null && (sample == null || !sample.isAfter(ended))) return;
-    if (!quiet.isOpen(now, mandatory: isStale(now))) return;
+    final restOnly = config.restOnlyWithoutMotionSignal && !_motionAvailable;
+    if (!quiet.isOpen(now, mandatory: isStale(now), restOnly: restOnly)) {
+      return;
+    }
     await _run(queue.next!);
   }
+
+  Future<void> _refreshMotionAvailability() async {
+    try {
+      _motionAvailable = await motion.isAvailable();
+    } catch (_) {
+      _motionAvailable = false;
+    }
+  }
+
+  /// Checks now whether [motion] can see the vehicle move (also done with
+  /// every live sample).
+  Future<void> refreshMotionAvailability() => _refreshMotionAvailability();
 
   Future<void> _run(DddJob job) async {
     final token = DownloadCancelToken();

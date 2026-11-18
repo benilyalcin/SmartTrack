@@ -6,6 +6,9 @@ import 'package:geolocator/geolocator.dart';
 /// holds the line - when the unit itself cannot say, as no live data comes
 /// then.
 abstract class MotionSource {
+  /// Whether it can tell the vehicle moves at all.
+  Future<bool> isAvailable();
+
   /// Starts watching; [onMoving] is called when the vehicle moves.
   Future<void> start(void Function() onMoving);
   Future<void> stop();
@@ -14,6 +17,9 @@ abstract class MotionSource {
 /// No signal: a download is only stopped by the next quiet-window check.
 class NoMotionSource implements MotionSource {
   const NoMotionSource();
+
+  @override
+  Future<bool> isAvailable() async => false;
 
   @override
   Future<void> start(void Function() onMoving) async {}
@@ -35,6 +41,20 @@ class GpsMotionSource implements MotionSource {
   final int readingsNeeded;
 
   StreamSubscription<Position>? _subscription;
+
+  @override
+  Future<bool> isAvailable() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission != LocationPermission.always &&
+          permission != LocationPermission.whileInUse) {
+        return false;
+      }
+      return await Geolocator.isLocationServiceEnabled();
+    } catch (_) {
+      return false;
+    }
+  }
 
   @override
   Future<void> start(void Function() onMoving) async {

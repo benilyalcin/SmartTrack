@@ -22,6 +22,7 @@ class SyncConfig {
     this.displayZoneName = 'Europe/Istanbul',
     this.abortLeavesUnitStable = true,
     this.cardRecordsReachLastChange = true,
+    this.restOnlyWithoutMotionSignal = true,
   });
 
   static const SyncConfig defaults = SyncConfig();
@@ -44,6 +45,16 @@ class SyncConfig {
   // ASSUMPTION: not checked on a unit yet. When false the newest card day
   // is not trusted at all and the watermark stays at its start.
   final bool cardRecordsReachLastChange;
+
+  /// Without a way to see the vehicle move during a download (no location
+  /// permission for the phone's GPS), a download only starts while the
+  /// unit says rest/break: a stop alone could end at any moment.
+  // ASSUMPTION: no live speed can be read from the unit during a card
+  // download. The download is one TransferData whose blocks the unit
+  // acknowledges in sequence (it answers NRC 0x24, requestSequenceError,
+  // to requests out of order), so a ReadDataByIdentifier 0xF902 between
+  // blocks would most likely break the transfer. Not tried on a unit yet.
+  final bool restOnlyWithoutMotionSignal;
 
   /// Vehicle unit downloads need a company card; off until that is in place.
   final bool vuDownloadEnabled;
