@@ -118,6 +118,14 @@ class AppState extends ChangeNotifier {
   )..addListener(notifyListeners);
   ActivityDataController get activityData => _activityData;
 
+  @override
+  void dispose() {
+    // It listens to the app-wide LinkGate; left behind it would call a
+    // disposed AppState.
+    _activityData.dispose();
+    super.dispose();
+  }
+
   /// The card records last merged in, so the same file is not merged again
   /// on every recompute.
   TachographDriverData? _mergedCardData;
