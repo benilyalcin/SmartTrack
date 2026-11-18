@@ -125,7 +125,11 @@ class AppState extends ChangeNotifier {
   final DrivingTimeCalculator _calculator = DrivingTimeCalculator();
   final ViolationAnalyzer _violationAnalyzer = ViolationAnalyzer();
   Map<String, DrivingRuleResult> _drivingRules = {};
+
+  /// Driver1CumulativeBreakTime (0xF925) as last read from the unit, and
+  /// when (UTC); null when it has never been read.
   Duration _totalBreakTime = Duration.zero;
+  DateTime? _totalBreakTimeReadAt;
   String _currentActivity = 'dashboard.noData';
   List<Violation> _violations = [];
   List<ActivityGap> _pendingGaps = [];
@@ -135,7 +139,10 @@ class AppState extends ChangeNotifier {
   String? _driverCardNumber;
 
   Map<String, DrivingRuleResult> _drivingRules2 = {};
+
+  /// Driver2CumulativeBreakTime (0xF926), likewise.
   Duration _totalBreakTime2 = Duration.zero;
+  DateTime? _totalBreakTime2ReadAt;
   String _currentActivity2 = 'dashboard.noData';
   Duration? _liveSessionDuration2;
   int? _remaining10hDrivingTimes2;
@@ -428,6 +435,11 @@ class AppState extends ChangeNotifier {
       _isActiveDriver1 ? _drivingRules : _drivingRules2;
   Duration get activeTotalBreakTime =>
       _isActiveDriver1 ? _totalBreakTime : _totalBreakTime2;
+
+  /// When [activeTotalBreakTime] was read from the unit (UTC); null when it
+  /// never was.
+  DateTime? get activeTotalBreakTimeReadAt =>
+      _isActiveDriver1 ? _totalBreakTimeReadAt : _totalBreakTime2ReadAt;
   String get activeCurrentActivity =>
       _isActiveDriver1 ? _currentActivity : _currentActivity2;
   Duration? get activeLiveSessionDuration =>
@@ -771,7 +783,10 @@ class AppState extends ChangeNotifier {
       );
     }
     _drivingRules = mergedRules;
-    if (cumulativeBreak != null) _totalBreakTime = cumulativeBreak;
+    if (cumulativeBreak != null) {
+      _totalBreakTime = cumulativeBreak;
+      _totalBreakTimeReadAt = _tachoClock.nowUtc();
+    }
     _violations = _violationAnalyzer.analyzeLiveRules(
       _drivingRules,
       DateTime.now(),
@@ -967,7 +982,10 @@ class AppState extends ChangeNotifier {
       );
     }
     _drivingRules2 = mergedRules2;
-    if (cumulativeBreak != null) _totalBreakTime2 = cumulativeBreak;
+    if (cumulativeBreak != null) {
+      _totalBreakTime2 = cumulativeBreak;
+      _totalBreakTime2ReadAt = _tachoClock.nowUtc();
+    }
     if (currentSessionDuration != null) {
       _liveSessionDuration2 = currentSessionDuration;
     }
@@ -1068,6 +1086,7 @@ class AppState extends ChangeNotifier {
     final json = {
       'drivingRules': _encodeRules(_drivingRules),
       'totalBreakTimeMs': _totalBreakTime.inMilliseconds,
+      'totalBreakTimeReadAt': _totalBreakTimeReadAt?.toUtc().toIso8601String(),
       'currentActivity': _currentActivity,
       'liveSessionDurationMs': _liveSessionDuration?.inMilliseconds,
       'driverCardExpiryDate': _driverCardExpiryDate?.toIso8601String(),
@@ -1089,6 +1108,9 @@ class AppState extends ChangeNotifier {
 
       'drivingRules2': _encodeRules(_drivingRules2),
       'totalBreakTime2Ms': _totalBreakTime2.inMilliseconds,
+      'totalBreakTime2ReadAt': _totalBreakTime2ReadAt
+          ?.toUtc()
+          .toIso8601String(),
       'currentActivity2': _currentActivity2,
       'liveSessionDuration2Ms': _liveSessionDuration2?.inMilliseconds,
       'remaining10hDrivingTimes2': _remaining10hDrivingTimes2,
@@ -1115,6 +1137,9 @@ class AppState extends ChangeNotifier {
     _totalBreakTime = Duration(
       milliseconds: json['totalBreakTimeMs'] as int? ?? 0,
     );
+    // A snapshot from before the read time was kept may hold a value the
+    // app worked out itself; without a read time it is not shown.
+    _totalBreakTimeReadAt = _dateOrNull(json['totalBreakTimeReadAt']);
     _currentActivity = json['currentActivity'] as String? ?? _currentActivity;
     _liveSessionDuration = _durationOrNull(json['liveSessionDurationMs']);
     _driverCardExpiryDate = _dateOrNull(json['driverCardExpiryDate']);
@@ -1147,6 +1172,7 @@ class AppState extends ChangeNotifier {
     _totalBreakTime2 = Duration(
       milliseconds: json['totalBreakTime2Ms'] as int? ?? 0,
     );
+    _totalBreakTime2ReadAt = _dateOrNull(json['totalBreakTime2ReadAt']);
     _currentActivity2 =
         json['currentActivity2'] as String? ?? _currentActivity2;
     _liveSessionDuration2 = _durationOrNull(json['liveSessionDuration2Ms']);
@@ -1769,7 +1795,6 @@ class AppState extends ChangeNotifier {
 
     if (activities.isEmpty) {
       _drivingRules = {};
-      _totalBreakTime = Duration.zero;
       _violations = [];
       _pendingGaps = [];
       notifyListeners();
@@ -1781,9 +1806,8 @@ class AppState extends ChangeNotifier {
     final windowStart = now.subtract(_violationAnalysisWindow);
     final recent = sorted.where((a) => a.endTime.isAfter(windowStart)).toList();
 
-    _totalBreakTime = recent
-        .where((a) => a.type == ActivityType.rest)
-        .fold(Duration.zero, (prev, a) => prev + a.duration);
+    // The cumulative break time is the unit's own (0xF925 / 0xF926) only;
+    // the app does not work it out.
 
     _drivingRules = _calculator.calculate(recent, now);
     _violations = _violationAnalyzer.analyze(recent, now);
