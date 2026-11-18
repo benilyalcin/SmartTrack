@@ -124,7 +124,13 @@ class AppState extends ChangeNotifier {
 
   final DrivingTimeCalculator _calculator = DrivingTimeCalculator();
   final ViolationAnalyzer _violationAnalyzer = ViolationAnalyzer();
+
+  /// The unit's own counters (continuous, daily, weekly, bi-weekly
+  /// driving) as last read, and when (UTC). The live cards show only these;
+  /// the app's own 561 calculation is for the history (alerts, analysis).
   Map<String, DrivingRuleResult> _drivingRules = {};
+  final Map<String, DateTime> _drivingRulesReadAt = {};
+  final Map<String, DateTime> _drivingRules2ReadAt = {};
 
   /// Driver1CumulativeBreakTime (0xF925) as last read from the unit, and
   /// when (UTC); null when it has never been read.
@@ -433,6 +439,11 @@ class AppState extends ChangeNotifier {
 
   Map<String, DrivingRuleResult> get activeDrivingRules =>
       _isActiveDriver1 ? _drivingRules : _drivingRules2;
+
+  /// When each of [activeDrivingRules] was read from the unit (UTC).
+  Map<String, DateTime> get activeDrivingRulesReadAt => Map.unmodifiable(
+    _isActiveDriver1 ? _drivingRulesReadAt : _drivingRules2ReadAt,
+  );
   Duration get activeTotalBreakTime =>
       _isActiveDriver1 ? _totalBreakTime : _totalBreakTime2;
 
@@ -783,6 +794,15 @@ class AppState extends ChangeNotifier {
       );
     }
     _drivingRules = mergedRules;
+    final readAt = _tachoClock.nowUtc();
+    for (final (key, value) in [
+      ('continuous', continuousDriving),
+      ('daily', dailyDriving),
+      ('weekly', weeklyDriving),
+      ('bi_weekly', remainingBiWeekly),
+    ]) {
+      if (value != null) _drivingRulesReadAt[key] = readAt;
+    }
     if (cumulativeBreak != null) {
       _totalBreakTime = cumulativeBreak;
       _totalBreakTimeReadAt = _tachoClock.nowUtc();
@@ -982,6 +1002,15 @@ class AppState extends ChangeNotifier {
       );
     }
     _drivingRules2 = mergedRules2;
+    final readAt2 = _tachoClock.nowUtc();
+    for (final (key, value) in [
+      ('continuous', continuousDriving),
+      ('daily', dailyDriving),
+      ('weekly', weeklyDriving),
+      ('bi_weekly', remainingBiWeekly),
+    ]) {
+      if (value != null) _drivingRules2ReadAt[key] = readAt2;
+    }
     if (cumulativeBreak != null) {
       _totalBreakTime2 = cumulativeBreak;
       _totalBreakTime2ReadAt = _tachoClock.nowUtc();
@@ -1059,6 +1088,29 @@ class AppState extends ChangeNotifier {
     'bi_weekly': DrivingTimeCalculator.biWeeklyDrivingLimit,
   };
 
+  Map<String, String> _encodeReadAt(Map<String, DateTime> readAt) => {
+    for (final e in readAt.entries) e.key: e.value.toUtc().toIso8601String(),
+  };
+
+  /// Puts back the read times; a counter without one (a snapshot from
+  /// before they were kept, which may hold the app's own figure) is
+  /// dropped rather than shown as the unit's.
+  void _restoreReadAt(
+    Map<String, DrivingRuleResult> rules,
+    Map<String, DateTime> readAt,
+    Map<String, dynamic>? json,
+  ) {
+    readAt.clear();
+    for (final key in rules.keys.toList()) {
+      final at = _dateOrNull(json?[key]);
+      if (at == null) {
+        rules.remove(key);
+      } else {
+        readAt[key] = at;
+      }
+    }
+  }
+
   Map<String, int> _encodeRules(Map<String, DrivingRuleResult> rules) =>
       rules.map((key, value) => MapEntry(key, value.used.inMilliseconds));
 
@@ -1085,6 +1137,7 @@ class AppState extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final json = {
       'drivingRules': _encodeRules(_drivingRules),
+      'drivingRulesReadAt': _encodeReadAt(_drivingRulesReadAt),
       'totalBreakTimeMs': _totalBreakTime.inMilliseconds,
       'totalBreakTimeReadAt': _totalBreakTimeReadAt?.toUtc().toIso8601String(),
       'currentActivity': _currentActivity,
@@ -1107,6 +1160,7 @@ class AppState extends ChangeNotifier {
       'minimumWeeklyRestMs': _minimumWeeklyRest?.inMilliseconds,
 
       'drivingRules2': _encodeRules(_drivingRules2),
+      'drivingRules2ReadAt': _encodeReadAt(_drivingRules2ReadAt),
       'totalBreakTime2Ms': _totalBreakTime2.inMilliseconds,
       'totalBreakTime2ReadAt': _totalBreakTime2ReadAt
           ?.toUtc()
@@ -1134,6 +1188,11 @@ class AppState extends ChangeNotifier {
 
   void _restoreComplianceSnapshot(Map<String, dynamic> json) {
     _drivingRules = _decodeRules(json['drivingRules'] as Map<String, dynamic>?);
+    _restoreReadAt(
+      _drivingRules,
+      _drivingRulesReadAt,
+      json['drivingRulesReadAt'] as Map<String, dynamic>?,
+    );
     _totalBreakTime = Duration(
       milliseconds: json['totalBreakTimeMs'] as int? ?? 0,
     );
@@ -1168,6 +1227,11 @@ class AppState extends ChangeNotifier {
 
     _drivingRules2 = _decodeRules(
       json['drivingRules2'] as Map<String, dynamic>?,
+    );
+    _restoreReadAt(
+      _drivingRules2,
+      _drivingRules2ReadAt,
+      json['drivingRules2ReadAt'] as Map<String, dynamic>?,
     );
     _totalBreakTime2 = Duration(
       milliseconds: json['totalBreakTime2Ms'] as int? ?? 0,
@@ -1794,7 +1858,6 @@ class AppState extends ChangeNotifier {
     final now = DateTime.now();
 
     if (activities.isEmpty) {
-      _drivingRules = {};
       _violations = [];
       _pendingGaps = [];
       notifyListeners();
@@ -1809,7 +1872,8 @@ class AppState extends ChangeNotifier {
     // The cumulative break time is the unit's own (0xF925 / 0xF926) only;
     // the app does not work it out.
 
-    _drivingRules = _calculator.calculate(recent, now);
+    // The live counters stay the unit's own; the app's 561 calculation
+    // below is for the history only (violations).
     _violations = _violationAnalyzer.analyze(recent, now);
     _pendingGaps = _violationAnalyzer.detectGaps(recent);
     _currentActivity = _activityTypeToLocalizationKey(sorted.last.type);
