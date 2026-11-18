@@ -26,6 +26,7 @@ import 'ddd_download_service.dart';
 import 'dongle_log_service.dart';
 import 'dongle_trace_log_service.dart';
 import 'kline_protocol.dart';
+import 'link/link_gate.dart';
 import 'trace_log_service.dart';
 
 enum AppBluetoothType { le, classic }
@@ -1040,6 +1041,8 @@ class AppBluetoothService {
     // landing in the middle of the handshake left the unit silent to
     // everything after it - the reads, the live cycles and a download alike.
     _refreshInFlight = true;
+    // Counted as a live read, so a download waits for the handshake.
+    final gated = LinkGate.instance.tryBeginLive();
     try {
       final transport = _buildKLineTransport(conn);
       final sendAndReceive = transport.sendAndReceive;
@@ -2142,6 +2145,7 @@ class AppBluetoothService {
       appState.setTachographDataStatus(false, reason: 'Bağlantı hatası: $e');
     } finally {
       _refreshInFlight = false;
+      if (gated) LinkGate.instance.endLive();
     }
   }
 
@@ -2197,6 +2201,8 @@ class AppBluetoothService {
     BleConnectionRepository conn,
     AppState appState,
   ) async {
+    // One line to the unit: no live read while a card download holds it.
+    if (!LinkGate.instance.tryBeginLive()) return;
     _refreshInFlight = true;
     refreshing.value = true;
     try {
@@ -2204,6 +2210,7 @@ class AppBluetoothService {
     } finally {
       _refreshInFlight = false;
       refreshing.value = false;
+      LinkGate.instance.endLive();
     }
   }
 
@@ -2214,6 +2221,8 @@ class AppBluetoothService {
   Future<bool> refreshNow(AppState appState) async {
     final conn = _activeConnection;
     if (conn == null || downloadTestModeActive) return false;
+    // A card download holds the line; the refresh would not run.
+    if (LinkGate.instance.isDddMode) return false;
 
     var waited = Duration.zero;
     while (_refreshInFlight) {
