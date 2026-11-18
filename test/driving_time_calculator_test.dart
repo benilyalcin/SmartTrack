@@ -405,4 +405,128 @@ void main() {
       },
     );
   });
+
+  group('breakProgress (Art. 7)', () {
+    final t0 = DateTime.utc(2026, 11, 18, 6);
+    const min = Duration(minutes: 1);
+
+    /// Back to back activities from [t0]: (type, minutes).
+    List<TachographActivity> day(List<(ActivityType, int)> steps) {
+      var t = t0;
+      return [
+        for (final (type, minutes) in steps)
+          () {
+            final a = _act(type, t, min * minutes);
+            t = a.endTime;
+            return a;
+          }(),
+      ];
+    }
+
+    DateTime endOf(List<TachographActivity> log) => log.last.endTime;
+
+    test('nine 5 minute rests are no break at all', () {
+      final log = day([
+        for (var i = 0; i < 9; i++) ...[
+          (ActivityType.driving, 20),
+          (ActivityType.rest, 5),
+        ],
+      ]);
+      final p = calc.breakProgress(log, endOf(log));
+      expect(p.countedBreak, Duration.zero);
+      expect(p.drivingSinceBreak, min * 180);
+    });
+
+    test('30 then 15 does not complete the break', () {
+      final log = day([
+        (ActivityType.driving, 120),
+        (ActivityType.rest, 30),
+        (ActivityType.driving, 60),
+        (ActivityType.rest, 15),
+        (ActivityType.driving, 30),
+      ]);
+      final p = calc.breakProgress(log, endOf(log));
+      expect(p.countedBreak, min * 45);
+      expect(p.drivingSinceBreak, min * 210);
+    });
+
+    test('15 then 30 completes it and both counters start again', () {
+      final log = day([
+        (ActivityType.driving, 120),
+        (ActivityType.rest, 15),
+        (ActivityType.driving, 60),
+        (ActivityType.rest, 30),
+        (ActivityType.driving, 40),
+      ]);
+      final p = calc.breakProgress(log, endOf(log));
+      expect(p.countedBreak, Duration.zero);
+      expect(p.drivingSinceBreak, min * 40);
+    });
+
+    test('a single 45 minute rest completes it', () {
+      final log = day([
+        (ActivityType.driving, 200),
+        (ActivityType.rest, 45),
+        (ActivityType.driving, 10),
+      ]);
+      final p = calc.breakProgress(log, endOf(log));
+      expect(p.countedBreak, Duration.zero);
+      expect(p.drivingSinceBreak, min * 10);
+    });
+
+    test('10 minutes of other work is no break', () {
+      final log = day([
+        (ActivityType.driving, 100),
+        (ActivityType.work, 10),
+        (ActivityType.driving, 20),
+      ]);
+      final p = calc.breakProgress(log, endOf(log));
+      expect(p.countedBreak, Duration.zero);
+      expect(p.drivingSinceBreak, min * 120);
+    });
+
+    test('other work never counts, however long', () {
+      final log = day([
+        (ActivityType.driving, 100),
+        (ActivityType.work, 50),
+        (ActivityType.driving, 20),
+      ]);
+      expect(calc.breakProgress(log, endOf(log)).drivingSinceBreak, min * 120);
+    });
+
+    test('rest records back to back are one rest', () {
+      // A card splits a rest at midnight UTC: 20 + 25 is one 45.
+      final log = day([
+        (ActivityType.driving, 60),
+        (ActivityType.rest, 20),
+        (ActivityType.rest, 25),
+        (ActivityType.driving, 5),
+      ]);
+      final p = calc.breakProgress(log, endOf(log));
+      expect(p.countedBreak, Duration.zero);
+      expect(p.drivingSinceBreak, min * 5);
+    });
+
+    test('a rest still going on counts as far as it has got', () {
+      final log = day([(ActivityType.driving, 60), (ActivityType.rest, 60)]);
+      final p = calc.breakProgress(log, t0.add(min * 80));
+      expect(p.countedBreak, min * 20);
+      expect(p.drivingSinceBreak, min * 60);
+      expect(calc.hasQualifyingPendingFirstHalf(log, t0.add(min * 80)), isTrue);
+    });
+
+    test('the counter covers the period since the last break, not days', () {
+      final log = day([
+        (ActivityType.rest, 30),
+        (ActivityType.driving, 60),
+        (ActivityType.rest, 9 * 60),
+        (ActivityType.driving, 60),
+        (ActivityType.rest, 20),
+        (ActivityType.driving, 30),
+      ]);
+      final p = calc.breakProgress(log, endOf(log));
+      expect(p.countedBreak, min * 20);
+      expect(p.drivingSinceBreak, min * 90);
+    });
+  });
 }

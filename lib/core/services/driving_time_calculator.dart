@@ -34,6 +34,25 @@ class TachographActivity {
   Duration get duration => endTime.difference(startTime);
 }
 
+/// See [DrivingTimeCalculator.breakProgress].
+class BreakProgress {
+  const BreakProgress({
+    required this.drivingSinceBreak,
+    required this.countedBreak,
+    required this.parts,
+  });
+
+  /// Driving since the last valid break (or daily/weekly rest).
+  final Duration drivingSinceBreak;
+
+  /// Rest since then that counts towards the next break: the parts of at
+  /// least 15 minutes. Zero again once a break is complete.
+  final Duration countedBreak;
+
+  /// Those parts, in order.
+  final List<Duration> parts;
+}
+
 class DrivingRuleResult {
   final Duration used;
   final Duration limit;
@@ -115,42 +134,83 @@ class DrivingTimeCalculator {
     List<TachographActivity> activities,
     DateTime currentTime,
   ) {
-    Duration currentContinuous = Duration.zero;
-    final pendingRests = <Duration>[];
+    return DrivingRuleResult(
+      used: breakProgress(activities, currentTime).drivingSinceBreak,
+      limit: continuousDrivingLimit,
+    );
+  }
 
-    for (final act in activities) {
-      if (act.type == ActivityType.driving) {
-        currentContinuous += act.duration;
-      } else if (act.type == ActivityType.rest) {
-        pendingRests.add(act.duration);
-        if (satisfiesArticle7BreakRequirement(pendingRests)) {
-          currentContinuous = Duration.zero;
-          pendingRests.clear();
-        }
+  /// The shortest rest that counts as part of a break (Art. 7).
+  static const Duration minBreakPart = Duration(minutes: 15);
+
+  /// Where the current driving period stands against Art. 7 of 561/2006.
+  ///
+  /// The period runs from the last valid break - 45 minutes in one go, or a
+  /// rest of at least 15 minutes followed later by one of at least 30, in
+  /// that order - or from a daily or weekly rest, which is longer than
+  /// that. Only rest counts: other work and availability do not, and a rest
+  /// shorter than 15 minutes is no part of a break. Rest records that
+  /// follow each other without a gap are one rest (a card splits a rest
+  /// at midnight UTC). Once a break is complete both the driving and the
+  /// break count start again. A rest still going on at [now] counts as far
+  /// as it has got.
+  BreakProgress breakProgress(
+    List<TachographActivity> activities,
+    DateTime now,
+  ) {
+    final sorted = _activitiesUpTo(activities, now);
+    var driving = Duration.zero;
+    var counted = Duration.zero;
+    final parts = <Duration>[];
+
+    void closeRest(Duration length) {
+      if (length < minBreakPart) return;
+      parts.add(length);
+      counted += length;
+      if (satisfiesArticle7BreakRequirement(parts)) {
+        driving = Duration.zero;
+        counted = Duration.zero;
+        parts.clear();
       }
     }
 
-    return DrivingRuleResult(
-      used: currentContinuous,
-      limit: continuousDrivingLimit,
+    DateTime? restStart;
+    DateTime? restEnd;
+    for (final act in sorted) {
+      final end = act.endTime.isAfter(now) ? now : act.endTime;
+      if (!end.isAfter(act.startTime)) continue;
+      if (act.type == ActivityType.rest) {
+        if (restEnd != null && !act.startTime.isAfter(restEnd)) {
+          if (end.isAfter(restEnd)) restEnd = end;
+          continue;
+        }
+        if (restStart != null) closeRest(restEnd!.difference(restStart));
+        restStart = act.startTime;
+        restEnd = end;
+        continue;
+      }
+      if (restStart != null) {
+        closeRest(restEnd!.difference(restStart));
+        restStart = null;
+        restEnd = null;
+      }
+      if (act.type == ActivityType.driving) {
+        driving += end.difference(act.startTime);
+      }
+    }
+    if (restStart != null) closeRest(restEnd!.difference(restStart));
+
+    return BreakProgress(
+      drivingSinceBreak: driving,
+      countedBreak: counted,
+      parts: List.unmodifiable(parts),
     );
   }
 
   bool hasQualifyingPendingFirstHalf(
     List<TachographActivity> activities,
     DateTime currentTime,
-  ) {
-    final pendingRests = <Duration>[];
-    for (final act in activities) {
-      if (act.type == ActivityType.rest) {
-        pendingRests.add(act.duration);
-        if (satisfiesArticle7BreakRequirement(pendingRests)) {
-          pendingRests.clear();
-        }
-      }
-    }
-    return pendingRests.any((d) => d >= const Duration(minutes: 15));
-  }
+  ) => breakProgress(activities, currentTime).parts.isNotEmpty;
 
   bool hasIncompleteBreakAttempt(
     List<TachographActivity> activities,
