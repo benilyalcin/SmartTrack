@@ -102,10 +102,12 @@ class DrivingTimeCalculator {
   static const Duration weeklyDrivingLimit = Duration(hours: 56);
   static const Duration biWeeklyDrivingLimit = Duration(hours: 90);
 
-  /// Local Monday 00:00 of the week [t] falls in.
-  static DateTime localWeekStart(DateTime t) {
-    final l = t.toLocal();
-    return DateTime(l.year, l.month, l.day - (l.weekday - DateTime.monday));
+  /// Monday 00:00 UTC of the week [t] falls in: the week of 561/2006
+  /// (Art. 4(i)) is counted in UTC, as the tachograph records it, whatever
+  /// zone the phone is in.
+  static DateTime weekStartUtc(DateTime t) {
+    final u = t.toUtc();
+    return DateTime.utc(u.year, u.month, u.day - (u.weekday - DateTime.monday));
   }
 
   Map<String, DrivingRuleResult> calculate(
@@ -283,12 +285,7 @@ class DrivingTimeCalculator {
   }
 
   Duration compensationDeadlineRemaining(int weeksAgo, DateTime currentTime) {
-    final daysSinceMonday = currentTime.weekday - DateTime.monday;
-    final startOfCurrentWeek = DateTime(
-      currentTime.year,
-      currentTime.month,
-      currentTime.day,
-    ).subtract(Duration(days: daysSinceMonday));
+    final startOfCurrentWeek = weekStartUtc(currentTime);
     final deadline = startOfCurrentWeek.add(Duration(days: (3 - weeksAgo) * 7));
     final remaining = deadline.difference(currentTime);
     return remaining.isNegative ? Duration.zero : remaining;
@@ -298,12 +295,7 @@ class DrivingTimeCalculator {
     List<TachographActivity> activities,
     DateTime currentTime,
   ) {
-    int daysSinceMonday = currentTime.weekday - DateTime.monday;
-    DateTime startOfWeek = DateTime(
-      currentTime.year,
-      currentTime.month,
-      currentTime.day,
-    ).subtract(Duration(days: daysSinceMonday));
+    final startOfWeek = weekStartUtc(currentTime);
 
     Duration weeklyTotal = Duration.zero;
 
@@ -324,12 +316,7 @@ class DrivingTimeCalculator {
     List<TachographActivity> activities,
     DateTime currentTime,
   ) {
-    int daysSinceMonday = currentTime.weekday - DateTime.monday;
-    DateTime startOfThisWeek = DateTime(
-      currentTime.year,
-      currentTime.month,
-      currentTime.day,
-    ).subtract(Duration(days: daysSinceMonday));
+    final startOfThisWeek = weekStartUtc(currentTime);
     DateTime startOfPreviousWeek = startOfThisWeek.subtract(
       const Duration(days: 7),
     );
@@ -445,7 +432,7 @@ class DrivingTimeCalculator {
       );
       if (total <= dailyDrivingLimit) return;
 
-      final week = localWeekStart(segments.first.startTime);
+      final week = weekStartUtc(segments.first.startTime);
       final used = extensionsUsedByWeek[week] ?? 0;
       var limit = dailyDrivingLimit;
       if (used < maxDailyExtensionsPerWeek) {
@@ -520,14 +507,14 @@ class DrivingTimeCalculator {
     final biWeekly = <LimitExceededWindow>[];
     if (driving.isEmpty) return (weekly: weekly, biWeekly: biWeekly);
 
-    final lastWeek = localWeekStart(currentTime);
+    final lastWeek = weekStartUtc(currentTime);
     for (
-      var week = localWeekStart(driving.first.startTime);
+      var week = weekStartUtc(driving.first.startTime);
       !week.isAfter(lastWeek);
-      week = DateTime(week.year, week.month, week.day + 7)
+      week = DateTime.utc(week.year, week.month, week.day + 7)
     ) {
-      final weekEnd = DateTime(week.year, week.month, week.day + 7);
-      final previousWeek = DateTime(week.year, week.month, week.day - 7);
+      final weekEnd = DateTime.utc(week.year, week.month, week.day + 7);
+      final previousWeek = DateTime.utc(week.year, week.month, week.day - 7);
       final w = _windowOverLimit(
         driving,
         week,
@@ -672,12 +659,7 @@ class DrivingTimeCalculator {
     List<TachographActivity> activities,
     DateTime currentTime,
   ) {
-    int daysSinceMonday = currentTime.weekday - DateTime.monday;
-    DateTime startOfWeek = DateTime(
-      currentTime.year,
-      currentTime.month,
-      currentTime.day,
-    ).subtract(Duration(days: daysSinceMonday));
+    final startOfWeek = weekStartUtc(currentTime);
 
     Duration total = Duration.zero;
     DateTime? crossing;
@@ -705,12 +687,7 @@ class DrivingTimeCalculator {
     List<TachographActivity> activities,
     DateTime currentTime,
   ) {
-    int daysSinceMonday = currentTime.weekday - DateTime.monday;
-    DateTime startOfThisWeek = DateTime(
-      currentTime.year,
-      currentTime.month,
-      currentTime.day,
-    ).subtract(Duration(days: daysSinceMonday));
+    final startOfThisWeek = weekStartUtc(currentTime);
     DateTime startOfPreviousWeek = startOfThisWeek.subtract(
       const Duration(days: 7),
     );

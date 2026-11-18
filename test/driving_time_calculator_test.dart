@@ -12,7 +12,8 @@ TachographActivity _act(ActivityType type, DateTime start, Duration duration) {
 void main() {
   final calc = DrivingTimeCalculator();
 
-  final monday = DateTime(2026, 1, 5, 0, 0);
+  // The 561/2006 week starts on Monday 00:00 UTC.
+  final monday = DateTime.utc(2026, 1, 5, 0, 0);
 
   group('satisfiesArticle7BreakRequirement', () {
     test('a single 45+ minute break satisfies it on its own', () {
@@ -217,6 +218,29 @@ void main() {
         expect(result.used, const Duration(hours: 2));
       },
     );
+  });
+
+  group('561 week in UTC', () {
+    test('Monday 01:00 in Istanbul is still the week before', () {
+      // Sunday 22:00 UTC = Monday 01:00 UTC+3: not this week yet.
+      final activities = [
+        _act(
+          ActivityType.driving,
+          monday.subtract(const Duration(hours: 2)),
+          const Duration(hours: 1),
+        ),
+        _act(ActivityType.driving, monday, const Duration(hours: 1)),
+      ];
+      final result = calc.calculate(
+        activities,
+        monday.add(const Duration(hours: 5)),
+      )['weekly']!;
+      expect(result.used, const Duration(hours: 1));
+      expect(
+        DrivingTimeCalculator.weekStartUtc(DateTime.utc(2026, 1, 4, 22)),
+        DateTime.utc(2025, 12, 29),
+      );
+    });
   });
 
   group('bi-weekly driving (90h limit)', () {
