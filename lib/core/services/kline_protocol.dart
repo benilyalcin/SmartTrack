@@ -697,7 +697,9 @@ class RdbiResponseParser {
         day > 31) {
       return null;
     }
-    return _exactDate(year, month, day, hour, minute, second);
+    // The fields are UTC; the local offset bytes after them only say how
+    // the unit shows the time on its own display.
+    return _exactDate(year, month, day, hour, minute, second, true);
   }
 
   /// BCD `YY MM DD`, the year from 2000 (BCDDate<1>: CalibrationDate,
@@ -754,9 +756,12 @@ class RdbiResponseParser {
     int hour = 0,
     int minute = 0,
     int second = 0,
+    bool utc = false,
   ]) {
     if (month < 1 || month > 12 || day < 1) return null;
-    final date = DateTime(year, month, day, hour, minute, second);
+    final date = utc
+        ? DateTime.utc(year, month, day, hour, minute, second)
+        : DateTime(year, month, day, hour, minute, second);
     if (date.month != month || date.day != day) return null;
     return date;
   }

@@ -284,7 +284,8 @@ void main() {
       final data = Uint8List.fromList([80, 38, 14, 10, 20, 41, 125, 128]);
       expect(
         RdbiResponseParser.parseDateTime(data),
-        DateTime(2026, 10, 5, 14, 38, 20),
+        // UTC: the unit keeps TimeDate in UTC.
+        DateTime.utc(2026, 10, 5, 14, 38, 20),
       );
     });
 
