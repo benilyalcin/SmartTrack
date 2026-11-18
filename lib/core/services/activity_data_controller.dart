@@ -438,8 +438,11 @@ class ActivityDataController extends ChangeNotifier {
     } else {
       store.replaceInMemory(next);
     }
-    notifyListeners();
+    // A write can finish after the owner is gone.
+    if (!_disposed) notifyListeners();
   }
+
+  bool _disposed = false;
 
   void _syncScheduler() {
     final sync = state.syncOf('driver1');
@@ -466,6 +469,7 @@ class ActivityDataController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     gate.removeListener(_onGateChanged);
     scheduler.removeListener(notifyListeners);
     unawaited(store.flushSpeed());
