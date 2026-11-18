@@ -22,6 +22,16 @@ enum SegmentStatus {
   needsManual,
 }
 
+/// Why a stretch has no live record.
+enum GapReason {
+  /// The phone lost the unit.
+  disconnect,
+
+  /// The line was busy with a card download. The unit kept recording, so
+  /// the next card download always fills it: it never becomes a question.
+  dddMode,
+}
+
 /// One stretch of one driver's day, in UTC.
 class ActivitySegment {
   const ActivitySegment({
@@ -38,6 +48,7 @@ class ActivitySegment {
     this.slot = DriverSlot.driver,
     this.isCrew = false,
     this.recordPresenceCounter,
+    this.gapReason,
   });
 
   final String id;
@@ -66,6 +77,9 @@ class ActivitySegment {
   final bool isCrew;
   final int? recordPresenceCounter;
 
+  /// For a gap: why there is no live record.
+  final GapReason? gapReason;
+
   bool get isSuperseded => supersededBy != null;
   bool get isGap =>
       status == SegmentStatus.pendingGap || status == SegmentStatus.needsManual;
@@ -80,6 +94,7 @@ class ActivitySegment {
     SegmentStatus? status,
     String? supersededBy,
     String? id,
+    DateTime? createdAt,
   }) => ActivitySegment(
     id: id ?? this.id,
     driverId: driverId,
@@ -88,12 +103,13 @@ class ActivitySegment {
     activityType: activityType,
     source: source,
     status: status ?? this.status,
-    createdAt: createdAt,
+    createdAt: createdAt ?? this.createdAt,
     supersededBy: supersededBy ?? this.supersededBy,
     note: note,
     slot: slot,
     isCrew: isCrew,
     recordPresenceCounter: recordPresenceCounter,
+    gapReason: gapReason,
   );
 
   /// The shape the calculators, the analyzer and the pages work with.
@@ -122,6 +138,7 @@ class ActivitySegment {
     if (slot != DriverSlot.driver) 'slot': slot.name,
     if (isCrew) 'crew': true,
     if (recordPresenceCounter != null) 'counter': recordPresenceCounter,
+    if (gapReason != null) 'gap': gapReason!.name,
   };
 
   factory ActivitySegment.fromJson(Map<String, dynamic> json) =>
@@ -143,6 +160,9 @@ class ActivitySegment {
         ),
         isCrew: json['crew'] as bool? ?? false,
         recordPresenceCounter: json['counter'] as int?,
+        gapReason: (json['gap'] as String?) == null
+            ? null
+            : GapReason.values.byName(json['gap'] as String),
       );
 }
 
