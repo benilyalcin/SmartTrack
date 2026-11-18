@@ -1633,29 +1633,43 @@ class AppBluetoothService {
         cumBreakData != null ? cumulativeBreak : null,
       );
 
-      // The co-driver's too, so their card has a value from the start
-      // rather than only after the first periodic refresh.
-      final cumBreak2Resp = await sendAndReceive(
-        KLineFrame.readById(TachoRecordId.driver2CumulativeBreakTime),
-        waitMs: 500,
-        label: 'CumulativeBreak2',
-      );
-      final cumBreak2Data = RdbiResponseParser.extractData(
-        cumBreak2Resp,
-        TachoRecordId.driver2CumulativeBreakTime,
-      );
-      _logIfFailed(
-        cumBreak2Resp,
+      // The co-driver's counters too, so their cards have values from the
+      // start rather than only after the first periodic refresh.
+      Future<Uint8List?> readDriver2(int recordId, String label) async {
+        final resp = await sendAndReceive(
+          KLineFrame.readById(recordId),
+          waitMs: 500,
+          label: label,
+        );
+        final data = RdbiResponseParser.extractData(resp, recordId);
+        _logIfFailed(resp, recordId, label);
+        trace(
+          TachoRecordId.nameOf(recordId),
+          data != null,
+          data != null ? RdbiResponseParser.parseMinutesOrNull(data) : null,
+        );
+        return data;
+      }
+
+      final cumBreak2Data = await readDriver2(
         TachoRecordId.driver2CumulativeBreakTime,
         'CumulativeBreak2',
       );
-      final cumulativeBreak2 = RdbiResponseParser.parseMinutesOrNull(
-        cumBreak2Data,
+      final continuous2Data = await readDriver2(
+        TachoRecordId.driver2ContinuousDrivingTime,
+        'ContinuousDriving2',
       );
-      trace(
-        'Driver2CumulativeBreakTime',
-        cumBreak2Data != null,
-        cumBreak2Data != null ? cumulativeBreak2 : null,
+      final dailyDrv2Data = await readDriver2(
+        TachoRecordId.driver2CurrentDailyDrivingTime,
+        'DailyDriving2',
+      );
+      final weeklyDrv2Data = await readDriver2(
+        TachoRecordId.driver2CurrentWeeklyDrivingTime,
+        'WeeklyDriving2',
+      );
+      final rem2w2Data = await readDriver2(
+        TachoRecordId.driver2Remaining2WeeksDrivingTime,
+        'Remaining2Weeks2',
       );
 
       final sessionDurResp = await sendAndReceive(
@@ -2160,8 +2174,30 @@ class AppBluetoothService {
               weeklyDrvData != null && currentWeeklyDriving == null,
         );
       }
-      if (cumulativeBreak2 != null) {
-        appState.setDriver2ComplianceData(cumulativeBreak: cumulativeBreak2);
+      if (cumBreak2Data != null ||
+          continuous2Data != null ||
+          dailyDrv2Data != null ||
+          weeklyDrv2Data != null ||
+          rem2w2Data != null) {
+        final dailyDriving2 = RdbiResponseParser.parseMinutesOrNull(
+          dailyDrv2Data,
+        );
+        final weeklyDriving2 = RdbiResponseParser.parseMinutesOrNull(
+          weeklyDrv2Data,
+        );
+        appState.setDriver2ComplianceData(
+          cumulativeBreak: RdbiResponseParser.parseMinutesOrNull(cumBreak2Data),
+          continuousDriving: RdbiResponseParser.parseMinutesOrNull(
+            continuous2Data,
+          ),
+          dailyDriving: dailyDriving2,
+          weeklyDriving: weeklyDriving2,
+          remainingBiWeekly: RdbiResponseParser.parseMinutesOrNull(rem2w2Data),
+          dailyDrivingUnavailable:
+              dailyDrv2Data != null && dailyDriving2 == null,
+          weeklyDrivingUnavailable:
+              weeklyDrv2Data != null && weeklyDriving2 == null,
+        );
       }
 
       transport.rxSub.cancel();
