@@ -257,6 +257,14 @@ const Map<String, String> ruTranslations = {
   'compliance.cumulativeBreakHint':
       'Время перерывов, прерывающих непрерывное вождение, по расчёту тахографа. Без связи показывается последнее считанное значение.',
   'compliance.lastReadAt': 'посл.: {time}',
+  'timeline.pendingDdd': 'Ожидаются данные карты',
+  'timeline.provisional': 'Предварительно (онлайн/вручную)',
+  'link.verifying': 'Проверка данных тахографа',
+  'link.lastKnown': 'Последнее: {activity}, {speed} км/ч · {time}',
+  'link.waitForStop':
+      'Подождите после остановки автомобиля, чтобы данные были проверены',
+  'link.corrected':
+      'Запись тахографа исправила {count} записей (разница {minutes} мин)',
   'compliance.weeklyDrivingHint':
       'Общее время вождения на этой неделе с понедельника — предел 56 часов.',
   'compliance.biWeeklyTotalHint':

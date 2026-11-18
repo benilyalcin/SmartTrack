@@ -256,6 +256,14 @@ const Map<String, String> esTranslations = {
   'compliance.cumulativeBreakHint':
       'Tiempo de pausa tomado para interrumpir la conducción continuada, según lo calcula el tacógrafo. Sin conexión se muestra el último valor leído.',
   'compliance.lastReadAt': 'último: {time}',
+  'timeline.pendingDdd': 'Pendiente de datos de la tarjeta',
+  'timeline.provisional': 'Provisional (en vivo/manual)',
+  'link.verifying': 'Verificando los datos del tacógrafo',
+  'link.lastKnown': 'Último conocido: {activity}, {speed} km/h · {time}',
+  'link.waitForStop':
+      'Espere cuando el vehículo se detenga para verificar los datos',
+  'link.corrected':
+      'El registro del tacógrafo corrigió {count} entradas ({minutes} min de diferencia)',
   'compliance.weeklyDrivingHint':
       'Tiempo total de conducción esta semana desde el lunes; el límite legal es de 56 horas.',
   'compliance.biWeeklyTotalHint':

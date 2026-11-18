@@ -7,6 +7,7 @@ import '../../core/services/time/display_time.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/widgets/bluetooth_warning_banner.dart';
+import '../../core/widgets/link_status_banner.dart';
 import '../../core/widgets/card_slot_warning_banner.dart';
 import 'driver_identity_dialog.dart';
 
@@ -35,6 +36,7 @@ class _DashboardPageState extends State<DashboardPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const BluetoothWarningBanner(),
+          const LinkStatusBanner(),
           const CardSlotWarningBanner(),
           _buildDriverSelection(context),
           const SizedBox(height: 16),

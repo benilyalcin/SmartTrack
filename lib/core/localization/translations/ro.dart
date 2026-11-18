@@ -260,6 +260,14 @@ const Map<String, String> roTranslations = {
   'compliance.cumulativeBreakHint':
       'Timpul de pauză luat pentru a întrerupe conducerea continuă, așa cum îl calculează tahograful. Fără conexiune se afișează ultima valoare citită.',
   'compliance.lastReadAt': 'ultima: {time}',
+  'timeline.pendingDdd': 'Se așteaptă datele cardului',
+  'timeline.provisional': 'Provizoriu (live/manual)',
+  'link.verifying': 'Se verifică datele tahografului',
+  'link.lastKnown': 'Ultima cunoscută: {activity}, {speed} km/h · {time}',
+  'link.waitForStop':
+      'Așteptați când vehiculul se oprește, pentru verificarea datelor',
+  'link.corrected':
+      'Înregistrarea tahografului a corectat {count} intrări ({minutes} min diferență)',
   'compliance.weeklyDrivingHint':
       'Timpul total de conducere săptămâna aceasta, de luni — limita legală este de 56 de ore.',
   'compliance.biWeeklyTotalHint':

@@ -256,6 +256,14 @@ const Map<String, String> plTranslations = {
   'compliance.cumulativeBreakHint':
       'Czas przerw przerywających nieprzerwaną jazdę, obliczony przez tachograf. Bez połączenia pokazywana jest ostatnio odczytana wartość.',
   'compliance.lastReadAt': 'ostatnio: {time}',
+  'timeline.pendingDdd': 'Oczekuje na dane z karty',
+  'timeline.provisional': 'Tymczasowe (na żywo/ręczne)',
+  'link.verifying': 'Weryfikacja danych tachografu',
+  'link.lastKnown': 'Ostatnio: {activity}, {speed} km/h · {time}',
+  'link.waitForStop':
+      'Poczekaj po zatrzymaniu pojazdu, aby dane mogły zostać zweryfikowane',
+  'link.corrected':
+      'Zapis tachografu poprawił {count} wpisy ({minutes} min różnicy)',
   'compliance.weeklyDrivingHint':
       'Łączny czas jazdy w tym tygodniu od poniedziałku — limit to 56 godzin.',
   'compliance.biWeeklyTotalHint':

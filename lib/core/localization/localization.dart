@@ -1084,6 +1084,39 @@ class AppLocalizations {
       'EN': 'last: {time}',
       'DE': 'zuletzt: {time}',
     },
+    'timeline.pendingDdd': {
+      'TR': 'DDD bekleniyor',
+      'EN': 'Awaiting card data',
+      'DE': 'Kartendaten ausstehend',
+    },
+    'timeline.provisional': {
+      'TR': 'Geçici (canlı/elle)',
+      'EN': 'Provisional (live/manual)',
+      'DE': 'Vorläufig (live/manuell)',
+    },
+    'link.verifying': {
+      'TR': 'Takograf verisi doğrulanıyor',
+      'EN': 'Verifying tachograph data',
+      'DE': 'Fahrtenschreiberdaten werden geprüft',
+    },
+    'link.lastKnown': {
+      'TR': 'Son bilinen: {activity}, {speed} km/sa · {time}',
+      'EN': 'Last known: {activity}, {speed} km/h · {time}',
+      'DE': 'Zuletzt bekannt: {activity}, {speed} km/h · {time}',
+    },
+    'link.waitForStop': {
+      'TR': 'Veri doğrulaması için araç durduğunda bekleyin',
+      'EN': 'Please wait when the vehicle stops so the data can be verified',
+      'DE':
+          'Bitte beim nächsten Halt warten, damit die Daten geprüft werden können',
+    },
+    'link.corrected': {
+      'TR': 'Takograf kaydı {count} kaydı düzeltti ({minutes} dk fark)',
+      'EN':
+          'The tachograph record corrected {count} entries ({minutes} min different)',
+      'DE':
+          'Der Fahrtenschreiber-Datensatz hat {count} Einträge korrigiert ({minutes} Min. Abweichung)',
+    },
     'compliance.weeklyDrivingHint': {
       'TR':
           'Bu haftaki (pazartesiden itibaren) toplam sürüş süreniz — yasal sınır 56 saat.',

@@ -255,6 +255,14 @@ const Map<String, String> ukTranslations = {
   'compliance.cumulativeBreakHint':
       'Час перерв, що переривають безперервне керування, за розрахунком тахографа. Без зв’язку показується останнє зчитане значення.',
   'compliance.lastReadAt': 'ост.: {time}',
+  'timeline.pendingDdd': 'Очікуються дані картки',
+  'timeline.provisional': 'Попередньо (наживо/вручну)',
+  'link.verifying': 'Перевірка даних тахографа',
+  'link.lastKnown': 'Останнє: {activity}, {speed} км/год · {time}',
+  'link.waitForStop':
+      'Зачекайте після зупинки автомобіля, щоб дані було перевірено',
+  'link.corrected':
+      'Запис тахографа виправив {count} записів (різниця {minutes} хв)',
   'compliance.weeklyDrivingHint':
       'Загальний час керування цього тижня від понеділка — межа 56 годин.',
   'compliance.biWeeklyTotalHint':
