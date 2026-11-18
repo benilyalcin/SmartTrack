@@ -144,7 +144,11 @@ class AppState extends ChangeNotifier {
   /// when (UTC); null when it has never been read.
   Duration _totalBreakTime = Duration.zero;
   DateTime? _totalBreakTimeReadAt;
+
+  /// The unit's working state as last read, and when (UTC); the panel
+  /// shows only this, never the last activity in the records.
   String _currentActivity = 'dashboard.noData';
+  DateTime? _currentActivityReadAt;
   List<Violation> _violations = [];
   List<ActivityGap> _pendingGaps = [];
 
@@ -158,12 +162,14 @@ class AppState extends ChangeNotifier {
   Duration _totalBreakTime2 = Duration.zero;
   DateTime? _totalBreakTime2ReadAt;
   String _currentActivity2 = 'dashboard.noData';
+  DateTime? _currentActivity2ReadAt;
   Duration? _liveSessionDuration2;
   int? _remaining10hDrivingTimes2;
   int? _remainingReducedDailyRestPeriods2;
   Duration? _nextBreakRestDuration2;
   Duration? _currentBreakRestRemaining2;
   Duration? _timeUntilNextBreakOrRest2;
+  DateTime? _timeUntilNextBreakOrRest2ReadAt;
   DateTime? _lastDailyRestEnd2;
   DateTime? _lastWeeklyRestEnd2;
   Duration? _compensationLastWeek2;
@@ -178,7 +184,10 @@ class AppState extends ChangeNotifier {
   int? _remainingReducedDailyRestPeriods;
   Duration? _nextBreakRestDuration;
   Duration? _currentBreakRestRemaining;
+
+  /// TimeUntilNextBreakOrRest as last read from the unit, and when (UTC).
   Duration? _timeUntilNextBreakOrRest;
+  DateTime? _timeUntilNextBreakOrRestReadAt;
   DateTime? _lastDailyRestEnd;
   DateTime? _lastWeeklyRestEnd;
   Duration? _compensationLastWeek;
@@ -461,6 +470,15 @@ class AppState extends ChangeNotifier {
       _isActiveDriver1 ? _totalBreakTimeReadAt : _totalBreakTime2ReadAt;
   String get activeCurrentActivity =>
       _isActiveDriver1 ? _currentActivity : _currentActivity2;
+
+  /// When [activeCurrentActivity] was read from the unit (UTC).
+  DateTime? get activeCurrentActivityReadAt =>
+      _isActiveDriver1 ? _currentActivityReadAt : _currentActivity2ReadAt;
+
+  /// When [activeTimeUntilNextBreakOrRest] was read from the unit (UTC).
+  DateTime? get activeTimeUntilNextBreakOrRestReadAt => _isActiveDriver1
+      ? _timeUntilNextBreakOrRestReadAt
+      : _timeUntilNextBreakOrRest2ReadAt;
   Duration? get activeLiveSessionDuration =>
       _isActiveDriver1 ? _liveSessionDuration : _liveSessionDuration2;
   int? get activeRemaining10hDrivingTimes =>
@@ -822,7 +840,10 @@ class AppState extends ChangeNotifier {
     if (currentSessionDuration != null) {
       _liveSessionDuration = currentSessionDuration;
     }
-    if (currentActivityKey != null) _currentActivity = currentActivityKey;
+    if (currentActivityKey != null) {
+      _currentActivity = currentActivityKey;
+      _currentActivityReadAt = _tachoClock.nowUtc();
+    }
     if (cardExpiryDate != null) _driverCardExpiryDate = cardExpiryDate;
     if (cardNumber != null && cardNumber.isNotEmpty) {
       _driverCardNumber = cardNumber;
@@ -842,6 +863,7 @@ class AppState extends ChangeNotifier {
     }
     if (timeUntilNextBreakOrRest != null) {
       _timeUntilNextBreakOrRest = timeUntilNextBreakOrRest;
+      _timeUntilNextBreakOrRestReadAt = _tachoClock.nowUtc();
     }
     if (lastDailyRestEnd != null) _lastDailyRestEnd = lastDailyRestEnd;
     if (lastWeeklyRestEnd != null) _lastWeeklyRestEnd = lastWeeklyRestEnd;
@@ -1026,7 +1048,10 @@ class AppState extends ChangeNotifier {
     if (currentSessionDuration != null) {
       _liveSessionDuration2 = currentSessionDuration;
     }
-    if (currentActivityKey != null) _currentActivity2 = currentActivityKey;
+    if (currentActivityKey != null) {
+      _currentActivity2 = currentActivityKey;
+      _currentActivity2ReadAt = _tachoClock.nowUtc();
+    }
 
     if (remaining10hDrivingTimes != null) {
       _remaining10hDrivingTimes2 = remaining10hDrivingTimes;
@@ -1042,6 +1067,7 @@ class AppState extends ChangeNotifier {
     }
     if (timeUntilNextBreakOrRest != null) {
       _timeUntilNextBreakOrRest2 = timeUntilNextBreakOrRest;
+      _timeUntilNextBreakOrRest2ReadAt = _tachoClock.nowUtc();
     }
     if (lastDailyRestEnd != null) _lastDailyRestEnd2 = lastDailyRestEnd;
     if (lastWeeklyRestEnd != null) _lastWeeklyRestEnd2 = lastWeeklyRestEnd;
@@ -1149,6 +1175,9 @@ class AppState extends ChangeNotifier {
       'totalBreakTimeMs': _totalBreakTime.inMilliseconds,
       'totalBreakTimeReadAt': _totalBreakTimeReadAt?.toUtc().toIso8601String(),
       'currentActivity': _currentActivity,
+      'currentActivityReadAt': _currentActivityReadAt
+          ?.toUtc()
+          .toIso8601String(),
       'liveSessionDurationMs': _liveSessionDuration?.inMilliseconds,
       'driverCardExpiryDate': _driverCardExpiryDate?.toIso8601String(),
       'driverCardNumber': _driverCardNumber,
@@ -1157,6 +1186,9 @@ class AppState extends ChangeNotifier {
       'nextBreakRestDurationMs': _nextBreakRestDuration?.inMilliseconds,
       'currentBreakRestRemainingMs': _currentBreakRestRemaining?.inMilliseconds,
       'timeUntilNextBreakOrRestMs': _timeUntilNextBreakOrRest?.inMilliseconds,
+      'timeUntilNextBreakOrRestReadAt': _timeUntilNextBreakOrRestReadAt
+          ?.toUtc()
+          .toIso8601String(),
       'lastDailyRestEnd': _lastDailyRestEnd?.toIso8601String(),
       'lastWeeklyRestEnd': _lastWeeklyRestEnd?.toIso8601String(),
       'compensationLastWeekMs': _compensationLastWeek?.inMilliseconds,
@@ -1174,6 +1206,9 @@ class AppState extends ChangeNotifier {
           ?.toUtc()
           .toIso8601String(),
       'currentActivity2': _currentActivity2,
+      'currentActivity2ReadAt': _currentActivity2ReadAt
+          ?.toUtc()
+          .toIso8601String(),
       'liveSessionDuration2Ms': _liveSessionDuration2?.inMilliseconds,
       'remaining10hDrivingTimes2': _remaining10hDrivingTimes2,
       'remainingReducedDailyRestPeriods2': _remainingReducedDailyRestPeriods2,
@@ -1181,6 +1216,9 @@ class AppState extends ChangeNotifier {
       'currentBreakRestRemaining2Ms':
           _currentBreakRestRemaining2?.inMilliseconds,
       'timeUntilNextBreakOrRest2Ms': _timeUntilNextBreakOrRest2?.inMilliseconds,
+      'timeUntilNextBreakOrRest2ReadAt': _timeUntilNextBreakOrRest2ReadAt
+          ?.toUtc()
+          .toIso8601String(),
       'lastDailyRestEnd2': _lastDailyRestEnd2?.toIso8601String(),
       'lastWeeklyRestEnd2': _lastWeeklyRestEnd2?.toIso8601String(),
       'compensationLastWeek2Ms': _compensationLastWeek2?.inMilliseconds,
@@ -1207,7 +1245,10 @@ class AppState extends ChangeNotifier {
     // A snapshot from before the read time was kept may hold a value the
     // app worked out itself; without a read time it is not shown.
     _totalBreakTimeReadAt = _dateOrNull(json['totalBreakTimeReadAt']);
-    _currentActivity = json['currentActivity'] as String? ?? _currentActivity;
+    _currentActivityReadAt = _dateOrNull(json['currentActivityReadAt']);
+    _currentActivity = _currentActivityReadAt == null
+        ? 'dashboard.noData'
+        : json['currentActivity'] as String? ?? 'dashboard.noData';
     _liveSessionDuration = _durationOrNull(json['liveSessionDurationMs']);
     _driverCardExpiryDate = _dateOrNull(json['driverCardExpiryDate']);
     _driverCardNumber = json['driverCardNumber'] as String?;
@@ -1218,9 +1259,12 @@ class AppState extends ChangeNotifier {
     _currentBreakRestRemaining = _durationOrNull(
       json['currentBreakRestRemainingMs'],
     );
-    _timeUntilNextBreakOrRest = _durationOrNull(
-      json['timeUntilNextBreakOrRestMs'],
+    _timeUntilNextBreakOrRestReadAt = _dateOrNull(
+      json['timeUntilNextBreakOrRestReadAt'],
     );
+    _timeUntilNextBreakOrRest = _timeUntilNextBreakOrRestReadAt == null
+        ? null
+        : _durationOrNull(json['timeUntilNextBreakOrRestMs']);
     _lastDailyRestEnd = _dateOrNull(json['lastDailyRestEnd']);
     _lastWeeklyRestEnd = _dateOrNull(json['lastWeeklyRestEnd']);
     _compensationLastWeek = _durationOrNull(json['compensationLastWeekMs']);
@@ -1245,8 +1289,10 @@ class AppState extends ChangeNotifier {
       milliseconds: json['totalBreakTime2Ms'] as int? ?? 0,
     );
     _totalBreakTime2ReadAt = _dateOrNull(json['totalBreakTime2ReadAt']);
-    _currentActivity2 =
-        json['currentActivity2'] as String? ?? _currentActivity2;
+    _currentActivity2ReadAt = _dateOrNull(json['currentActivity2ReadAt']);
+    _currentActivity2 = _currentActivity2ReadAt == null
+        ? 'dashboard.noData'
+        : json['currentActivity2'] as String? ?? 'dashboard.noData';
     _liveSessionDuration2 = _durationOrNull(json['liveSessionDuration2Ms']);
     _remaining10hDrivingTimes2 = json['remaining10hDrivingTimes2'] as int?;
     _remainingReducedDailyRestPeriods2 =
@@ -1255,9 +1301,12 @@ class AppState extends ChangeNotifier {
     _currentBreakRestRemaining2 = _durationOrNull(
       json['currentBreakRestRemaining2Ms'],
     );
-    _timeUntilNextBreakOrRest2 = _durationOrNull(
-      json['timeUntilNextBreakOrRest2Ms'],
+    _timeUntilNextBreakOrRest2ReadAt = _dateOrNull(
+      json['timeUntilNextBreakOrRest2ReadAt'],
     );
+    _timeUntilNextBreakOrRest2 = _timeUntilNextBreakOrRest2ReadAt == null
+        ? null
+        : _durationOrNull(json['timeUntilNextBreakOrRest2Ms']);
     _lastDailyRestEnd2 = _dateOrNull(json['lastDailyRestEnd2']);
     _lastWeeklyRestEnd2 = _dateOrNull(json['lastWeeklyRestEnd2']);
     _compensationLastWeek2 = _durationOrNull(json['compensationLastWeek2Ms']);
@@ -1884,7 +1933,6 @@ class AppState extends ChangeNotifier {
     // below is for the history only (violations).
     _violations = _violationAnalyzer.analyze(recent, now);
     _pendingGaps = _violationAnalyzer.detectGaps(recent);
-    _currentActivity = _activityTypeToLocalizationKey(sorted.last.type);
 
     if (_currentParsedData != null &&
         _currentParsedData!.vehicleRegistration.isNotEmpty) {
@@ -1892,21 +1940,6 @@ class AppState extends ChangeNotifier {
     }
 
     notifyListeners();
-  }
-
-  String _activityTypeToLocalizationKey(ActivityType type) {
-    switch (type) {
-      case ActivityType.driving:
-        return 'dashboard.driving';
-      case ActivityType.work:
-        return 'dashboard.otherWork';
-      case ActivityType.available:
-        return 'dashboard.availability';
-      case ActivityType.rest:
-        return 'dashboard.rest';
-      case ActivityType.unknown:
-        return 'dashboard.noData';
-    }
   }
 
   List<TachographActivity> _decodeManualEntries(String json) {
