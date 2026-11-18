@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ddd_file.dart';
 import 'ddd_file_storage_io.dart'
     if (dart.library.html) 'ddd_file_storage_web.dart';
+import 'time/legacy_time_migration.dart';
 
 class DddFileRepository {
   DddFileRepository._();
@@ -57,6 +58,8 @@ class DddFileRepository {
   }
 
   Future<List<DddFile>> _readIndex() async {
+    // The index may be read before AppState has started the UTC migration.
+    await LegacyTimeMigration.ensure();
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_indexPrefsKey);
     if (raw == null || raw.isEmpty) return [];

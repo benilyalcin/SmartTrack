@@ -56,7 +56,7 @@ class DddFile {
 
   Map<String, dynamic> toJson() => {
     'id': id,
-    'downloadedAt': downloadedAt.toIso8601String(),
+    'downloadedAt': downloadedAt.toUtc().toIso8601String(),
     'cardType': cardType,
     'cardHolderName': cardHolderName,
     'fileSizeBytes': fileSizeBytes,
@@ -67,7 +67,7 @@ class DddFile {
     'secondaryLocalPath': secondaryLocalPath,
     'secondaryWebBytesBase64': secondaryWebBytesBase64,
     'isTrashed': isTrashed,
-    'trashedAt': trashedAt?.toIso8601String(),
+    'trashedAt': trashedAt?.toUtc().toIso8601String(),
   };
 
   factory DddFile.fromJson(Map<String, dynamic> json) => DddFile(
