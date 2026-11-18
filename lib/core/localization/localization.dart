@@ -810,9 +810,9 @@ class AppLocalizations {
       'DE': 'Fahren und Ruhezeit',
     },
     'compliance.timeUntilBreak': {
-      'TR': 'Molaya Kalan Süre',
-      'EN': 'Time Until Break',
-      'DE': 'Zeit bis zur Pause',
+      'TR': 'Sonraki Mola/Dinlenmeye Kalan',
+      'EN': 'Time to Next Break/Rest',
+      'DE': 'Zeit bis zur nächsten Pause/Ruhezeit',
     },
     'compliance.hoursUnit': {'TR': 'SAAT', 'EN': 'HOURS', 'DE': 'STUNDEN'},
     'compliance.critical': {'TR': 'Kritik', 'EN': 'Critical', 'DE': 'Kritisch'},
@@ -1067,9 +1067,12 @@ class AppLocalizations {
     },
 
     'compliance.timeUntilBreakHint': {
-      'TR': 'Zorunlu molaya kadar kalan kesintisiz sürüş süreniz.',
-      'EN': 'Continuous driving time left before a mandatory break.',
-      'DE': 'Verbleibende ununterbrochene Lenkzeit bis zur Pflichtpause.',
+      'TR':
+          'Takografın bildirdiği, sonraki molaya veya dinlenmeye kadar kalan süre. Bağlantı yokken son okunan değer gösterilir.',
+      'EN':
+          'Time left until the next break or rest, as reported by the tachograph. Without a connection the last value read is shown.',
+      'DE':
+          'Verbleibende Zeit bis zur nächsten Pause oder Ruhezeit, wie vom Fahrtenschreiber gemeldet. Ohne Verbindung wird der zuletzt gelesene Wert angezeigt.',
     },
     'compliance.cumulativeBreakHint': {
       'TR':

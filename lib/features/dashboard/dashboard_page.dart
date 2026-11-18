@@ -250,14 +250,38 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            _t(appState.activeCurrentActivity).toUpperCase(),
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: scheme.onPrimaryContainer,
-              letterSpacing: -0.5,
-            ),
+          // The unit's working state only; offline the last one read,
+          // faded, with when.
+          Builder(
+            builder: (context) {
+              final note = _lastReadNote(
+                appState,
+                appState.activeCurrentActivityReadAt,
+              );
+              return Column(
+                children: [
+                  Text(
+                    _t(appState.activeCurrentActivity).toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onPrimaryContainer.withValues(
+                        alpha: note == null ? 1 : 0.5,
+                      ),
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  if (note != null)
+                    Text(
+                      note,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: scheme.onPrimaryContainer.withValues(alpha: 0.7),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 14),
           Wrap(
@@ -1607,8 +1631,13 @@ class _DashboardPageState extends State<DashboardPage> {
     final appState = AppStateProvider.of(context);
     final continuous = appState.activeDrivingRules['continuous'];
 
-    final remaining =
-        appState.activeTimeUntilNextBreakOrRest ?? continuous?.remaining;
+    // TimeUntilNextBreakOrRest as the unit reports it; no fallback
+    // worked out from the continuous driving time.
+    final remaining = appState.activeTimeUntilNextBreakOrRest;
+    final note = _lastReadNote(
+      appState,
+      appState.activeTimeUntilNextBreakOrRestReadAt,
+    );
     final isCritical =
         continuous != null && (continuous.isWarning || continuous.isExceeded);
     final gradientColors = isCritical
@@ -1674,7 +1703,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: scheme.onSurface,
+                        color: note != null ? scheme.outline : scheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -1692,6 +1721,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
           ),
+          _buildLastReadNote(note, scheme),
         ],
       ),
     );

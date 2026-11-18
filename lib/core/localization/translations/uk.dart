@@ -192,7 +192,7 @@ const Map<String, String> ukTranslations = {
   'compliance.activeSession': 'АКТИВНИЙ СЕАНС',
   'compliance.staleSuffix': '(останнє)',
   'compliance.parametersTitle': 'Керування й відпочинок',
-  'compliance.timeUntilBreak': 'До перерви',
+  'compliance.timeUntilBreak': 'До наступної перерви/відпочинку',
   'compliance.hoursUnit': 'ГОД',
   'compliance.critical': 'Критично',
   'compliance.cumulativeBreak': 'Сумарний час перерв',
@@ -251,7 +251,7 @@ const Map<String, String> ukTranslations = {
   'compliance.splitBreakValid': 'Без порушень',
   'compliance.splitBreakIncomplete': 'Не завершено',
   'compliance.timeUntilBreakHint':
-      'Час безперервного керування, що залишився до обов\'язкової перерви.',
+      'Час до наступної перерви або відпочинку за даними тахографа. Без зв’язку показується останнє зчитане значення.',
   'compliance.cumulativeBreakHint':
       'Час перерв, що переривають безперервне керування, за розрахунком тахографа. Без зв’язку показується останнє зчитане значення.',
   'compliance.lastReadAt': 'ост.: {time}',

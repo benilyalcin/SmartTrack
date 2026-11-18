@@ -193,7 +193,7 @@ const Map<String, String> esTranslations = {
   'compliance.activeSession': 'SESIÓN ACTIVA',
   'compliance.staleSuffix': '(último)',
   'compliance.parametersTitle': 'Conducción y descanso',
-  'compliance.timeUntilBreak': 'Tiempo hasta la pausa',
+  'compliance.timeUntilBreak': 'Tiempo hasta la próxima pausa/descanso',
   'compliance.hoursUnit': 'HORAS',
   'compliance.critical': 'Crítico',
   'compliance.cumulativeBreak': 'Tiempo de pausa acumulado',
@@ -252,7 +252,7 @@ const Map<String, String> esTranslations = {
   'compliance.splitBreakValid': 'Sin problemas',
   'compliance.splitBreakIncomplete': 'Incompleta',
   'compliance.timeUntilBreakHint':
-      'Tiempo de conducción continuada que te queda antes de la pausa obligatoria.',
+      'Tiempo que queda hasta la próxima pausa o descanso, según el tacógrafo. Sin conexión se muestra el último valor leído.',
   'compliance.cumulativeBreakHint':
       'Tiempo de pausa tomado para interrumpir la conducción continuada, según lo calcula el tacógrafo. Sin conexión se muestra el último valor leído.',
   'compliance.lastReadAt': 'último: {time}',

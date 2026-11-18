@@ -196,7 +196,7 @@ const Map<String, String> roTranslations = {
   'compliance.activeSession': 'SESIUNE ACTIVĂ',
   'compliance.staleSuffix': '(ultima)',
   'compliance.parametersTitle': 'Conducere și repaus',
-  'compliance.timeUntilBreak': 'Timp până la pauză',
+  'compliance.timeUntilBreak': 'Timp până la următoarea pauză/repaus',
   'compliance.hoursUnit': 'ORE',
   'compliance.critical': 'Critic',
   'compliance.cumulativeBreak': 'Timp cumulat de pauză',
@@ -256,7 +256,7 @@ const Map<String, String> roTranslations = {
   'compliance.splitBreakValid': 'Nicio problemă',
   'compliance.splitBreakIncomplete': 'Incompletă',
   'compliance.timeUntilBreakHint':
-      'Timpul de conducere continuă rămas până la pauza obligatorie.',
+      'Timpul rămas până la următoarea pauză sau perioadă de repaus, raportat de tahograf. Fără conexiune se afișează ultima valoare citită.',
   'compliance.cumulativeBreakHint':
       'Timpul de pauză luat pentru a întrerupe conducerea continuă, așa cum îl calculează tahograful. Fără conexiune se afișează ultima valoare citită.',
   'compliance.lastReadAt': 'ultima: {time}',

@@ -193,7 +193,7 @@ const Map<String, String> ruTranslations = {
   'compliance.activeSession': 'АКТИВНЫЙ СЕАНС',
   'compliance.staleSuffix': '(последнее)',
   'compliance.parametersTitle': 'Вождение и отдых',
-  'compliance.timeUntilBreak': 'До перерыва',
+  'compliance.timeUntilBreak': 'До следующего перерыва/отдыха',
   'compliance.hoursUnit': 'Ч',
   'compliance.critical': 'Критично',
   'compliance.cumulativeBreak': 'Суммарное время перерывов',
@@ -253,7 +253,7 @@ const Map<String, String> ruTranslations = {
   'compliance.splitBreakValid': 'Нарушений нет',
   'compliance.splitBreakIncomplete': 'Не завершён',
   'compliance.timeUntilBreakHint':
-      'Оставшееся время непрерывного вождения до обязательного перерыва.',
+      'Время до следующего перерыва или отдыха по данным тахографа. Без связи показывается последнее считанное значение.',
   'compliance.cumulativeBreakHint':
       'Время перерывов, прерывающих непрерывное вождение, по расчёту тахографа. Без связи показывается последнее считанное значение.',
   'compliance.lastReadAt': 'посл.: {time}',

@@ -194,7 +194,7 @@ const Map<String, String> plTranslations = {
   'compliance.activeSession': 'AKTYWNA SESJA',
   'compliance.staleSuffix': '(ostatnie)',
   'compliance.parametersTitle': 'Jazda i odpoczynek',
-  'compliance.timeUntilBreak': 'Czas do przerwy',
+  'compliance.timeUntilBreak': 'Czas do następnej przerwy/odpoczynku',
   'compliance.hoursUnit': 'GODZ.',
   'compliance.critical': 'Krytyczne',
   'compliance.cumulativeBreak': 'Łączny czas przerw',
@@ -252,7 +252,7 @@ const Map<String, String> plTranslations = {
   'compliance.splitBreakValid': 'Bez problemu',
   'compliance.splitBreakIncomplete': 'Niezakończona',
   'compliance.timeUntilBreakHint':
-      'Pozostały czas nieprzerwanej jazdy do obowiązkowej przerwy.',
+      'Czas pozostały do następnej przerwy lub odpoczynku, podawany przez tachograf. Bez połączenia pokazywana jest ostatnio odczytana wartość.',
   'compliance.cumulativeBreakHint':
       'Czas przerw przerywających nieprzerwaną jazdę, obliczony przez tachograf. Bez połączenia pokazywana jest ostatnio odczytana wartość.',
   'compliance.lastReadAt': 'ostatnio: {time}',
