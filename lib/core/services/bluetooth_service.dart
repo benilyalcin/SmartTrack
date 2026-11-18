@@ -1633,6 +1633,31 @@ class AppBluetoothService {
         cumBreakData != null ? cumulativeBreak : null,
       );
 
+      // The co-driver's too, so their card has a value from the start
+      // rather than only after the first periodic refresh.
+      final cumBreak2Resp = await sendAndReceive(
+        KLineFrame.readById(TachoRecordId.driver2CumulativeBreakTime),
+        waitMs: 500,
+        label: 'CumulativeBreak2',
+      );
+      final cumBreak2Data = RdbiResponseParser.extractData(
+        cumBreak2Resp,
+        TachoRecordId.driver2CumulativeBreakTime,
+      );
+      _logIfFailed(
+        cumBreak2Resp,
+        TachoRecordId.driver2CumulativeBreakTime,
+        'CumulativeBreak2',
+      );
+      final cumulativeBreak2 = RdbiResponseParser.parseMinutesOrNull(
+        cumBreak2Data,
+      );
+      trace(
+        'Driver2CumulativeBreakTime',
+        cumBreak2Data != null,
+        cumBreak2Data != null ? cumulativeBreak2 : null,
+      );
+
       final sessionDurResp = await sendAndReceive(
         KLineFrame.readById(TachoRecordId.driver1CurrentDurationOfActivity),
         waitMs: 500,
@@ -2134,6 +2159,9 @@ class AppBluetoothService {
           weeklyDrivingUnavailable:
               weeklyDrvData != null && currentWeeklyDriving == null,
         );
+      }
+      if (cumulativeBreak2 != null) {
+        appState.setDriver2ComplianceData(cumulativeBreak: cumulativeBreak2);
       }
 
       transport.rxSub.cancel();
