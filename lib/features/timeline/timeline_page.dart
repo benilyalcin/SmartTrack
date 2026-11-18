@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../core/providers/app_state.dart';
 import '../../core/localization/localization.dart';
-import '../../core/models/activity_segment.dart';
 import '../../core/services/driving_time_calculator.dart';
-import '../../core/services/time/display_time.dart';
 import '../../core/services/violation_analyzer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/widgets/bluetooth_warning_banner.dart';
-import '../../core/widgets/link_status_banner.dart';
 import '../../core/widgets/card_slot_warning_banner.dart';
 
 class TimelinePage extends StatefulWidget {
@@ -19,12 +16,7 @@ class TimelinePage extends StatefulWidget {
 }
 
 class _TimelinePageState extends State<TimelinePage> {
-  /// Times and calendar days are shown in the display zone; the data stays
-  /// in UTC (a display day spans two UTC days).
-  final DisplayTime _display = DisplayTime.fromConfig();
-
-  /// The display calendar day shown (date fields only).
-  late DateTime _selectedDate = _display.displayDay(DateTime.now());
+  DateTime _selectedDate = DateTime.now();
 
   bool _isDriver1Selected = true;
 
@@ -32,13 +24,6 @@ class _TimelinePageState extends State<TimelinePage> {
   static const _workColor = Color(0xFFFBC02D);
   static const _availableColor = Color(0xFF000000);
   static const _unknownColor = Color(0xFF7E57C2);
-
-  /// No live record, but the unit kept recording: the next card download
-  /// fills it.
-  static const _pendingColor = Color(0xFF9E9E9E);
-
-  /// Live and manual data are provisional until a card file confirms them.
-  static const _provisionalAlpha = 0.5;
 
   final ViolationAnalyzer _violationAnalyzer = ViolationAnalyzer();
 
@@ -75,7 +60,6 @@ class _TimelinePageState extends State<TimelinePage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const BluetoothWarningBanner(),
-                  const LinkStatusBanner(),
                   const CardSlotWarningBanner(),
 
                   _buildPageHeader(context, isDesktop),
@@ -327,18 +311,6 @@ class _TimelinePageState extends State<TimelinePage> {
               ),
               _buildLegendItem(
                 context,
-                _pendingColor,
-                _t('timeline.pendingDdd'),
-              ),
-              _buildLegendItem(
-                context,
-                Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: _provisionalAlpha),
-                _t('timeline.provisional'),
-              ),
-              _buildLegendItem(
-                context,
                 Theme.of(context).colorScheme.error.withValues(alpha: 0.9),
                 _t('timeline.violation'),
               ),
@@ -531,19 +503,48 @@ class _TimelinePageState extends State<TimelinePage> {
   Widget _buildSummaryCard(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final appState = AppStateProvider.of(context);
-    final rows = _dayRows(appState);
-    final day = _dayRange;
+    final dayStart = DateTime.utc(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final dayActivities = _activitiesForSelectedDay(appState);
+    final dayViolations = _liveOnlyViolations(
+      appState,
+    ).where((v) => _overlapsSelectedDay(v.start, v.end)).toList();
 
-    Duration total(ActivityType type) => rows
-        .where((r) => !r.isGap && r.type == type)
-        .fold(Duration.zero, (sum, r) => sum + r.end.difference(r.start));
-    final totalDriving = total(ActivityType.driving);
-    final totalBreak = total(ActivityType.rest);
-    final totalWork = total(ActivityType.work);
-    final totalAvailable = total(ActivityType.available);
-    final violationTime = _dayViolations(appState).fold(
+    final totalDriving = dayActivities
+        .where((a) => a.type == ActivityType.driving)
+        .fold(
+          Duration.zero,
+          (sum, a) =>
+              sum + _clippedToDay(a.startTime, a.endTime, dayStart, dayEnd),
+        );
+    final restActivities = dayActivities
+        .where((a) => a.type == ActivityType.rest)
+        .toList();
+    final totalBreak = restActivities.fold(
       Duration.zero,
-      (sum, v) => sum + _clippedToDay(v.start, v.end, day.start, day.end),
+      (sum, a) => sum + _clippedToDay(a.startTime, a.endTime, dayStart, dayEnd),
+    );
+    final totalWork = dayActivities
+        .where((a) => a.type == ActivityType.work)
+        .fold(
+          Duration.zero,
+          (sum, a) =>
+              sum + _clippedToDay(a.startTime, a.endTime, dayStart, dayEnd),
+        );
+    final totalAvailable = dayActivities
+        .where((a) => a.type == ActivityType.available)
+        .fold(
+          Duration.zero,
+          (sum, a) =>
+              sum + _clippedToDay(a.startTime, a.endTime, dayStart, dayEnd),
+        );
+    final violationTime = dayViolations.fold(
+      Duration.zero,
+      (sum, v) => sum + _clippedToDay(v.start, v.end, dayStart, dayEnd),
     );
 
     return Container(
@@ -667,11 +668,23 @@ class _TimelinePageState extends State<TimelinePage> {
   Widget _buildDetailedLogList(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final appState = AppStateProvider.of(context);
-    final day = _dayRange;
+    final dayStart = DateTime.utc(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final dayActivities = _activitiesForSelectedDay(appState)
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    final dayViolations = _liveOnlyViolations(
+      appState,
+    ).where((v) => _overlapsSelectedDay(v.start, v.end)).toList();
+
     final rows = <Widget>[
-      for (final r in _dayRows(appState)) _buildActivityLogRow(context, r),
-      for (final v in _dayViolations(appState))
-        _buildViolationLogRow(context, v, day.start, day.end),
+      for (final a in dayActivities)
+        _buildActivityLogRow(context, a, dayStart, dayEnd),
+      for (final v in dayViolations)
+        _buildViolationLogRow(context, v, dayStart, dayEnd),
     ];
 
     return Container(
@@ -721,9 +734,8 @@ class _TimelinePageState extends State<TimelinePage> {
     );
   }
 
-  IconData _rowIcon(_DayRow r) {
-    if (r.status == SegmentStatus.pendingGap) return Icons.hourglass_empty;
-    switch (r.type) {
+  IconData _activityRowIcon(ActivityType type) {
+    switch (type) {
       case ActivityType.driving:
         return Icons.directions_car;
       case ActivityType.rest:
@@ -737,44 +749,46 @@ class _TimelinePageState extends State<TimelinePage> {
     }
   }
 
-  Widget _buildActivityLogRow(BuildContext context, _DayRow r) {
+  Widget _buildActivityLogRow(
+    BuildContext context,
+    TachographActivity a,
+    DateTime dayStart,
+    DateTime dayEnd,
+  ) {
     final scheme = Theme.of(context).colorScheme;
-    final color = _rowColor(context, r, forText: true);
+    final color = _activityColor(context, a);
+    // Cut to the selected day, as the chart and the summary are, so an
+    // activity begun the day before does not read "13:02 - 10:59".
+    final start = a.startTime.isBefore(dayStart) ? dayStart : a.startTime;
+    final end = a.endTime.isAfter(dayEnd) ? dayEnd : a.endTime;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(_rowIcon(r), size: 18, color: color),
+          Icon(_activityRowIcon(a.type), size: 18, color: color),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              '${_fmtHm(r.start)} - ${_fmtHm(r.end)}',
+              '${_fmtHm(start)} - ${_fmtHm(end)}',
               style: TextStyle(color: color),
             ),
           ),
           Flexible(
             child: Text(
-              _rowLabel(r),
+              _activityLabel(context, a),
               textAlign: TextAlign.end,
               style: TextStyle(fontWeight: FontWeight.w600, color: color),
             ),
           ),
-          if (r.isCrew) ...[
+          if (a.isCrew) ...[
             const SizedBox(width: 6),
             Tooltip(
               message:
-                  '${_t('ddd.crewBadge')} · ${r.slot == DriverSlot.coDriver ? _t('ddd.slotCoDriver') : _t('ddd.slotDriver')}',
+                  '${_t('ddd.crewBadge')} · ${a.slot == DriverSlot.coDriver ? _t('ddd.slotCoDriver') : _t('ddd.slotDriver')}',
               child: Icon(Icons.people_alt, size: 16, color: scheme.tertiary),
             ),
           ],
-          if (r.source == SegmentSource.live && !r.isGap) ...[
-            const SizedBox(width: 6),
-            Tooltip(
-              message: _t('timeline.provisional'),
-              child: Icon(Icons.sensors, size: 16, color: scheme.outline),
-            ),
-          ],
-          if (r.source == SegmentSource.manual) ...[
+          if (a.isManualEntry) ...[
             const SizedBox(width: 6),
             Tooltip(
               message: _t('ddd.manualEntryBadge'),
@@ -830,120 +844,52 @@ class _TimelinePageState extends State<TimelinePage> {
     );
   }
 
-  /// The selected display day as a UTC range.
-  ({DateTime start, DateTime end}) get _dayRange =>
-      _display.dayRangeUtc(_selectedDate);
+  /// The main driver's day is the merged log: card records first, live data
+  /// and manual entries only where the card has nothing (see
+  /// ActivityMergeEngine).
+  List<TachographActivity> _selectedDriverLog(AppState appState) {
+    if (_isDriver1Selected) return appState.activityLog;
 
-  /// The co-driver's activities: their card records when the card file has
-  /// any, otherwise the live data.
-  ({List<TachographActivity> log, bool fromCard}) _coDriverLog(
-    AppState appState,
-  ) {
     final file = appState.activeDddFile;
     final parsed = appState.currentParsedData;
     if (file != null && !file.isSimulated && parsed != null) {
       final coDriverLog = parsed.activityLog
           .where((a) => a.slot == DriverSlot.coDriver)
           .toList();
-      if (coDriverLog.isNotEmpty) return (log: coDriverLog, fromCard: true);
+      if (coDriverLog.isNotEmpty) return coDriverLog;
     }
-    return (log: appState.liveOnlyActivityLog2, fromCard: false);
+    return appState.liveOnlyActivityLog2;
   }
 
-  /// The selected driver's activities, for the violation check.
-  List<TachographActivity> _selectedDriverLog(AppState appState) =>
-      _isDriver1Selected ? appState.activityLog : _coDriverLog(appState).log;
-
-  /// The selected day, cut to it, oldest first. The main driver's comes
-  /// from the merged view (card records first, then live, then manual, and
-  /// the gaps with their status); nothing is shown past now.
-  List<_DayRow> _dayRows(AppState appState) {
-    final day = _dayRange;
-    final now = DateTime.now().toUtc();
-    final end = now.isBefore(day.end) ? now : day.end;
-    if (!end.isAfter(day.start)) return const [];
-
-    final rows = <_DayRow>[];
-    void add(
-      DateTime s,
-      DateTime e, {
-      required ActivityType type,
-      required SegmentStatus status,
-      required SegmentSource source,
-      bool isCrew = false,
-      DriverSlot slot = DriverSlot.driver,
-    }) {
-      final from = s.isBefore(day.start) ? day.start : s;
-      final to = e.isAfter(end) ? end : e;
-      if (to.difference(from).inMinutes < 1) return;
-      rows.add(
-        _DayRow(
-          start: from,
-          end: to,
-          type: type,
-          status: status,
-          source: source,
-          isCrew: isCrew,
-          slot: slot,
-        ),
-      );
-    }
-
-    if (_isDriver1Selected) {
-      for (final seg in appState.activityData.view('driver1')) {
-        add(
-          seg.startUtc,
-          seg.endOr(now),
-          type: seg.activityType,
-          status: seg.status,
-          source: seg.source,
-          isCrew: seg.isCrew,
-          slot: seg.slot,
-        );
-      }
-    } else {
-      final (:log, :fromCard) = _coDriverLog(appState);
-      for (final a in log) {
-        add(
-          a.startTime,
-          a.endTime,
-          type: a.type,
-          status: !fromCard
-              ? SegmentStatus.provisional
-              : (a.type == ActivityType.unknown
-                    ? SegmentStatus.needsManual
-                    : SegmentStatus.confirmed),
-          source: fromCard
-              ? SegmentSource.ddd
-              : (a.isManualEntry ? SegmentSource.manual : SegmentSource.live),
-          isCrew: a.isCrew,
-          slot: a.slot,
-        );
-      }
-    }
-    rows.sort((a, b) => a.start.compareTo(b.start));
-    return rows;
-  }
-
-  /// The day's violations. A stretch with no record that a card download
-  /// will still fill (pendingGap) is no violation: it is shown as a gap
-  /// row, not as a missing record.
-  List<Violation> _dayViolations(AppState appState) {
-    final day = _dayRange;
-    final pending = _dayRows(
-      appState,
-    ).where((r) => r.status == SegmentStatus.pendingGap).toList();
-    return _violationAnalyzer
-        .analyze(_selectedDriverLog(appState), DateTime.now())
-        .where((v) => v.start.isBefore(day.end) && v.end.isAfter(day.start))
+  List<TachographActivity> _activitiesForSelectedDay(AppState appState) {
+    final dayStart = DateTime.utc(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    return _selectedDriverLog(appState)
         .where(
-          (v) =>
-              v.type != ViolationType.missingRecord ||
-              !pending.any(
-                (r) => v.start.isBefore(r.end) && v.end.isAfter(r.start),
-              ),
+          (a) => a.startTime.isBefore(dayEnd) && a.endTime.isAfter(dayStart),
         )
         .toList();
+  }
+
+  List<Violation> _liveOnlyViolations(AppState appState) {
+    return _violationAnalyzer.analyze(
+      _selectedDriverLog(appState),
+      DateTime.now(),
+    );
+  }
+
+  bool _overlapsSelectedDay(DateTime start, DateTime end) {
+    final dayStart = DateTime.utc(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    return start.isBefore(dayEnd) && end.isAfter(dayStart);
   }
 
   Duration _clippedToDay(
@@ -960,49 +906,89 @@ class _TimelinePageState extends State<TimelinePage> {
 
   List<Widget> _buildChartSegments(BuildContext context) {
     final appState = AppStateProvider.of(context);
-    final day = _dayRange;
-    // Stretches with no row at all (no data, or still to come) stay empty.
-    final emptyColor = Theme.of(context).colorScheme.outlineVariant;
+    final dayStart = DateTime.utc(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
+    final dayEnd = dayStart.add(const Duration(days: 1));
+
+    final gapColor = _unknownColor;
+
+    final dayActivities =
+        _activitiesForSelectedDay(appState)
+            .map(
+              (a) => TachographActivity(
+                type: a.type,
+                startTime: a.startTime.isBefore(dayStart)
+                    ? dayStart
+                    : a.startTime,
+                endTime: a.endTime.isAfter(dayEnd) ? dayEnd : a.endTime,
+                isManualEntry: a.isManualEntry,
+              ),
+            )
+            .toList()
+          ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
     final segments = <Widget>[];
-    var cursor = day.start;
-    void addEmpty(DateTime until) {
-      final minutes = until.difference(cursor).inMinutes;
-      if (minutes <= 0) return;
+    DateTime cursor = dayStart;
+    for (final a in dayActivities) {
+      final gapMinutes = a.startTime.difference(cursor).inMinutes;
+      if (gapMinutes > 0) {
+        segments.add(
+          _buildBarSegment(
+            context,
+            flex: gapMinutes,
+            color: gapColor,
+            tooltip:
+                '${_fmtHm(cursor)} - ${_fmtHm(a.startTime)} (${_t('violation.missingRecord')})',
+            hasBorderLeft: segments.isNotEmpty,
+          ),
+        );
+      }
+      final durationMinutes = a.endTime.difference(a.startTime).inMinutes;
+      if (durationMinutes > 0) {
+        segments.add(
+          _buildBarSegment(
+            context,
+            flex: durationMinutes,
+            color: _activityColor(context, a),
+            tooltip:
+                '${_fmtHm(a.startTime)} - ${_fmtHm(a.endTime)} (${_activityLabel(context, a)})',
+            hasBorderLeft: segments.isNotEmpty,
+          ),
+        );
+      }
+      cursor = a.endTime;
+    }
+    final trailingGap = dayEnd.difference(cursor).inMinutes;
+    if (trailingGap > 0) {
       segments.add(
         _buildBarSegment(
           context,
-          flex: minutes,
-          color: emptyColor,
-          tooltip:
-              '${_fmtHm(cursor)} - ${_fmtHm(until)} (${_t('timeline.noData')})',
+          flex: trailingGap,
+          color: gapColor,
+          tooltip: '${_fmtHm(cursor)} - 24:00',
           hasBorderLeft: segments.isNotEmpty,
         ),
       );
     }
 
-    for (final r in _dayRows(appState)) {
-      addEmpty(r.start);
-      final minutes = r.end.difference(r.start).inMinutes;
-      if (minutes > 0) {
-        segments.add(
-          _buildBarSegment(
-            context,
-            flex: minutes,
-            color: _rowColor(context, r),
-            tooltip: '${_fmtHm(r.start)} - ${_fmtHm(r.end)} (${_rowLabel(r)})',
-            hasBorderLeft: segments.isNotEmpty,
-          ),
-        );
-      }
-      cursor = r.end;
+    if (segments.isEmpty) {
+      segments.add(
+        _buildBarSegment(
+          context,
+          flex: 1440,
+          color: gapColor,
+          tooltip: _t('timeline.noData'),
+        ),
+      );
     }
-    addEmpty(day.end);
     return segments;
   }
 
-  Color _typeColor(BuildContext context, ActivityType type) {
-    switch (type) {
+  Color _activityColor(BuildContext context, TachographActivity a) {
+    switch (a.type) {
       case ActivityType.driving:
         return Theme.of(context).colorScheme.primary;
       case ActivityType.rest:
@@ -1016,22 +1002,8 @@ class _TimelinePageState extends State<TimelinePage> {
     }
   }
 
-  /// Gaps by status; live and manual data faded on the chart, as a later
-  /// card file may still change them.
-  Color _rowColor(BuildContext context, _DayRow r, {bool forText = false}) {
-    if (r.status == SegmentStatus.pendingGap) return _pendingColor;
-    if (r.status == SegmentStatus.needsManual) return _unknownColor;
-    final color = _typeColor(context, r.type);
-    if (forText || r.status != SegmentStatus.provisional) return color;
-    return color.withValues(alpha: _provisionalAlpha);
-  }
-
-  String _rowLabel(_DayRow r) {
-    if (r.status == SegmentStatus.pendingGap) return _t('timeline.pendingDdd');
-    if (r.status == SegmentStatus.needsManual) {
-      return _t('violation.missingRecord');
-    }
-    switch (r.type) {
+  String _activityLabel(BuildContext context, TachographActivity a) {
+    switch (a.type) {
       case ActivityType.driving:
         return _t('timeline.driving');
       case ActivityType.rest:
@@ -1045,36 +1017,17 @@ class _TimelinePageState extends State<TimelinePage> {
     }
   }
 
-  /// HH:mm in the display zone.
-  String _fmtHm(DateTime dt) => _display.hm(dt);
+  /// In UTC, like the card file and the day boundaries above: live samples
+  /// are kept in local time and would otherwise read hours off their place
+  /// on the chart.
+  String _fmtHm(DateTime dt) {
+    final t = dt.toUtc();
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
 
   String _fmtDuration(Duration d) {
     final h = d.inHours.toString().padLeft(2, '0');
     final m = (d.inMinutes % 60).toString().padLeft(2, '0');
     return '${h}s ${m}d';
   }
-}
-
-/// One stretch of the selected day, cut to it.
-class _DayRow {
-  const _DayRow({
-    required this.start,
-    required this.end,
-    required this.type,
-    required this.status,
-    required this.source,
-    this.isCrew = false,
-    this.slot = DriverSlot.driver,
-  });
-
-  final DateTime start;
-  final DateTime end;
-  final ActivityType type;
-  final SegmentStatus status;
-  final SegmentSource source;
-  final bool isCrew;
-  final DriverSlot slot;
-
-  bool get isGap =>
-      status == SegmentStatus.pendingGap || status == SegmentStatus.needsManual;
 }
