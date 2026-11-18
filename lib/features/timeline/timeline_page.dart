@@ -16,7 +16,9 @@ class TimelinePage extends StatefulWidget {
 }
 
 class _TimelinePageState extends State<TimelinePage> {
-  DateTime _selectedDate = DateTime.now();
+  /// The days and times shown are UTC, as on the card file, so "today" is
+  /// the UTC day: between 00:00 and 03:00 local time it is still yesterday.
+  DateTime _selectedDate = DateTime.now().toUtc();
 
   bool _isDriver1Selected = true;
 
