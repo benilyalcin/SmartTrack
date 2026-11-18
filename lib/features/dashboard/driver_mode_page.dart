@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/localization/localization.dart';
 import '../../core/providers/app_state.dart';
 import '../../core/services/driving_time_calculator.dart';
 import '../../core/services/kline_protocol.dart' show TachographLiveData;
-import '../../core/widgets/bluetooth_warning_banner.dart';
+import '../../core/services/time/display_time.dart';
 import '../../core/widgets/card_slot_warning_banner.dart';
 
 class DriverModePage extends StatefulWidget {
@@ -16,6 +17,8 @@ class DriverModePage extends StatefulWidget {
 }
 
 class _DriverModePageState extends State<DriverModePage> {
+  final DisplayTime _display = DisplayTime.fromConfig();
+
   @override
   void initState() {
     super.initState();
@@ -70,7 +73,11 @@ class _DriverModePageState extends State<DriverModePage> {
 
     final live = appState.tachographLiveData;
     final isDriver1 = appState.activeDriver == 'driver1';
-    final driverName = (isDriver1 ? live.driver1Name : live.driver2Name);
+    // The unit fills the name with '?' when it has none to give.
+    final rawName = (isDriver1 ? live.driver1Name : live.driver2Name).trim();
+    final driverName = rawName.replaceAll('?', '').trim().isEmpty
+        ? ''
+        : rawName;
     final continuous = appState.activeDrivingRules['continuous'];
     final daily = appState.activeDrivingRules['daily'];
     final weekly = appState.activeDrivingRules['weekly'];
@@ -84,47 +91,54 @@ class _DriverModePageState extends State<DriverModePage> {
       body: SafeArea(
         child: Column(
           children: [
-            const BluetoothWarningBanner(compact: true),
             const CardSlotWarningBanner(compact: true),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildHeader(
                       context,
                       scheme,
+                      appState,
                       driverName,
                       appState.vehiclePlate,
                       isSpeeding,
                       live.speedKmh,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Expanded(
                       child: LayoutBuilder(
                         builder: (context, constraints) {
-                          // The landscape body is a fixed flex (Expanded-based)
-                          // layout with no scroll fallback, so it needs a
-                          // minimum amount of vertical room. When the warning
-                          // banners above shrink the available space below
-                          // that (e.g. right after a Bluetooth disconnect),
-                          // fall back to the scrollable portrait layout so the
-                          // page degrades gracefully instead of overflowing.
-                          final useFlexLayout =
-                              isLandscape && constraints.maxHeight >= 280;
-                          return useFlexLayout
-                              ? _buildLandscapeBody(
-                                  context,
-                                  scheme,
-                                  appState,
-                                  continuous,
-                                  daily,
-                                  weekly,
-                                  timeUntilBreak,
-                                  live,
-                                )
-                              : _buildPortraitBody(
+                          // Landscape is one screen at a glance, never a
+                          // scrolling list: below the height the panels need,
+                          // the whole body is scaled down to fit.
+                          if (isLandscape) {
+                            final body = _buildLandscapeBody(
+                              context,
+                              scheme,
+                              appState,
+                              continuous,
+                              daily,
+                              weekly,
+                              timeUntilBreak,
+                              live,
+                            );
+                            const minHeight = 260.0;
+                            if (constraints.maxHeight >= minHeight) return body;
+                            return FittedBox(
+                              child: SizedBox(
+                                width:
+                                    constraints.maxWidth *
+                                    minHeight /
+                                    constraints.maxHeight,
+                                height: minHeight,
+                                child: body,
+                              ),
+                            );
+                          }
+                          return _buildPortraitBody(
                                   context,
                                   scheme,
                                   appState,
@@ -147,9 +161,67 @@ class _DriverModePageState extends State<DriverModePage> {
     );
   }
 
+  /// The latest time any value on this screen was read from the unit.
+  DateTime? _lastReadAt(AppState appState) {
+    DateTime? latest;
+    for (final t in [
+      ...appState.activeDrivingRulesReadAt.values,
+      appState.activeCurrentActivityReadAt,
+      appState.activeTimeUntilNextBreakOrRestReadAt,
+    ]) {
+      if (t != null && (latest == null || t.isAfter(latest))) latest = t;
+    }
+    return latest;
+  }
+
+  /// Not connected: a slim chip in the header instead of a banner row, so
+  /// the cockpit keeps its height. Tapping it opens the scan, as the banner
+  /// did.
+  Widget _buildConnectionChip(ColorScheme scheme, AppState appState) {
+    final readAt = _lastReadAt(appState);
+    final text = [
+      _t('bt.errorTitleShort'),
+      if (readAt != null)
+        _t(
+          'compliance.lastReadAt',
+        ).replaceAll('{time}', _display.hm(readAt)),
+    ].join(' · ');
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: InkWell(
+        onTap: () => context.push('/bluetooth-scan'),
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: scheme.errorContainer.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: scheme.error.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.bluetooth_disabled, color: scheme.error, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                text,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: scheme.error,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeader(
     BuildContext context,
     ColorScheme scheme,
+    AppState appState,
     String driverName,
     String plate,
     bool isSpeeding,
@@ -196,6 +268,8 @@ class _DriverModePageState extends State<DriverModePage> {
             ],
           ),
         ),
+        if (!appState.isBluetoothConnected)
+          _buildConnectionChip(scheme, appState),
         if (isSpeeding)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
