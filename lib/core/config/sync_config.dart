@@ -12,6 +12,7 @@ class SyncConfig {
     this.periodicSyncInterval = const Duration(hours: 6),
     this.shortGapThreshold = const Duration(minutes: 30),
     this.manualEntryAfter = const Duration(hours: 24),
+    this.manualPromptLookback = const Duration(days: 7),
     this.speedRetention = const Duration(hours: 48),
     this.correctionNotifyThreshold = const Duration(minutes: 15),
     this.recordTolerance = const Duration(minutes: 1),
@@ -85,6 +86,11 @@ class SyncConfig {
   /// A stretch with no record at all becomes a question for the driver once
   /// no card download has covered it for this long.
   final Duration manualEntryAfter;
+
+  /// The driver is only asked about stretches that ended within this long;
+  /// older ones stay marked on the timeline. A card holds 28 days, and
+  /// asking about every day off in them at once helps nobody.
+  final Duration manualPromptLookback;
 
   // ---- Data ----
 

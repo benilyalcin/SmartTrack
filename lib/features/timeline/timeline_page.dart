@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/providers/app_state.dart';
 import '../../core/localization/localization.dart';
-import '../../core/services/card_first_activity_log.dart';
 import '../../core/services/driving_time_calculator.dart';
 import '../../core/services/violation_analyzer.dart';
 import '../../core/theme/app_theme.dart';
@@ -845,24 +844,14 @@ class _TimelinePageState extends State<TimelinePage> {
     );
   }
 
-  /// The main driver's day is read from the active card file first; the app's
-  /// live samples and manual entries only fill what the file does not cover
-  /// (days it has no record for, and the time after it was downloaded).
+  /// The main driver's day is the merged log: card records first, live data
+  /// and manual entries only where the card has nothing (see
+  /// ActivityMergeEngine).
   List<TachographActivity> _selectedDriverLog(AppState appState) {
+    if (_isDriver1Selected) return appState.activityLog;
+
     final file = appState.activeDddFile;
     final parsed = appState.currentParsedData;
-
-    if (_isDriver1Selected) {
-      if (file == null || file.isSimulated || parsed == null) {
-        return appState.liveOnlyActivityLog;
-      }
-      return cardFirstActivityLog(
-        cardLog: parsed.activityLog,
-        downloadedAt: file.downloadedAt,
-        appLog: appState.liveOnlyActivityLog,
-      );
-    }
-
     if (file != null && !file.isSimulated && parsed != null) {
       final coDriverLog = parsed.activityLog
           .where((a) => a.slot == DriverSlot.coDriver)

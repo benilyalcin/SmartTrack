@@ -146,6 +146,10 @@ class ActivityStore {
     await backend.write(stateKey, jsonEncode(next.toJson()));
   }
 
+  /// Replaces the state without writing it yet (a change too small to be
+  /// worth a write on its own; the next [replace] carries it).
+  void replaceInMemory(ActivityStoreState next) => _state = next;
+
   DateTime? _lastSpeedWrite;
 
   /// Adds a live speed reading and drops those older than

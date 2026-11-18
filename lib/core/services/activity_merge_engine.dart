@@ -622,11 +622,21 @@ class ActivityMergeEngine {
       });
     final placed = <ActivitySegment>[];
     var taken = <_Span>[];
-    for (final s in ranked) {
-      final split = _subtract(s, taken, now);
-      if (!split.overlapped) {
-        placed.add(s);
-      } else {
+    // One rank at a time: each rank only gives way to the ranks above it,
+    // so the covered spans are merged once per rank, not once per segment.
+    var i = 0;
+    while (i < ranked.length) {
+      final rank = _rank(ranked[i]);
+      final group = <ActivitySegment>[];
+      while (i < ranked.length && _rank(ranked[i]) == rank) {
+        group.add(ranked[i++]);
+      }
+      for (final s in group) {
+        final split = _subtract(s, taken, now);
+        if (!split.overlapped) {
+          placed.add(s);
+          continue;
+        }
         for (final p in split.kept) {
           placed.add(
             s.copyWith(
@@ -637,7 +647,7 @@ class ActivityMergeEngine {
           );
         }
       }
-      taken = _union([...taken, _span(s, now)]);
+      taken = _union([...taken, for (final s in group) _span(s, now)]);
     }
     return placed
       ..removeWhere((s) => !s.endOr(now).isAfter(s.startUtc))
@@ -769,7 +779,19 @@ List<_Span> _union(List<_Span> spans) {
   var overlapped = false;
   var start = s.startUtc;
   final end = s.endUtc;
-  for (final c in cover) {
+  // [cover] is sorted and merged: skip straight to the first span that
+  // ends after [start].
+  var lo = 0;
+  var hi = cover.length;
+  while (lo < hi) {
+    final mid = (lo + hi) >> 1;
+    if ((cover[mid].end ?? _forever).isAfter(start)) {
+      hi = mid;
+    } else {
+      lo = mid + 1;
+    }
+  }
+  for (final c in cover.skip(lo)) {
     final cEnd = c.end ?? _forever;
     if (!cEnd.isAfter(start)) continue;
     if (end != null && !c.start.isBefore(end)) break;
