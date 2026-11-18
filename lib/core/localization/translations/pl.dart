@@ -254,7 +254,8 @@ const Map<String, String> plTranslations = {
   'compliance.timeUntilBreakHint':
       'Pozostały czas nieprzerwanej jazdy do obowiązkowej przerwy.',
   'compliance.cumulativeBreakHint':
-      'Łączny czas przerw dziś, przerywających nieprzerwaną jazdę (na każde 4 godz. 30 min jazdy wymagane jest co najmniej 45 min).',
+      'Czas przerw przerywających nieprzerwaną jazdę, obliczony przez tachograf. Bez połączenia pokazywana jest ostatnio odczytana wartość.',
+  'compliance.lastReadAt': 'ostatnio: {time}',
   'compliance.weeklyDrivingHint':
       'Łączny czas jazdy w tym tygodniu od poniedziałku — limit to 56 godzin.',
   'compliance.biWeeklyTotalHint':

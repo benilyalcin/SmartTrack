@@ -254,7 +254,8 @@ const Map<String, String> esTranslations = {
   'compliance.timeUntilBreakHint':
       'Tiempo de conducción continuada que te queda antes de la pausa obligatoria.',
   'compliance.cumulativeBreakHint':
-      'Tiempo total de pausa tomado hoy para interrumpir la conducción continuada (se requieren al menos 45 min por cada 4 h 30 min de conducción).',
+      'Tiempo de pausa tomado para interrumpir la conducción continuada, según lo calcula el tacógrafo. Sin conexión se muestra el último valor leído.',
+  'compliance.lastReadAt': 'último: {time}',
   'compliance.weeklyDrivingHint':
       'Tiempo total de conducción esta semana desde el lunes; el límite legal es de 56 horas.',
   'compliance.biWeeklyTotalHint':

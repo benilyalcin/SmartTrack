@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers/app_state.dart';
 import '../../core/localization/localization.dart';
 import '../../core/services/driving_time_calculator.dart';
+import '../../core/services/time/display_time.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/widgets/bluetooth_warning_banner.dart';
@@ -447,15 +448,7 @@ class _DashboardPageState extends State<DashboardPage> {
           childAspectRatio: isDesktop ? 1.1 : 0.78,
           children: [
             _buildContinuousUsageCard(context, continuous),
-            _buildSimpleCard(
-              context,
-              icon: Icons.local_cafe,
-              label: _t('compliance.cumulativeBreak'),
-              value: continuous == null
-                  ? '-'
-                  : '${_fmtHM(appState.activeTotalBreakTime)} sa',
-              hint: _t('compliance.cumulativeBreakHint'),
-            ),
+            _buildCumulativeBreakCard(context, appState),
             _buildRuleCard(
               context,
               icon: Icons.calendar_today,
@@ -992,12 +985,37 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  /// The unit's own cumulative break time (0xF925 / 0xF926); the app does
+  /// not work it out. Without a connection the last value read is shown,
+  /// faded, with the time it was read.
+  Widget _buildCumulativeBreakCard(BuildContext context, AppState appState) {
+    final readAt = appState.activeTotalBreakTimeReadAt;
+    final stale = readAt != null && !appState.isBluetoothConnected;
+    return _buildSimpleCard(
+      context,
+      icon: Icons.local_cafe,
+      label: _t('compliance.cumulativeBreak'),
+      value: readAt == null
+          ? '-'
+          : '${_fmtHM(appState.activeTotalBreakTime)} sa',
+      hint: _t('compliance.cumulativeBreakHint'),
+      faded: stale,
+      footnote: stale
+          ? _t('compliance.lastReadAt', {
+              'time': DisplayTime.fromConfig().hm(readAt),
+            })
+          : null,
+    );
+  }
+
   Widget _buildSimpleCard(
     BuildContext context, {
     required IconData icon,
     required String label,
     required String value,
     String? hint,
+    bool faded = false,
+    String? footnote,
   }) {
     final scheme = Theme.of(context).colorScheme;
     return _buildCardShell(
@@ -1028,11 +1046,20 @@ class _DashboardPageState extends State<DashboardPage> {
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
-                  color: scheme.onSurface,
+                  color: faded ? scheme.outline : scheme.onSurface,
                 ),
               ),
             ),
           ),
+          if (footnote != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              footnote,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11, color: scheme.outline),
+            ),
+          ],
         ],
       ),
     );

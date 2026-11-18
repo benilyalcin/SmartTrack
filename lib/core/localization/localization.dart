@@ -1073,11 +1073,16 @@ class AppLocalizations {
     },
     'compliance.cumulativeBreakHint': {
       'TR':
-          'Bugün kesintisiz sürüşü bölmek için şimdiye kadar alınan toplam mola süresi (4 sa 30 dk sürüşe en az 45 dk gerekir).',
+          'Takografın hesapladığı, kesintisiz sürüşü bölmek için alınan mola süresi. Bağlantı yokken son okunan değer gösterilir.',
       'EN':
-          'Total break time taken today to interrupt continuous driving (at least 45 min required per 4h30 of driving).',
+          'Break time taken to interrupt continuous driving, as calculated by the tachograph. Without a connection the last value read is shown.',
       'DE':
-          'Heute bisher genommene Gesamtpausenzeit zur Unterbrechung der Lenkzeit (mind. 45 Min. je 4:30 Std. Lenkzeit).',
+          'Vom Fahrtenschreiber berechnete Pausenzeit zur Unterbrechung der Lenkzeit. Ohne Verbindung wird der zuletzt gelesene Wert angezeigt.',
+    },
+    'compliance.lastReadAt': {
+      'TR': 'son: {time}',
+      'EN': 'last: {time}',
+      'DE': 'zuletzt: {time}',
     },
     'compliance.weeklyDrivingHint': {
       'TR':

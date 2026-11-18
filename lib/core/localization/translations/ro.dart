@@ -258,7 +258,8 @@ const Map<String, String> roTranslations = {
   'compliance.timeUntilBreakHint':
       'Timpul de conducere continuă rămas până la pauza obligatorie.',
   'compliance.cumulativeBreakHint':
-      'Timpul total de pauză luat azi pentru a întrerupe conducerea continuă (pentru fiecare 4 h 30 min de conducere sunt necesare cel puțin 45 min).',
+      'Timpul de pauză luat pentru a întrerupe conducerea continuă, așa cum îl calculează tahograful. Fără conexiune se afișează ultima valoare citită.',
+  'compliance.lastReadAt': 'ultima: {time}',
   'compliance.weeklyDrivingHint':
       'Timpul total de conducere săptămâna aceasta, de luni — limita legală este de 56 de ore.',
   'compliance.biWeeklyTotalHint':
