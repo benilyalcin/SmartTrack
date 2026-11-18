@@ -9,7 +9,7 @@ import 'core/services/app_log_service.dart';
 import 'core/services/gap_card_download.dart';
 
 void main() {
-  AppState.cardDownloader = downloadCardForGap;
+  AppState.cardDownloader = downloadCardForScheduler;
 
   final defaultDebugPrint = debugPrint;
   debugPrint = (String? message, {int? wrapWidth}) {

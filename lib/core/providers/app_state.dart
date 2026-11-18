@@ -19,6 +19,10 @@ import '../services/dongle_download_result_service.dart';
 import '../services/driving_time_calculator.dart';
 import '../services/kline_protocol.dart';
 import '../services/tachograph_parser.dart';
+import '../services/activity_data_controller.dart';
+import '../services/link/link_gate.dart';
+import '../services/link/link_scheduler.dart';
+import '../services/link/motion_source.dart';
 import '../services/time/legacy_time_migration.dart';
 import '../services/time/tacho_clock.dart';
 import '../services/violation_analyzer.dart';
@@ -81,8 +85,6 @@ class AppState extends ChangeNotifier {
   VehicleUnitData? _activeVuData;
   bool _isDownloadingDdd = false;
 
-  List<TachographActivity> _manualEntries = [];
-
   /// The unit's clock; live samples are stamped with it, in UTC.
   final TachoClock _tachoClock = TachoClock();
   TachoClock get tachoClock => _tachoClock;
@@ -92,15 +94,33 @@ class AppState extends ChangeNotifier {
   /// back by however long ago that was.
   DateTime? _lastClockReading;
 
-  List<TachographActivity> _liveActivityLog = [];
-  ActivityType? _liveOpenSegmentType;
-  DateTime? _liveOpenSegmentStart;
+  /// Card, live and manual activity data for both drivers, merged card
+  /// first; the link scheduler decides when the line goes to a card
+  /// download. All the rules live there; AppState only feeds it.
+  late final ActivityDataController _activityData = ActivityDataController(
+    clock: _tachoClock,
+    motion: GpsMotionSource(),
+    downloadCard: (cancel) {
+      final download = cardDownloader;
+      if (download == null) {
+        return Future.value(
+          DddDownloadOutcome(
+            problem: 'no card downloader',
+            downloadedAt: _tachoClock.nowUtc(),
+          ),
+        );
+      }
+      return download(cancel, _tachoClock);
+    },
+    onCardData: (outcome) async {
+      await saveRealDddBytes(cardBytes: outcome.bytes);
+    },
+  )..addListener(notifyListeners);
+  ActivityDataController get activityData => _activityData;
 
-  List<TachographActivity> _liveActivityLog2 = [];
-  ActivityType? _liveOpenSegmentType2;
-  DateTime? _liveOpenSegmentStart2;
-
-  static const _liveActivityLogRetention = Duration(days: 90);
+  /// The card records last merged in, so the same file is not merged again
+  /// on every recompute.
+  TachographDriverData? _mergedCardData;
 
   final DrivingTimeCalculator _calculator = DrivingTimeCalculator();
   final ViolationAnalyzer _violationAnalyzer = ViolationAnalyzer();
@@ -149,11 +169,6 @@ class AppState extends ChangeNotifier {
   final Set<String> _unavailableFields = {};
 
   DateTime? _lastKnownActivityTime;
-
-  /// Stretches of a gap that neither the unit's current activity nor the
-  /// active card file accounts for, oldest first; the driver is asked about
-  /// them one at a time.
-  final List<ActivityGap> _pendingRealGaps = [];
 
   ComplianceNotice? _pendingComplianceNotice;
   final Set<String> _shownNoticeIds = {};
@@ -215,46 +230,39 @@ class AppState extends ChangeNotifier {
     if (lastActivityIso != null) {
       _lastKnownActivityTime = DateTime.tryParse(lastActivityIso);
     }
-    final manualJson = prefs.getString('manualActivityEntries');
-    if (manualJson != null && manualJson.isNotEmpty) {
-      _manualEntries = _decodeManualEntries(manualJson);
+    // The activity store replaces these keys; they are read once, for its
+    // first start.
+    ({ActivityType type, DateTime start})? openSegment(String suffix) {
+      final index = prefs.getInt('liveSegmentType$suffix');
+      final start = DateTime.tryParse(
+        prefs.getString('liveSegmentStart$suffix') ?? '',
+      );
+      if (index == null || start == null) return null;
+      return (type: ActivityType.values[index], start: start);
     }
-    final liveLogJson = prefs.getString('liveActivityLog');
-    if (liveLogJson != null && liveLogJson.isNotEmpty) {
-      _liveActivityLog = _decodeLiveActivityLog(liveLogJson);
-    }
-    final liveSegmentTypeIndex = prefs.getInt('liveSegmentType');
-    final liveSegmentStartIso = prefs.getString('liveSegmentStart');
-    if (liveSegmentTypeIndex != null && liveSegmentStartIso != null) {
-      final parsedStart = DateTime.tryParse(liveSegmentStartIso);
 
-      if (parsedStart != null &&
-          DateTime.now().difference(parsedStart) <= _openSegmentStaleCap) {
-        _liveOpenSegmentType = ActivityType.values[liveSegmentTypeIndex];
-        _liveOpenSegmentStart = parsedStart;
-      } else {
-        unawaited(prefs.remove('liveSegmentType'));
-        unawaited(prefs.remove('liveSegmentStart'));
+    List<TachographActivity> legacyLog(String key, {bool manual = false}) {
+      final json = prefs.getString(key);
+      if (json == null || json.isEmpty) return const [];
+      try {
+        return manual
+            ? _decodeManualEntries(json)
+            : _decodeLiveActivityLog(json);
+      } catch (_) {
+        return const [];
       }
     }
 
-    final liveLog2Json = prefs.getString('liveActivityLog2');
-    if (liveLog2Json != null && liveLog2Json.isNotEmpty) {
-      _liveActivityLog2 = _decodeLiveActivityLog(liveLog2Json);
-    }
-    final liveSegmentType2Index = prefs.getInt('liveSegmentType2');
-    final liveSegmentStart2Iso = prefs.getString('liveSegmentStart2');
-    if (liveSegmentType2Index != null && liveSegmentStart2Iso != null) {
-      final parsedStart2 = DateTime.tryParse(liveSegmentStart2Iso);
-      if (parsedStart2 != null &&
-          DateTime.now().difference(parsedStart2) <= _openSegmentStaleCap) {
-        _liveOpenSegmentType2 = ActivityType.values[liveSegmentType2Index];
-        _liveOpenSegmentStart2 = parsedStart2;
-      } else {
-        unawaited(prefs.remove('liveSegmentType2'));
-        unawaited(prefs.remove('liveSegmentStart2'));
-      }
-    }
+    await _activityData.load(
+      legacy: LegacyActivityData(
+        live1: legacyLog('liveActivityLog'),
+        live2: legacyLog('liveActivityLog2'),
+        manual: legacyLog('manualActivityEntries', manual: true),
+        open1: openSegment(''),
+        open2: openSegment('2'),
+        lastKnownActivityTime: _lastKnownActivityTime,
+      ),
+    );
 
     final complianceJson = prefs.getString('liveComplianceSnapshot');
     if (complianceJson != null && complianceJson.isNotEmpty) {
@@ -330,9 +338,15 @@ class AppState extends ChangeNotifier {
   List<Violation> get violations => List.unmodifiable(_violations);
   List<ActivityGap> get pendingGaps => List.unmodifiable(_pendingGaps);
   DateTime? get lastKnownActivityTime => _lastKnownActivityTime;
-  ActivityGap? get pendingRealGap =>
-      _pendingRealGaps.isEmpty ? null : _pendingRealGaps.first;
-  int get pendingRealGapCount => _pendingRealGaps.length;
+
+  /// The first stretch the driver is asked about: no record and none to
+  /// come (see ActivityDataController.questions).
+  ActivityGap? get pendingRealGap {
+    final questions = _activityData.questions('driver1');
+    return questions.isEmpty ? null : questions.first;
+  }
+
+  int get pendingRealGapCount => _activityData.questions('driver1').length;
 
   ComplianceNotice? get pendingComplianceNotice => _pendingComplianceNotice;
 
@@ -472,17 +486,15 @@ class AppState extends ChangeNotifier {
 
   Duration? get activeOpenRestElapsed {
     if (!_isActiveDriver1) return null;
-    if (_liveOpenSegmentType != ActivityType.rest ||
-        _liveOpenSegmentStart == null) {
-      return null;
-    }
-    return DateTime.now().difference(_liveOpenSegmentStart!);
+    final open = _activityData.openLive('driver1');
+    if (open == null || open.activityType != ActivityType.rest) return null;
+    return _tachoClock.nowUtc().difference(open.startUtc);
   }
 
   bool get activePendingFirstHalfExists {
     if (!_isActiveDriver1) return false;
     return _calculator.hasQualifyingPendingFirstHalf(
-      _liveActivityLog,
+      _effectiveActivityLog,
       DateTime.now(),
     );
   }
@@ -586,7 +598,13 @@ class AppState extends ChangeNotifier {
   void setBluetoothConnected(bool connected, {String? deviceName}) {
     if (_isBluetoothConnected != connected ||
         _connectedDeviceName != deviceName) {
+      final changed = _isBluetoothConnected != connected;
       _isBluetoothConnected = connected;
+      if (changed) {
+        connected
+            ? _activityData.onConnected()
+            : _activityData.onDisconnected();
+      }
       if (!connected) {
         _connectedDeviceName = null;
 
@@ -718,7 +736,7 @@ class AppState extends ChangeNotifier {
     bool currentBreakRestRemainingUnavailable = false,
   }) {
     if (workingStateCode != null) {
-      _recordLiveActivitySample(workingStateCode, _tachoClock.nowUtc());
+      _recordLiveActivitySample(workingStateCode, currentSessionDuration);
     }
 
     if (_activeDddFile != null && _activeDddFile!.isSimulated) {
@@ -920,7 +938,7 @@ class AppState extends ChangeNotifier {
     bool currentBreakRestRemainingUnavailable = false,
   }) {
     if (workingStateCode != null) {
-      _recordLiveActivitySample2(workingStateCode, _tachoClock.nowUtc());
+      _recordLiveActivitySample2(workingStateCode, currentSessionDuration);
     }
 
     final mergedRules2 = Map<String, DrivingRuleResult>.of(_drivingRules2);
@@ -1570,16 +1588,13 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> addManualActivityEntry(TachographActivity entry) async {
-    _manualEntries.add(
-      TachographActivity(
-        type: entry.type,
-        startTime: entry.startTime,
-        endTime: entry.endTime,
-        isManualEntry: true,
-        note: entry.note,
-      ),
+    _activityData.addManual(
+      driverId: 'driver1',
+      type: entry.type,
+      start: entry.startTime,
+      end: entry.endTime,
+      note: entry.note,
     );
-    await _persistManualEntries();
     _recomputeDerivedState();
   }
 
@@ -1592,258 +1607,61 @@ class AppState extends ChangeNotifier {
     );
   }
 
+  /// After contact is back: gaps that have waited too long for a card
+  /// download become questions. The gap itself was opened when contact was
+  /// lost, and the unit's own start of the current activity (passed with
+  /// the live sample) closes what it explains; the missing card data is
+  /// queued by the scheduler, not downloaded here.
   void checkForRealGap({
     Duration minGap = const Duration(minutes: 30),
     int? currentWorkingStateCode,
     Duration? currentActivityDuration,
   }) {
-    final last = _lastKnownActivityTime;
-    if (last == null) return;
-    final now = DateTime.now();
-    if (now.difference(last) < minGap) return;
-
-    final gap = ActivityGap(start: last, end: now);
-    final currentType = currentWorkingStateCode != null
-        ? _activityTypeFromWorkingStateCode(currentWorkingStateCode)
-        : null;
-
-    final afterCurrentDuration = _tryFillGapFromCurrentDuration(
-      gap,
-      currentType,
-      currentActivityDuration,
-    );
-    if (afterCurrentDuration == null) return;
-    unawaited(_fillGapFromCard(afterCurrentDuration));
+    _activityData.classifyGaps();
   }
 
-  /// Fetches a driver card file from the connected unit for a gap the live
-  /// data cannot explain (see [checkForRealGap]); null bytes when there is
-  /// none to be had. Set at startup; left null - as in tests - the card file
-  /// the app already has is used as it is.
-  static Future<Uint8List?> Function()? cardDownloader;
-
-  bool _downloadingCardForGap = false;
-
-  /// The card file is trusted wherever it has records; the driver is asked
-  /// only about what it does not cover - all of it when it covers nothing.
-  /// The card is downloaded from the unit first, when it can be, so the file
-  /// runs up to now rather than to the last time somebody downloaded it.
-  Future<void> _fillGapFromCard(ActivityGap gap) async {
-    final download = cardDownloader;
-    if (download != null && !_downloadingCardForGap) {
-      _downloadingCardForGap = true;
-      try {
-        final bytes = await download();
-        if (bytes != null) await saveRealDddBytes(cardBytes: bytes);
-      } catch (e) {
-        debugPrint('Kopukluk için kart indirilemedi: $e');
-      } finally {
-        _downloadingCardForGap = false;
-      }
-    }
-
-    // What the card covers goes straight into the timeline, warnings and
-    // analysis; what it does not is asked about.
-    _pendingRealGaps.addAll(_fillGapFromRealCardData(gap));
-    _recomputeDerivedState();
-    notifyListeners();
-  }
-
-  /// The unit reports how long its current activity has run, which explains
-  /// the end of the gap. The segment that was open when contact was lost ends
-  /// where the gap starts, unless the same activity has run all through it.
-  /// Returns what is left unexplained, or null when nothing is.
-  ActivityGap? _tryFillGapFromCurrentDuration(
-    ActivityGap gap,
-    ActivityType? currentType,
-    Duration? currentDuration,
-  ) {
-    if (currentType == null ||
-        currentDuration == null ||
-        currentDuration <= Duration.zero) {
-      _closeOpenSegmentBefore(gap.start);
-      _persistLiveSegments();
-      return gap;
-    }
-    final currentSegmentStart = gap.end.subtract(currentDuration);
-    final coversWholeGap = !currentSegmentStart.isAfter(gap.start);
-
-    final continuesOpenSegment =
-        coversWholeGap &&
-        _liveOpenSegmentType == currentType &&
-        _liveOpenSegmentStart != null;
-    if (!continuesOpenSegment) {
-      _closeOpenSegmentBefore(gap.start);
-      _liveOpenSegmentType = currentType;
-      _liveOpenSegmentStart = coversWholeGap ? gap.start : currentSegmentStart;
-    }
-    _persistLiveSegments();
-
-    if (coversWholeGap) return null;
-    return ActivityGap(start: gap.start, end: currentSegmentStart);
-  }
-
-  /// Copies the active card file's records inside [gap] into the live log and
-  /// returns the stretches it has no record for, oldest first.
-  List<ActivityGap> _fillGapFromRealCardData(ActivityGap gap) {
-    final active = _activeDddFile;
-    final parsed = _currentParsedData;
-    if (active == null || active.isSimulated || parsed == null) return [gap];
-
-    final coverage = GapCoverage.of(
-      gap,
-      parsed.activityLog,
-      recordedUntil: active.downloadedAt,
-    );
-    if (coverage.covered.isNotEmpty) {
-      _liveActivityLog.addAll(coverage.covered);
-      _persistLiveSegments();
-    }
-    return coverage.holes;
-  }
-
-  void _persistLiveSegments() {
-    _liveActivityLog.sort((a, b) => a.startTime.compareTo(b.startTime));
-    unawaited(_persistLiveActivityLog());
-    unawaited(_persistLiveSegmentState());
-  }
-
-  void _closeOpenSegmentBefore(DateTime cutoff) {
-    if (_liveOpenSegmentType != null &&
-        _liveOpenSegmentStart != null &&
-        _liveOpenSegmentStart!.isBefore(cutoff)) {
-      _liveActivityLog.add(
-        TachographActivity(
-          type: _liveOpenSegmentType!,
-          startTime: _liveOpenSegmentStart!,
-          endTime: cutoff,
-        ),
-      );
-    }
-    _liveOpenSegmentType = null;
-    _liveOpenSegmentStart = null;
-  }
+  /// Downloads the driver card for the link scheduler; set at startup
+  /// (downloadCardForScheduler). Left null - as in tests - no download is
+  /// made.
+  static Future<DddDownloadOutcome> Function(
+    DownloadCancelToken cancel,
+    TachoClock clock,
+  )?
+  cardDownloader;
 
   /// Records the driver's account of [pendingRealGap]: one or more
   /// activities, back to back, that cover it.
   Future<void> resolveRealGap(List<TachographActivity> segments) async {
-    if (_pendingRealGaps.isEmpty) return;
-    _pendingRealGaps.removeAt(0);
     for (final segment in segments) {
-      _manualEntries.add(
-        TachographActivity(
-          type: segment.type,
-          startTime: segment.startTime,
-          endTime: segment.endTime,
-          isManualEntry: true,
-        ),
+      _activityData.addManual(
+        driverId: 'driver1',
+        type: segment.type,
+        start: segment.startTime,
+        end: segment.endTime,
+        note: segment.note,
       );
     }
-    await _persistManualEntries();
     _recomputeDerivedState();
-
     await recordActivityCheckpoint();
     notifyListeners();
   }
 
+  /// For tests and the debug pages: contact back after [simulateAbsence]
+  /// with no card download for it in all that time, so the stretch is a
+  /// question for the driver.
   Future<void> simulateTestReconnect({Duration? simulateAbsence}) async {
     setBluetoothConnected(true, deviceName: 'Test (Simüle)');
     if (simulateAbsence != null) {
-      _lastKnownActivityTime = DateTime.now().subtract(simulateAbsence);
+      _activityData.debugUnexplainedGap(simulateAbsence);
     }
-    checkForRealGap();
     await recordActivityCheckpoint();
     notifyListeners();
   }
 
-  static const _openSegmentStaleCap = Duration(hours: 24);
-
-  List<TachographActivity> _dedupSameDateCardRecords(
-    List<TachographActivity> log,
-  ) {
-    final bestCounterByDate = <DateTime, int>{};
-    for (final a in log) {
-      final counter = a.recordPresenceCounter;
-      if (counter == null) continue;
-      final day = DateTime(
-        a.startTime.year,
-        a.startTime.month,
-        a.startTime.day,
-      );
-      final best = bestCounterByDate[day];
-      if (best == null || counter > best) bestCounterByDate[day] = counter;
-    }
-    if (bestCounterByDate.isEmpty) return log;
-    return log.where((a) {
-      final counter = a.recordPresenceCounter;
-      if (counter == null) return true;
-      final day = DateTime(
-        a.startTime.year,
-        a.startTime.month,
-        a.startTime.day,
-      );
-      return counter == bestCounterByDate[day];
-    }).toList();
-  }
-
-  List<TachographActivity> get _effectiveActivityLog {
-    final dddLog = (_activeDddFile != null && !_activeDddFile!.isSimulated)
-        ? _dedupSameDateCardRecords(_currentParsedData?.activityLog ?? const [])
-        : const <TachographActivity>[];
-    final liveDays = _liveActivityLog
-        .map(
-          (a) => DateTime(a.startTime.year, a.startTime.month, a.startTime.day),
-        )
-        .toSet();
-    final nonOverlappingDddLog = liveDays.isEmpty
-        ? dddLog
-        : dddLog
-              .where(
-                (a) => !liveDays.contains(
-                  DateTime(
-                    a.startTime.year,
-                    a.startTime.month,
-                    a.startTime.day,
-                  ),
-                ),
-              )
-              .toList();
-
-    return [
-      ...nonOverlappingDddLog,
-      ..._liveActivityLogWithOpenSegment,
-      ..._manualEntries,
-    ];
-  }
-
-  List<TachographActivity> get _liveActivityLogWithOpenSegment {
-    if (_liveOpenSegmentType == null || _liveOpenSegmentStart == null) {
-      return _liveActivityLog;
-    }
-    final visibleEnd = _isBluetoothConnected
-        ? DateTime.now()
-        : (_lastKnownActivityTime ?? DateTime.now());
-    if (!visibleEnd.isAfter(_liveOpenSegmentStart!)) return _liveActivityLog;
-    return [
-      ..._liveActivityLog,
-      TachographActivity(
-        type: _liveOpenSegmentType!,
-        startTime:
-            visibleEnd.difference(_liveOpenSegmentStart!) > _openSegmentStaleCap
-            ? visibleEnd.subtract(_openSegmentStaleCap)
-            : _liveOpenSegmentStart!,
-        endTime: visibleEnd,
-      ),
-    ];
-  }
-
-  List<TachographActivity> get liveOnlyActivityLog {
-    final sorted = List<TachographActivity>.from([
-      ..._liveActivityLogWithOpenSegment,
-      ..._manualEntries,
-    ])..sort((a, b) => a.startTime.compareTo(b.startTime));
-    return List.unmodifiable(sorted);
-  }
+  /// The main driver's merged log: card records first, then live data, then
+  /// manual entries (ActivityMergeEngine).
+  List<TachographActivity> get _effectiveActivityLog =>
+      _activityData.activities('driver1');
 
   ActivityType? _activityTypeFromWorkingStateCode(int code) {
     switch (code) {
@@ -1860,61 +1678,40 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void _recordLiveActivitySample(int workingStateCode, DateTime sampleTime) {
+  void _recordLiveActivitySample(
+    int workingStateCode,
+    Duration? currentActivityDuration,
+  ) {
     final type = _activityTypeFromWorkingStateCode(workingStateCode);
     if (type == null) return;
 
-    if (_liveOpenSegmentType == null || _liveOpenSegmentStart == null) {
-      _liveOpenSegmentType = type;
-      _liveOpenSegmentStart = sampleTime;
-      _persistLiveSegmentState();
-      return;
+    final open = _activityData.openLive('driver1');
+    if (open != null && open.activityType != type) {
+      _clearComplianceNoticeEligibility('short-break');
+      final closedDuration = _tachoClock.nowUtc().difference(open.startUtc);
+      if (open.activityType == ActivityType.rest &&
+          type == ActivityType.driving &&
+          closedDuration < const Duration(minutes: 15)) {
+        _raiseComplianceNotice(
+          'short-break',
+          'Bu ${closedDuration.inMinutes} dakikalık duraklama resmi mola sayılmayabilir '
+              '(en az 15 dakika gerekir) — kesintisiz sürüş sayacınız sıfırlanmadı.',
+          severity: ComplianceNoticeSeverity.info,
+        );
+      }
     }
-    if (type == _liveOpenSegmentType) return;
-
-    _clearComplianceNoticeEligibility('short-break');
-    final closedDuration = sampleTime.difference(_liveOpenSegmentStart!);
-    if (_liveOpenSegmentType == ActivityType.rest &&
-        type == ActivityType.driving &&
-        closedDuration < const Duration(minutes: 15)) {
-      _raiseComplianceNotice(
-        'short-break',
-        'Bu ${closedDuration.inMinutes} dakikalık duraklama resmi mola sayılmayabilir '
-            '(en az 15 dakika gerekir) — kesintisiz sürüş sayacınız sıfırlanmadı.',
-        severity: ComplianceNoticeSeverity.info,
-      );
-    }
-
-    _liveActivityLog.add(
-      TachographActivity(
-        type: _liveOpenSegmentType!,
-        startTime: _liveOpenSegmentStart!,
-        endTime: sampleTime,
-      ),
+    _activityData.recordLive(
+      'driver1',
+      type,
+      currentActivityDuration: currentActivityDuration,
     );
-    final cutoff = sampleTime.subtract(_liveActivityLogRetention);
-    _liveActivityLog.removeWhere((a) => a.endTime.isBefore(cutoff));
-
-    _liveOpenSegmentType = type;
-    _liveOpenSegmentStart = sampleTime;
-    _persistLiveActivityLog();
-    _persistLiveSegmentState();
-  }
-
-  Future<void> _persistLiveActivityLog() async {
-    final prefs = await SharedPreferences.getInstance();
-    final encoded = jsonEncode(
-      _liveActivityLog
-          .map(
-            (a) => {
-              'type': a.type.index,
-              'start': a.startTime.toUtc().toIso8601String(),
-              'end': a.endTime.toUtc().toIso8601String(),
-            },
-          )
-          .toList(),
+    _activityData.onLiveSample(
+      speedKmh: _tachographLiveData.speedKmh,
+      activity: type,
+      // An unknown slot state does not hold a download back; it simply
+      // fails without a card.
+      cardInserted: _tachographLiveData.cardSlot1 != 0,
     );
-    await prefs.setString('liveActivityLog', encoded);
   }
 
   List<TachographActivity> _decodeLiveActivityLog(String json) {
@@ -1929,110 +1726,44 @@ class AppState extends ChangeNotifier {
     }).toList();
   }
 
-  Future<void> _persistLiveSegmentState() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (_liveOpenSegmentType == null || _liveOpenSegmentStart == null) {
-      await prefs.remove('liveSegmentType');
-      await prefs.remove('liveSegmentStart');
-    } else {
-      await prefs.setInt('liveSegmentType', _liveOpenSegmentType!.index);
-      await prefs.setString(
-        'liveSegmentStart',
-        _liveOpenSegmentStart!.toUtc().toIso8601String(),
-      );
-    }
-  }
-
-  void _recordLiveActivitySample2(int workingStateCode, DateTime sampleTime) {
+  void _recordLiveActivitySample2(
+    int workingStateCode,
+    Duration? currentActivityDuration,
+  ) {
     final type = _activityTypeFromWorkingStateCode(workingStateCode);
     if (type == null) return;
-
-    if (_liveOpenSegmentType2 == null || _liveOpenSegmentStart2 == null) {
-      _liveOpenSegmentType2 = type;
-      _liveOpenSegmentStart2 = sampleTime;
-      _persistLiveSegmentState2();
-      return;
-    }
-    if (type == _liveOpenSegmentType2) return;
-
-    _liveActivityLog2.add(
-      TachographActivity(
-        type: _liveOpenSegmentType2!,
-        startTime: _liveOpenSegmentStart2!,
-        endTime: sampleTime,
-      ),
+    _activityData.recordLive(
+      'driver2',
+      type,
+      currentActivityDuration: currentActivityDuration,
     );
-    final cutoff = sampleTime.subtract(_liveActivityLogRetention);
-    _liveActivityLog2.removeWhere((a) => a.endTime.isBefore(cutoff));
-
-    _liveOpenSegmentType2 = type;
-    _liveOpenSegmentStart2 = sampleTime;
-    _persistLiveActivityLog2();
-    _persistLiveSegmentState2();
   }
 
-  Future<void> _persistLiveActivityLog2() async {
-    final prefs = await SharedPreferences.getInstance();
-    final encoded = jsonEncode(
-      _liveActivityLog2
-          .map(
-            (a) => {
-              'type': a.type.index,
-              'start': a.startTime.toUtc().toIso8601String(),
-              'end': a.endTime.toUtc().toIso8601String(),
-            },
-          )
-          .toList(),
-    );
-    await prefs.setString('liveActivityLog2', encoded);
-  }
-
-  Future<void> _persistLiveSegmentState2() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (_liveOpenSegmentType2 == null || _liveOpenSegmentStart2 == null) {
-      await prefs.remove('liveSegmentType2');
-      await prefs.remove('liveSegmentStart2');
-    } else {
-      await prefs.setInt('liveSegmentType2', _liveOpenSegmentType2!.index);
-      await prefs.setString(
-        'liveSegmentStart2',
-        _liveOpenSegmentStart2!.toUtc().toIso8601String(),
-      );
-    }
-  }
-
-  List<TachographActivity> get liveOnlyActivityLog2 {
-    final sorted = List<TachographActivity>.from(
-      _liveActivityLogWithOpenSegment2,
-    )..sort((a, b) => a.startTime.compareTo(b.startTime));
-    return List.unmodifiable(sorted);
-  }
-
-  List<TachographActivity> get _liveActivityLogWithOpenSegment2 {
-    if (_liveOpenSegmentType2 == null || _liveOpenSegmentStart2 == null) {
-      return _liveActivityLog2;
-    }
-    final visibleEnd = _isBluetoothConnected
-        ? DateTime.now()
-        : (_lastKnownActivityTime ?? DateTime.now());
-    if (!visibleEnd.isAfter(_liveOpenSegmentStart2!)) return _liveActivityLog2;
-    return [
-      ..._liveActivityLog2,
-      TachographActivity(
-        type: _liveOpenSegmentType2!,
-        startTime:
-            visibleEnd.difference(_liveOpenSegmentStart2!) >
-                _openSegmentStaleCap
-            ? visibleEnd.subtract(_openSegmentStaleCap)
-            : _liveOpenSegmentStart2!,
-        endTime: visibleEnd,
-      ),
-    ];
-  }
+  /// The co-driver's merged log (live and manual; card files are the main
+  /// driver's).
+  List<TachographActivity> get liveOnlyActivityLog2 =>
+      _activityData.activities('driver2');
 
   static const _violationAnalysisWindow = Duration(days: 15);
 
+  /// Merges the active card file into the activity store; the same file
+  /// again is a no-op (and skipped here before it gets that far).
+  void _mergeActiveCardFile() {
+    final file = _activeDddFile;
+    final parsed = _currentParsedData;
+    if (file == null || file.isSimulated || parsed == null) return;
+    if (file.downloadKind == 'vehicleUnit') return;
+    if (identical(parsed, _mergedCardData)) return;
+    _mergedCardData = parsed;
+    _activityData.importCard(
+      fileId: file.id,
+      records: parsed.activityLog,
+      downloadedAt: _tachoClock.toUnitTime(file.downloadedAt),
+    );
+  }
+
   void _recomputeDerivedState() {
+    _mergeActiveCardFile();
     final activities = _effectiveActivityLog;
     final now = DateTime.now();
 
@@ -2080,23 +1811,6 @@ class AppState extends ChangeNotifier {
       case ActivityType.unknown:
         return 'dashboard.noData';
     }
-  }
-
-  Future<void> _persistManualEntries() async {
-    final prefs = await SharedPreferences.getInstance();
-    final encoded = jsonEncode(
-      _manualEntries
-          .map(
-            (a) => {
-              'type': a.type.index,
-              'start': a.startTime.toUtc().toIso8601String(),
-              'end': a.endTime.toUtc().toIso8601String(),
-              'note': a.note,
-            },
-          )
-          .toList(),
-    );
-    await prefs.setString('manualActivityEntries', encoded);
   }
 
   List<TachographActivity> _decodeManualEntries(String json) {

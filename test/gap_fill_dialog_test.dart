@@ -69,7 +69,7 @@ void main() {
     expect(find.byType(GapFillDialog), findsNothing);
     expect(appState.pendingRealGap, isNull);
 
-    final manual = appState.liveOnlyActivityLog
+    final manual = appState.activityLog
         .where((a) => a.isManualEntry)
         .toList();
     expect(manual.map((a) => a.type), [
@@ -107,7 +107,7 @@ void main() {
     await _tap(tester, find.widgetWithText(ChoiceChip, 'Hazır Bulunma'));
     await _tap(tester, find.text('Kaydet'));
 
-    final manual = appState.liveOnlyActivityLog
+    final manual = appState.activityLog
         .where((a) => a.isManualEntry)
         .toList();
     expect(manual, hasLength(1));
