@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/providers/app_state.dart';
 import '../../core/localization/localization.dart';
+import '../../core/services/card_first_activity_log.dart';
 import '../../core/services/driving_time_calculator.dart';
 import '../../core/services/violation_analyzer.dart';
 import '../../core/theme/app_theme.dart';
@@ -681,7 +682,8 @@ class _TimelinePageState extends State<TimelinePage> {
     ).where((v) => _overlapsSelectedDay(v.start, v.end)).toList();
 
     final rows = <Widget>[
-      for (final a in dayActivities) _buildActivityLogRow(context, a),
+      for (final a in dayActivities)
+        _buildActivityLogRow(context, a, dayStart, dayEnd),
       for (final v in dayViolations)
         _buildViolationLogRow(context, v, dayStart, dayEnd),
     ];
@@ -748,9 +750,18 @@ class _TimelinePageState extends State<TimelinePage> {
     }
   }
 
-  Widget _buildActivityLogRow(BuildContext context, TachographActivity a) {
+  Widget _buildActivityLogRow(
+    BuildContext context,
+    TachographActivity a,
+    DateTime dayStart,
+    DateTime dayEnd,
+  ) {
     final scheme = Theme.of(context).colorScheme;
     final color = _activityColor(context, a);
+    // Cut to the selected day, as the chart and the summary are, so an
+    // activity begun the day before does not read "13:02 - 10:59".
+    final start = a.startTime.isBefore(dayStart) ? dayStart : a.startTime;
+    final end = a.endTime.isAfter(dayEnd) ? dayEnd : a.endTime;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -759,7 +770,7 @@ class _TimelinePageState extends State<TimelinePage> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              '${_fmtHm(a.startTime)} - ${_fmtHm(a.endTime)}',
+              '${_fmtHm(start)} - ${_fmtHm(end)}',
               style: TextStyle(color: color),
             ),
           ),
@@ -804,29 +815,54 @@ class _TimelinePageState extends State<TimelinePage> {
     final timeText = isRange
         ? '${_fmtHm(clippedStart)} - ${_fmtHm(clippedEnd)}'
         : _fmtHm(v.start);
+    // Time above, description below: a long description wraps instead of
+    // squeezing the time into a one-character column.
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.warning, size: 18, color: scheme.error),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(timeText, style: TextStyle(color: scheme.error)),
-          ),
-          Text(
-            _t(v.descriptionKey),
-            style: TextStyle(fontWeight: FontWeight.w600, color: scheme.error),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(timeText, style: TextStyle(color: scheme.error)),
+                const SizedBox(height: 2),
+                Text(
+                  _t(v.descriptionKey),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: scheme.error,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
+  /// The main driver's day is read from the active card file first; the app's
+  /// live samples and manual entries only fill what the file does not cover
+  /// (days it has no record for, and the time after it was downloaded).
   List<TachographActivity> _selectedDriverLog(AppState appState) {
-    if (_isDriver1Selected) return appState.activityLog;
-
     final file = appState.activeDddFile;
     final parsed = appState.currentParsedData;
+
+    if (_isDriver1Selected) {
+      if (file == null || file.isSimulated || parsed == null) {
+        return appState.liveOnlyActivityLog;
+      }
+      return cardFirstActivityLog(
+        cardLog: parsed.activityLog,
+        downloadedAt: file.downloadedAt,
+        appLog: appState.liveOnlyActivityLog,
+      );
+    }
+
     if (file != null && !file.isSimulated && parsed != null) {
       final coDriverLog = parsed.activityLog
           .where((a) => a.slot == DriverSlot.coDriver)
@@ -992,8 +1028,13 @@ class _TimelinePageState extends State<TimelinePage> {
     }
   }
 
-  String _fmtHm(DateTime dt) =>
-      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  /// In UTC, like the card file and the day boundaries above: live samples
+  /// are kept in local time and would otherwise read hours off their place
+  /// on the chart.
+  String _fmtHm(DateTime dt) {
+    final t = dt.toUtc();
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
 
   String _fmtDuration(Duration d) {
     final h = d.inHours.toString().padLeft(2, '0');
