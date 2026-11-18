@@ -405,6 +405,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final daily = rules['daily'];
     final weekly = rules['weekly'];
     final biWeekly = rules['bi_weekly'];
+    final readAt = appState.activeDrivingRulesReadAt;
     final remaining10h = appState.activeRemaining10hDrivingTimes;
     final remainingReducedRest =
         appState.activeRemainingReducedDailyRestPeriods;
@@ -422,6 +423,7 @@ class _DashboardPageState extends State<DashboardPage> {
           context,
           daily,
           unavailable: appState.activeDailyDrivingUnavailable,
+          note: _lastReadNote(appState, readAt['daily']),
         ),
         const SizedBox(height: 12),
 
@@ -447,7 +449,11 @@ class _DashboardPageState extends State<DashboardPage> {
           crossAxisSpacing: 12,
           childAspectRatio: isDesktop ? 1.1 : 0.78,
           children: [
-            _buildContinuousUsageCard(context, continuous),
+            _buildContinuousUsageCard(
+              context,
+              continuous,
+              note: _lastReadNote(appState, readAt['continuous']),
+            ),
             _buildCumulativeBreakCard(context, appState),
             _buildRuleCard(
               context,
@@ -457,6 +463,7 @@ class _DashboardPageState extends State<DashboardPage> {
               limit: DrivingTimeCalculator.weeklyDrivingLimit,
               hint: _t('compliance.weeklyDrivingHint'),
               unavailable: appState.activeWeeklyDrivingUnavailable,
+              note: _lastReadNote(appState, readAt['weekly']),
             ),
             _buildRuleCard(
               context,
@@ -465,6 +472,7 @@ class _DashboardPageState extends State<DashboardPage> {
               rule: biWeekly,
               limit: DrivingTimeCalculator.biWeeklyDrivingLimit,
               hint: _t('compliance.biWeeklyTotalHint'),
+              note: _lastReadNote(appState, readAt['bi_weekly']),
             ),
           ],
         ),
@@ -990,7 +998,7 @@ class _DashboardPageState extends State<DashboardPage> {
   /// faded, with the time it was read.
   Widget _buildCumulativeBreakCard(BuildContext context, AppState appState) {
     final readAt = appState.activeTotalBreakTimeReadAt;
-    final stale = readAt != null && !appState.isBluetoothConnected;
+    final note = _lastReadNote(appState, readAt);
     return _buildSimpleCard(
       context,
       icon: Icons.local_cafe,
@@ -999,14 +1007,32 @@ class _DashboardPageState extends State<DashboardPage> {
           ? '-'
           : '${_fmtHM(appState.activeTotalBreakTime)} sa',
       hint: _t('compliance.cumulativeBreakHint'),
-      faded: stale,
-      footnote: stale
-          ? _t(
-              'compliance.lastReadAt',
-            ).replaceAll('{time}', DisplayTime.fromConfig().hm(readAt))
-          : null,
+      faded: note != null,
+      footnote: note,
     );
   }
+
+  /// "son: 14:32" (local time) for a value read from the unit while there
+  /// is no connection now; null when connected or never read. A card with
+  /// a note is shown faded: it is the last value, not the current one.
+  String? _lastReadNote(AppState appState, DateTime? readAt) {
+    if (readAt == null || appState.isBluetoothConnected) return null;
+    return _t(
+      'compliance.lastReadAt',
+    ).replaceAll('{time}', DisplayTime.fromConfig().hm(readAt));
+  }
+
+  Widget _buildLastReadNote(String? note, ColorScheme scheme) => note == null
+      ? const SizedBox.shrink()
+      : Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            note,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 11, color: scheme.outline),
+          ),
+        );
 
   Widget _buildSimpleCard(
     BuildContext context, {
@@ -1073,6 +1099,7 @@ class _DashboardPageState extends State<DashboardPage> {
     required Duration limit,
     String? hint,
     bool unavailable = false,
+    String? note,
   }) {
     final scheme = Theme.of(context).colorScheme;
     final limitH = limit.inHours;
@@ -1100,7 +1127,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
-                    color: scheme.onSurface,
+                    color: note != null ? scheme.outline : scheme.onSurface,
                   ),
                 ),
                 TextSpan(
@@ -1110,6 +1137,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
           ),
+          _buildLastReadNote(note, scheme),
         ],
       ),
     );
@@ -1117,8 +1145,9 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildContinuousUsageCard(
     BuildContext context,
-    DrivingRuleResult? rule,
-  ) {
+    DrivingRuleResult? rule, {
+    String? note,
+  }) {
     final scheme = Theme.of(context).colorScheme;
     final used = rule?.used ?? Duration.zero;
     final limit = rule?.limit ?? DrivingTimeCalculator.continuousDrivingLimit;
@@ -1149,7 +1178,9 @@ class _DashboardPageState extends State<DashboardPage> {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: isCritical ? scheme.primary : scheme.onSurface,
+              color: note != null
+                  ? scheme.outline
+                  : (isCritical ? scheme.primary : scheme.onSurface),
             ),
           ),
           const SizedBox(height: 8),
@@ -1159,9 +1190,10 @@ class _DashboardPageState extends State<DashboardPage> {
               value: percent,
               minHeight: 5,
               backgroundColor: scheme.surfaceContainerHighest,
-              color: accentColor,
+              color: note != null ? scheme.outline : accentColor,
             ),
           ),
+          _buildLastReadNote(note, scheme),
         ],
       ),
     );
@@ -1171,6 +1203,7 @@ class _DashboardPageState extends State<DashboardPage> {
     BuildContext context,
     DrivingRuleResult? daily, {
     bool unavailable = false,
+    String? note,
   }) {
     final scheme = Theme.of(context).colorScheme;
     final used = daily?.used ?? Duration.zero;
@@ -1217,7 +1250,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: scheme.onSurface,
+                    color: note != null ? scheme.outline : scheme.onSurface,
                   ),
                 ),
                 TextSpan(
@@ -1234,9 +1267,12 @@ class _DashboardPageState extends State<DashboardPage> {
               value: percent,
               minHeight: 6,
               backgroundColor: scheme.surfaceContainerHighest,
-              color: percent >= 1.0 ? scheme.secondary : scheme.primary,
+              color: note != null
+                  ? scheme.outline
+                  : (percent >= 1.0 ? scheme.secondary : scheme.primary),
             ),
           ),
+          _buildLastReadNote(note, scheme),
         ],
       ),
     );
