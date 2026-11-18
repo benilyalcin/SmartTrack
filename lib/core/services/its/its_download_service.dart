@@ -4,6 +4,7 @@ import '../../bluetooth/vu/its_link.dart';
 import '../../bluetooth/vu/vu_app_link.dart';
 import '../../localization/localization.dart';
 import '../kline_protocol.dart';
+import '../link/link_gate.dart';
 import 'appendix7.dart';
 
 /// What to download in one go. The card and the vehicle unit are separate
@@ -43,7 +44,12 @@ class ItsDownloadResult {
     this.steps = const [],
     this.problem,
     this.period,
+    this.cancelled = false,
   });
+
+  /// Stopped by a [DownloadCancelToken]. Nothing read before that is kept:
+  /// [cardBytes] and [vuBytes] are null.
+  final bool cancelled;
 
   /// The unit's downloadable period, read out of a generation 2 overview.
   final DownloadablePeriod? period;
@@ -84,11 +90,28 @@ class ItsDownloadService {
 
   static const int _secondsPerDay = 86400;
 
+  DownloadCancelToken? _cancel;
+  bool get _cancelled => _cancel?.isCancelled ?? false;
+
+  /// Holds the line for the whole download (LinkGate: live reads wait),
+  /// and stops at the next block once [cancel] is set.
   Future<ItsDownloadResult> download(
     ItsLink link,
     ItsDownloadRequest request, {
     void Function(String message)? onProgress,
+    DownloadCancelToken? cancel,
+    LinkGate? gate,
+  }) => (gate ?? LinkGate.instance).runDdd(
+    () => _download(link, request, onProgress: onProgress, cancel: cancel),
+  );
+
+  Future<ItsDownloadResult> _download(
+    ItsLink link,
+    ItsDownloadRequest request, {
+    void Function(String message)? onProgress,
+    DownloadCancelToken? cancel,
   }) async {
+    _cancel = cancel;
     void progress(String m) {
       try {
         onProgress?.call(m);
@@ -165,6 +188,7 @@ class ItsDownloadService {
           if (request.activities) {
             final days = _days(request, period);
             for (var i = 0; i < days.length; i++) {
+              if (_cancelled) break;
               final label = _dayLabel(days[i]);
               progress(
                 AppLocalizations.text('its.progressActivities', {
@@ -207,7 +231,7 @@ class ItsDownloadService {
               AppLocalizations.text('its.transferTechnical'),
             ),
           ]) {
-            if (!wanted) continue;
+            if (!wanted || _cancelled) continue;
             progress(
               AppLocalizations.text('its.progressNamed', {'name': name}),
             );
@@ -226,11 +250,17 @@ class ItsDownloadService {
         if (vu.bytes.isNotEmpty) vuBytes = Uint8List.fromList(vu.bytes);
       }
     } finally {
+      _cancel = null;
       if (openedHere) await link.close();
     }
 
     for (final s in steps) {
       debugPrint('ITS-DDW: $s');
+    }
+    if (cancel?.isCancelled ?? false) {
+      // A part of a file is no file: throw it away.
+      debugPrint('ITS-DDW: cancelled (${cancel!.reason})');
+      return ItsDownloadResult(steps: steps, cancelled: true);
     }
     return ItsDownloadResult(
       cardBytes: cardBytes,
@@ -309,6 +339,9 @@ class ItsDownloadService {
         : _transferTimeout;
 
     while (true) {
+      // Between blocks only: a block asked for is waited for, so the
+      // session can still be closed in order (TransferExit, StopComm).
+      if (_cancelled) return _TransferResult(collected, blocks, null);
       final answer = await link.request(request, timeout: timeout);
       if (answer == null) {
         return _TransferResult(
