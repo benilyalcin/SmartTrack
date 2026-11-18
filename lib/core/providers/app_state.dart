@@ -19,6 +19,8 @@ import '../services/dongle_download_result_service.dart';
 import '../services/driving_time_calculator.dart';
 import '../services/kline_protocol.dart';
 import '../services/tachograph_parser.dart';
+import '../services/time/legacy_time_migration.dart';
+import '../services/time/tacho_clock.dart';
 import '../services/violation_analyzer.dart';
 import '../services/vu/vu_file_decoder.dart';
 import '../models/tachograph_type.dart';
@@ -80,6 +82,15 @@ class AppState extends ChangeNotifier {
   bool _isDownloadingDdd = false;
 
   List<TachographActivity> _manualEntries = [];
+
+  /// The unit's clock; live samples are stamped with it, in UTC.
+  final TachoClock _tachoClock = TachoClock();
+  TachoClock get tachoClock => _tachoClock;
+
+  /// The last CurrentDateTime taken as a clock reading. A refresh hands the
+  /// handshake's reading on unchanged; taking it again would set the clock
+  /// back by however long ago that was.
+  DateTime? _lastClockReading;
 
   List<TachographActivity> _liveActivityLog = [];
   ActivityType? _liveOpenSegmentType;
@@ -154,7 +165,13 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _loadPrefs() async {
+    // Before anything is read: stored timestamps move to UTC once.
+    await LegacyTimeMigration.ensure();
     final prefs = await SharedPreferences.getInstance();
+    final clockOffsetMs = prefs.getInt('tachoClockOffsetMs');
+    if (clockOffsetMs != null) {
+      _tachoClock.restore(Duration(milliseconds: clockOffsetMs));
+    }
     final storedLanguage = prefs.getString('selectedLanguage');
     if (storedLanguage != null &&
         AppLocalizations.languages.contains(storedLanguage)) {
@@ -254,6 +271,7 @@ class AppState extends ChangeNotifier {
         _tachographLiveData = TachographLiveData.fromJson(
           jsonDecode(liveDataJson) as Map<String, dynamic>,
         );
+        _lastClockReading = _tachographLiveData.currentDateTime;
       } catch (_) {}
     }
     if (prefs.containsKey('vehiclePlate')) {
@@ -645,6 +663,18 @@ class AppState extends ChangeNotifier {
   void setTachographLiveData(TachographLiveData data) {
     _tachographLiveData = data;
 
+    final reading = data.currentDateTime;
+    if (reading != null && reading != _lastClockReading) {
+      _lastClockReading = reading;
+      _tachoClock.sync(reading);
+      SharedPreferences.getInstance().then(
+        (prefs) => prefs.setInt(
+          'tachoClockOffsetMs',
+          _tachoClock.offset!.inMilliseconds,
+        ),
+      );
+    }
+
     if (data.vrn.isNotEmpty) {
       _vehiclePlate = data.vrn;
     } else if (data.vin.isNotEmpty) {
@@ -688,7 +718,7 @@ class AppState extends ChangeNotifier {
     bool currentBreakRestRemainingUnavailable = false,
   }) {
     if (workingStateCode != null) {
-      _recordLiveActivitySample(workingStateCode, DateTime.now());
+      _recordLiveActivitySample(workingStateCode, _tachoClock.nowUtc());
     }
 
     if (_activeDddFile != null && _activeDddFile!.isSimulated) {
@@ -890,7 +920,7 @@ class AppState extends ChangeNotifier {
     bool currentBreakRestRemainingUnavailable = false,
   }) {
     if (workingStateCode != null) {
-      _recordLiveActivitySample2(workingStateCode, DateTime.now());
+      _recordLiveActivitySample2(workingStateCode, _tachoClock.nowUtc());
     }
 
     final mergedRules2 = Map<String, DrivingRuleResult>.of(_drivingRules2);
@@ -1554,11 +1584,11 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> recordActivityCheckpoint() async {
-    _lastKnownActivityTime = DateTime.now();
+    _lastKnownActivityTime = _tachoClock.nowUtc();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       'lastKnownActivityTime',
-      _lastKnownActivityTime!.toIso8601String(),
+      _lastKnownActivityTime!.toUtc().toIso8601String(),
     );
   }
 
@@ -1878,8 +1908,8 @@ class AppState extends ChangeNotifier {
           .map(
             (a) => {
               'type': a.type.index,
-              'start': a.startTime.toIso8601String(),
-              'end': a.endTime.toIso8601String(),
+              'start': a.startTime.toUtc().toIso8601String(),
+              'end': a.endTime.toUtc().toIso8601String(),
             },
           )
           .toList(),
@@ -1908,7 +1938,7 @@ class AppState extends ChangeNotifier {
       await prefs.setInt('liveSegmentType', _liveOpenSegmentType!.index);
       await prefs.setString(
         'liveSegmentStart',
-        _liveOpenSegmentStart!.toIso8601String(),
+        _liveOpenSegmentStart!.toUtc().toIso8601String(),
       );
     }
   }
@@ -1948,8 +1978,8 @@ class AppState extends ChangeNotifier {
           .map(
             (a) => {
               'type': a.type.index,
-              'start': a.startTime.toIso8601String(),
-              'end': a.endTime.toIso8601String(),
+              'start': a.startTime.toUtc().toIso8601String(),
+              'end': a.endTime.toUtc().toIso8601String(),
             },
           )
           .toList(),
@@ -1966,7 +1996,7 @@ class AppState extends ChangeNotifier {
       await prefs.setInt('liveSegmentType2', _liveOpenSegmentType2!.index);
       await prefs.setString(
         'liveSegmentStart2',
-        _liveOpenSegmentStart2!.toIso8601String(),
+        _liveOpenSegmentStart2!.toUtc().toIso8601String(),
       );
     }
   }
@@ -2059,8 +2089,8 @@ class AppState extends ChangeNotifier {
           .map(
             (a) => {
               'type': a.type.index,
-              'start': a.startTime.toIso8601String(),
-              'end': a.endTime.toIso8601String(),
+              'start': a.startTime.toUtc().toIso8601String(),
+              'end': a.endTime.toUtc().toIso8601String(),
               'note': a.note,
             },
           )
