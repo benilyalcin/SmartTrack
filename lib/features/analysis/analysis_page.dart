@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/models/role_permissions.dart';
 import '../../core/providers/app_state.dart';
 import '../../core/localization/localization.dart';
+import '../../core/services/time/display_time.dart';
 import '../../core/services/google_drive_service.dart';
 import '../../core/services/penalty_calculator.dart';
 import '../../core/services/risk_score_calculator.dart';
@@ -175,9 +176,17 @@ class _AnalysisPageState extends State<AnalysisPage>
   // Calendar-day helpers. They work on local dates and use DateTime
   // constructor arithmetic so day steps stay correct across DST changes.
   static DateTime _dateOnly(DateTime d) {
-    final local = d.toLocal();
+    // Data times are UTC instants: their day is the display-zone day.
+    // Calendar dates (local, from the picker and the helpers here) are
+    // taken as they are.
+    final local = d.isUtc ? _display.wallClock(d) : d;
     return DateTime(local.year, local.month, local.day);
   }
+
+  static final _display = DisplayTime.fromConfig();
+
+  /// A data time as display-zone wall clock, for showing.
+  static DateTime _shown(DateTime d) => d.isUtc ? _display.wallClock(d) : d;
 
   static DateTime _addDays(DateTime d, int days) =>
       DateTime(d.year, d.month, d.day + days);
@@ -1020,8 +1029,8 @@ class _AnalysisPageState extends State<AnalysisPage>
   /// "23:00 - 05:00", with the end date added when the violation runs into
   /// another day.
   String _violationTimeRange(Violation v) {
-    final start = v.start.toLocal();
-    final end = v.end.toLocal();
+    final start = _shown(v.start);
+    final end = _shown(v.end);
     if (!end.isAfter(start)) return _hourMinute(start);
     final endText = _sameDate(start, end)
         ? _hourMinute(end)
@@ -1539,7 +1548,7 @@ class _AnalysisPageState extends State<AnalysisPage>
                       for (final d in deductions)
                         [
                           Text(
-                            '${_fullDate(d.violation.start.toLocal())}\n${_hourMinute(d.violation.start.toLocal())}',
+                            '${_fullDate(_shown(d.violation.start))}\n${_hourMinute(_shown(d.violation.start))}',
                             maxLines: 2,
                             softWrap: false,
                             style: label,
@@ -2308,7 +2317,7 @@ class _AnalysisPageState extends State<AnalysisPage>
                                       ),
                                     ),
                                     Text(
-                                      '${v.ruleReference} • ${_shortDateTime(v.start.toLocal())}',
+                                      '${v.ruleReference} • ${_shortDateTime(_shown(v.start))}',
                                       style: TextStyle(
                                         fontSize: 11,
                                         color: scheme.outline,

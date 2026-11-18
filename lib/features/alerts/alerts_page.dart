@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/localization/localization.dart';
+import '../../core/services/time/display_time.dart';
 import '../../core/models/vehicle_unit_data.dart' show VuOverspeedingEvent;
 import '../../core/providers/app_state.dart';
 import '../../core/services/driving_time_calculator.dart'
@@ -106,8 +107,14 @@ class _AlertsPageState extends State<AlertsPage> {
     }).toList();
   }
 
+  /// Data times (UTC) as display-zone wall clock; calendar dates the user
+  /// picked stay as they are.
+  static final _display = DisplayTime.fromConfig();
+  static DateTime _shown(DateTime dt) => dt.isUtc ? _display.wallClock(dt) : dt;
+
   String _fmtDateTime(DateTime dt) {
-    final ref = _referenceDate ?? DateTime.now();
+    dt = _shown(dt);
+    final ref = _referenceDate ?? _display.displayDay(DateTime.now());
     final isToday =
         dt.year == ref.year && dt.month == ref.month && dt.day == ref.day;
     final time =
@@ -310,13 +317,13 @@ class _AlertsPageState extends State<AlertsPage> {
       '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
 
   String _fmtFullDateTime(DateTime dt) {
+    dt = _shown(dt);
     final time =
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     return '${_formatFullDate(dt)} $time';
   }
 
-  String _fmtHm(DateTime dt) =>
-      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  String _fmtHm(DateTime dt) => _display.hm(dt);
 
   _AlertCategory _buildDrivingRestCategory(
     BuildContext context,
@@ -326,19 +333,11 @@ class _AlertsPageState extends State<AlertsPage> {
   ) {
     final scheme = Theme.of(context).colorScheme;
 
-    final dayStart = DateTime(
-      referenceDate.year,
-      referenceDate.month,
-      referenceDate.day,
-    );
-    final endOfReferenceDay = DateTime(
-      referenceDate.year,
-      referenceDate.month,
-      referenceDate.day,
-      23,
-      59,
-      59,
-      999,
+    // The reference day in the display zone, as a UTC range.
+    final range = _display.dayRangeUtc(referenceDate);
+    final dayStart = range.start;
+    final endOfReferenceDay = range.end.subtract(
+      const Duration(milliseconds: 1),
     );
 
     final violations = _violationAnalyzer
