@@ -90,7 +90,9 @@ class VuAppConnectionService implements BleConnectionRepository {
   int _mtu = _defaultMtu;
   VuLinkPhase _phase = VuLinkPhase.disconnected;
 
-  final VuAppReassembler _reassembler = VuAppReassembler();
+  late final VuAppReassembler _reassembler = VuAppReassembler(
+    header: profile.packetHeader,
+  );
   final _messages = StreamController<List<int>>.broadcast();
   final _stateController =
       StreamController<repo.BleConnectionState>.broadcast();
@@ -435,6 +437,7 @@ class VuAppConnectionService implements BleConnectionRepository {
     final packets = VuAppPacketCodec.fragment(
       data,
       VuAppPacketCodec.payloadSizeFor(_mtu),
+      header: profile.packetHeader,
     );
     final withoutResponse = rx.properties.writeWithoutResponse;
 

@@ -52,10 +52,21 @@ class VuItsUuids {
   };
 }
 
-/// The `[total][sequence]` header in front of every packet.
-///
-/// `total` is the packet count of the message in the first packet and 0 in
-/// every other one; `sequence` counts from 1.
+/// The order of the two header bytes in front of every packet.
+enum VuPacketHeader {
+  /// `[total][sequence]`, the AVU3's own (BLE_AppService.c): `total` is the
+  /// packet count in the first packet and 0 in every other one.
+  totalThenSequence,
+
+  /// `[sequence][total]`, the STC 8255's BLE dongle: the packet count in
+  /// every packet. Read the other way round, every packet of an N packet
+  /// answer looks like "packet N" with no message open, and only one packet
+  /// answers get through.
+  sequenceThenTotal,
+}
+
+/// The two byte header in front of every packet (see [VuPacketHeader]);
+/// `sequence` counts from 1.
 class VuAppPacketCodec {
   VuAppPacketCodec._();
 
@@ -70,7 +81,11 @@ class VuAppPacketCodec {
 
   static int payloadSizeFor(int mtu) => mtu - attHeaderSize - headerSize;
 
-  static List<List<int>> fragment(List<int> message, int payloadSize) {
+  static List<List<int>> fragment(
+    List<int> message,
+    int payloadSize, {
+    VuPacketHeader header = VuPacketHeader.totalThenSequence,
+  }) {
     if (message.isEmpty) return const [];
     if (payloadSize < 1) {
       throw ArgumentError.value(
@@ -90,8 +105,10 @@ class VuAppPacketCodec {
       final start = i * payloadSize;
       final end = (start + payloadSize).clamp(0, message.length);
       packets.add(<int>[
-        i == 0 ? total : 0,
-        i + 1,
+        ...switch (header) {
+          VuPacketHeader.totalThenSequence => [i == 0 ? total : 0, i + 1],
+          VuPacketHeader.sequenceThenTotal => [i + 1, total],
+        },
         ...message.sublist(start, end),
       ]);
     }
@@ -104,6 +121,11 @@ class VuAppPacketCodec {
 /// drops whatever was half built, and a skipped sequence drops the message -
 /// without credits that is the only check that catches a lost packet.
 class VuAppReassembler {
+  VuAppReassembler({this.header = VuPacketHeader.totalThenSequence});
+
+  /// How the two header bytes are read.
+  final VuPacketHeader header;
+
   final List<int> _buffer = [];
   int _total = 0;
   int _nextSequence = 0;
@@ -120,20 +142,29 @@ class VuAppReassembler {
       return null;
     }
 
-    final total = packet[0];
-    final sequence = packet[1];
+    final (total, sequence) = switch (header) {
+      VuPacketHeader.totalThenSequence => (packet[0], packet[1]),
+      VuPacketHeader.sequenceThenTotal => (packet[1], packet[0]),
+    };
+    // The raw header with every drop, so a device that orders it some other
+    // way still shows how in the log.
+    final raw = packet
+        .take(VuAppPacketCodec.headerSize)
+        .map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase())
+        .join(' ');
 
     if (sequence == 1) {
       _reset();
       if (total == 0) {
-        lastWarning = 'first packet announces 0 packets';
+        lastWarning = 'first packet announces 0 packets (header $raw)';
         return null;
       }
       _total = total;
     } else if (_total == 0 || sequence != _nextSequence) {
       lastWarning = _total == 0
-          ? 'packet $sequence without a message open'
-          : 'packet $sequence where $_nextSequence was due, message dropped';
+          ? 'packet $sequence without a message open (header $raw)'
+          : 'packet $sequence where $_nextSequence was due, message dropped '
+                '(header $raw)';
       _reset();
       return null;
     }

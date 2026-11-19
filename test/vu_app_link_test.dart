@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smarttrack_mine/core/bluetooth/vu/vu_app_link.dart';
+import 'package:smarttrack_mine/core/bluetooth/vu/vu_link_profile.dart';
 import 'package:smarttrack_mine/core/services/kline_protocol.dart';
 
 void main() {
@@ -80,6 +81,87 @@ void main() {
         expect(reassembler.onPacket(p), isNull);
       }
       expect(reassembler.lastWarning, contains('261'));
+    });
+  });
+
+  group('STC dongle header, [sequence][total]', () {
+    const dongle = VuPacketHeader.sequenceThenTotal;
+
+    /// What the dongle sends for [message] at MTU 23: N in every packet.
+    List<List<int>> fromDongle(List<int> message) => VuAppPacketCodec.fragment(
+      message,
+      VuAppPacketCodec.payloadSizeFor(23),
+      header: dongle,
+    );
+
+    test('fragment puts the sequence first and the count in every packet', () {
+      final packets = fromDongle(List<int>.generate(40, (i) => i));
+      expect([for (final p in packets) p.sublist(0, 2)], [
+        [1, 3],
+        [2, 3],
+        [3, 3],
+      ]);
+    });
+
+    for (final count in [2, 3, 5]) {
+      test('a $count packet answer comes through whole', () {
+        final message = List<int>.generate(18 * count - 4, (i) => i & 0xFF);
+        final packets = fromDongle(message);
+        expect(packets, hasLength(count));
+
+        final reassembler = VuAppReassembler(header: dongle);
+        List<int>? out;
+        for (final p in packets) {
+          out = reassembler.onPacket(p);
+          expect(reassembler.lastWarning, isNull);
+        }
+        expect(out, message);
+      });
+
+      test('read the AVU3 way, the same $count packet answer is $count times '
+          '"packet $count without a message open", as on the bench', () {
+        final message = List<int>.generate(18 * count - 4, (i) => i & 0xFF);
+        final reassembler = VuAppReassembler();
+        final warnings = <String?>[];
+        for (final p in fromDongle(message)) {
+          expect(reassembler.onPacket(p), isNull);
+          warnings.add(reassembler.lastWarning);
+        }
+        expect(warnings, hasLength(count));
+        expect(
+          warnings,
+          everyElement(startsWith('packet $count without a message open')),
+        );
+      });
+    }
+
+    test('a one packet answer reads the same either way', () {
+      final frame = [0x80, 0xF0, 0xEE, 0x05, 0x62, 0xF9, 0x2C, 0x78, 0x00];
+      final packet = fromDongle(frame).single;
+      expect(packet.sublist(0, 2), [1, 1]);
+      expect(VuAppReassembler(header: dongle).onPacket(packet), frame);
+      expect(VuAppReassembler().onPacket(packet), frame);
+    });
+
+    test('a lost packet still drops the message, and the warning shows the '
+        'raw header', () {
+      final packets = fromDongle(List<int>.generate(50, (i) => i));
+      final reassembler = VuAppReassembler(header: dongle);
+      expect(reassembler.onPacket(packets[0]), isNull);
+      expect(reassembler.onPacket(packets[2]), isNull);
+      expect(reassembler.lastWarning, contains('dropped'));
+      expect(reassembler.lastWarning, contains('header 03 03'));
+    });
+
+    test('the AVU3 keeps its own header', () {
+      expect(
+        VuLinkProfile.atc.packetHeader,
+        VuPacketHeader.totalThenSequence,
+      );
+      expect(
+        VuLinkProfile.stcDongle.packetHeader,
+        VuPacketHeader.sequenceThenTotal,
+      );
     });
   });
 

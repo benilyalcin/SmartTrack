@@ -1,3 +1,5 @@
+import 'vu_app_link.dart' show VuPacketHeader;
+
 /// How one kind of tachograph is spoken to over the app service.
 ///
 /// Both kinds advertise as `TACHOGRAPH-…` and carry the same app service with
@@ -36,6 +38,9 @@ class VuLinkProfile {
   /// dongle.
   final Duration interMessageDelay;
 
+  /// The order of the two packet header bytes, both ways.
+  final VuPacketHeader packetHeader;
+
   const VuLinkProfile({
     required this.bondFirst,
     required this.subscribeIts,
@@ -43,6 +48,7 @@ class VuLinkProfile {
     required this.rewriteToLengthByteForm,
     required this.sendsDiagnosticSession,
     required this.interMessageDelay,
+    required this.packetHeader,
   });
 
   /// STC 8255 through its BLE dongle: live data on prefix 0x0C, downloads on
@@ -54,6 +60,9 @@ class VuLinkProfile {
     rewriteToLengthByteForm: false,
     sendsDiagnosticSession: true,
     interMessageDelay: Duration(milliseconds: 400),
+    // Seen on the bench: every packet of an N packet answer carries N in
+    // its second byte.
+    packetHeader: VuPacketHeader.sequenceThenTotal,
   );
 
   /// ATC 8256 (AVU3): the app service plus both ITS services.
@@ -64,5 +73,6 @@ class VuLinkProfile {
     rewriteToLengthByteForm: true,
     sendsDiagnosticSession: false,
     interMessageDelay: Duration.zero,
+    packetHeader: VuPacketHeader.totalThenSequence,
   );
 }
