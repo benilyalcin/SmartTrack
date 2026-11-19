@@ -113,7 +113,10 @@ class AppState extends ChangeNotifier {
       return download(cancel, _tachoClock);
     },
     onCardData: (outcome) async {
-      await saveRealDddBytes(cardBytes: outcome.bytes);
+      await saveRealDddBytes(
+        cardBytes: outcome.bytes,
+        source: TachographType.atc8256,
+      );
     },
   )..addListener(notifyListeners);
   ActivityDataController get activityData => _activityData;
@@ -1474,6 +1477,7 @@ class AppState extends ChangeNotifier {
       return await saveRealDddBytes(
         cardBytes: result.cardBytes,
         vuBytes: result.vuBytes,
+        source: TachographType.stc8255,
       );
     } catch (e) {
       debugPrint('Real DDD download failed: $e');
@@ -1484,9 +1488,12 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Saves a real download. [source] is the tachograph it came from,
+  /// shown next to the file in the lists.
   Future<({DddFile? card, DddFile? vehicleUnit})> saveRealDddBytes({
     Uint8List? cardBytes,
     Uint8List? vuBytes,
+    TachographType? source,
   }) async {
     TachographDriverData? cardParsed;
     if (cardBytes != null) {
@@ -1533,6 +1540,7 @@ class AppState extends ChangeNotifier {
         cardHolderName: combinedLabel,
         downloadKind: 'both',
         secondaryBytes: vuBytes,
+        sourceUnit: source,
       );
 
       _dddFiles.insert(0, combined);
@@ -1558,6 +1566,7 @@ class AppState extends ChangeNotifier {
         isSimulated: false,
         cardHolderName: cardLabel,
         downloadKind: 'card',
+        sourceUnit: source,
       );
       _dddFiles.insert(0, savedCard);
       _activeDddFile = savedCard;
@@ -1575,6 +1584,7 @@ class AppState extends ChangeNotifier {
         isSimulated: false,
         cardHolderName: vuLabel,
         downloadKind: 'vehicleUnit',
+        sourceUnit: source,
       );
       _dddFiles.insert(0, savedVu);
 
@@ -1616,6 +1626,7 @@ class AppState extends ChangeNotifier {
     return saveRealDddBytes(
       cardBytes: (cardBytes == null || cardBytes.isEmpty) ? null : cardBytes,
       vuBytes: vuBytes.isEmpty ? null : vuBytes,
+      source: TachographType.stc8255,
     );
   }
 
