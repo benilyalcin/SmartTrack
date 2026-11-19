@@ -3,12 +3,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/bluetooth/vu/its_link.dart';
 import '../../core/localization/localization.dart';
+import '../../core/models/tachograph_type.dart';
 import '../../core/providers/app_state.dart';
 import '../../core/services/bluetooth_service.dart';
 import '../../core/services/its/appendix7.dart';
 import '../../core/services/its/download_generation_setting.dart';
 import '../../core/services/its/its_download_service.dart';
 import '../../core/widgets/app_snackbar.dart';
+import '../../core/widgets/ddd_source_badge.dart';
 
 /// Annex 7 data download over the ITS download service - AvuItsTester's
 /// DownloadScreen, section for section.
@@ -127,6 +129,8 @@ class _ItsDownloadPageState extends State<ItsDownloadPage> {
       final files = await appState.saveRealDddBytes(
         cardBytes: result.cardBytes,
         vuBytes: result.vuBytes,
+        // ITS download: only the ATC 8256 has it.
+        source: TachographType.atc8256,
       );
       final f = files.card ?? files.vehicleUnit;
       saved = f == null
@@ -483,10 +487,20 @@ List<Widget> _filesOf(BuildContext context, String kind) {
         leading: Icon(
           kind == 'card' ? Icons.badge_outlined : Icons.local_shipping_outlined,
         ),
-        title: Text(
-          f.cardHolderName.isEmpty ? f.cardType : f.cardHolderName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        title: Row(
+          children: [
+            Flexible(
+              child: Text(
+                f.cardHolderName.isEmpty ? f.cardType : f.cardHolderName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (f.sourceUnit case final source?) ...[
+              const SizedBox(width: 6),
+              DddSourceBadge(source),
+            ],
+          ],
         ),
         subtitle: Text(
           '${two(f.downloadedAt.day)}.${two(f.downloadedAt.month)}.'

@@ -17,6 +17,7 @@ import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/bluetooth_warning_banner.dart';
 
 import '../../core/widgets/card_slot_warning_banner.dart';
+import '../../core/widgets/ddd_source_badge.dart';
 import 'stc_download_sheet.dart';
 
 class DddFilesPage extends StatefulWidget {
@@ -554,6 +555,10 @@ class _DddFilesPageState extends State<DddFilesPage> {
                             ),
                           ),
                         ),
+                        if (file.sourceUnit case final source?) ...[
+                          const SizedBox(width: 6),
+                          DddSourceBadge(source),
+                        ],
                         if (file.isSimulated) ...[
                           const SizedBox(width: 6),
                           Container(
