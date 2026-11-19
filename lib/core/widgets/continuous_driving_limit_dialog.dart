@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../localization/localization.dart';
+
 class ContinuousDrivingLimitDialog extends StatelessWidget {
   final String message;
   final VoidCallback onAcknowledge;
@@ -17,7 +19,7 @@ class ContinuousDrivingLimitDialog extends StatelessWidget {
       canPop: false,
       child: AlertDialog(
         icon: Icon(Icons.warning_amber_rounded, color: scheme.error, size: 36),
-        title: const Text('Kesintisiz Sürüş Süresi Aşıldı'),
+        title: Text(AppLocalizations.text('drivingLimit.title')),
         content: Text(message),
         actions: [
           SizedBox(
@@ -28,7 +30,7 @@ class ContinuousDrivingLimitDialog extends StatelessWidget {
                 Navigator.of(context).pop();
               },
               style: FilledButton.styleFrom(backgroundColor: scheme.error),
-              child: const Text('Anladım'),
+              child: Text(AppLocalizations.text('drivingLimit.ok')),
             ),
           ),
         ],

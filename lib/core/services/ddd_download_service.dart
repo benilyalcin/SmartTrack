@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 
+import '../localization/localization.dart';
 import 'kline_protocol.dart';
 
 typedef SendAndReceive =
@@ -99,7 +100,7 @@ class DddDownloadService {
       Uint8List? activities;
       try {
         if (includeVuBlocks) {
-          safeProgress('Genel bakış verisi alınıyor…');
+          safeProgress(AppLocalizations.text('ddl.overview'));
           overview = await _drainTransferDataSafe(
             sendAndReceive,
             KLineFrame.transferDataRequestOverview,
@@ -108,7 +109,7 @@ class DddDownloadService {
           );
 
           if (includeEventsFaults) {
-            safeProgress('Olaylar ve arızalar alınıyor…');
+            safeProgress(AppLocalizations.text('ddl.eventsFaults'));
             eventsFaults = await _drainTransferDataSafe(
               sendAndReceive,
               KLineFrame.transferDataRequestEventsFaults,
@@ -118,7 +119,7 @@ class DddDownloadService {
           }
 
           if (includeDetailedSpeed) {
-            safeProgress('Detaylı hız verisi alınıyor…');
+            safeProgress(AppLocalizations.text('ddl.detailedSpeed'));
             detailedSpeed = await _drainTransferDataSafe(
               sendAndReceive,
               KLineFrame.transferDataRequestDetailedSpeed,
@@ -128,7 +129,7 @@ class DddDownloadService {
           }
 
           if (includeTechnicalData) {
-            safeProgress('Teknik veri alınıyor…');
+            safeProgress(AppLocalizations.text('ddl.technical'));
             technicalData = await _drainTransferDataSafe(
               sendAndReceive,
               KLineFrame.transferDataRequestTechnicalData,
@@ -139,7 +140,7 @@ class DddDownloadService {
         }
 
         if (cardSlot != null) {
-          safeProgress('Sürücü kartı verisi alınıyor…');
+          safeProgress(AppLocalizations.text('ddl.card'));
           cardBytes = await _drainTransferDataSafe(
             sendAndReceive,
             KLineFrame.transferDataRequestCardDownload(cardSlot),
@@ -389,7 +390,12 @@ class DddDownloadService {
       final dateLabel =
           '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
       onProgress?.call(
-        'Aktivite verisi kontrol ediliyor: $dateLabel (${i + 1}/$dayCount, ${found.length} günde veri bulundu)',
+        AppLocalizations.text('ddl.activityDay', {
+          'date': dateLabel,
+          'index': i + 1,
+          'total': dayCount,
+          'found': found.length,
+        }),
       );
       Uint8List? bytes;
       for (

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart' show PdfGoogleFonts;
 
+import '../localization/localization.dart';
 import '../models/card_file_details.dart';
 import '../models/role_permissions.dart';
 import '../models/vehicle_unit_data.dart';
@@ -13,6 +14,10 @@ import 'violation_analyzer.dart';
 
 class PdfExportService {
   PdfExportService._();
+
+  // The report is written in the language the app is showing.
+  static String _t(String key, [Map<String, Object?> args = const {}]) =>
+      AppLocalizations.text(key, args);
 
   static Future<Uint8List> buildPdf({
     TachographDriverData? cardData,
@@ -34,8 +39,8 @@ class PdfExportService {
     final doc = pw.Document(theme: theme);
 
     final content = <pw.Widget>[
-      pw.Header(level: 0, text: 'SmartTrack Takograf Raporu'),
-      pw.Text('Oluşturulma: ${_fmt(DateTime.now())}'),
+      pw.Header(level: 0, text: _t('pdf.title')),
+      pw.Text(_t('pdf.generated', {'time': _fmt(DateTime.now())})),
     ];
 
     if (cardData != null) {
@@ -45,13 +50,13 @@ class PdfExportService {
     if (vuData != null) {
       if (cardData != null) {
         content.add(pw.SizedBox(height: 20));
-        content.add(pw.Header(level: 0, text: 'Araç Ünitesi (VU) Verileri'));
+        content.add(pw.Header(level: 0, text: _t('pdf.vuHeader')));
       }
       content.add(pw.SizedBox(height: 12));
       content.addAll(_vuSections(vuData));
     }
     if (cardData == null && vuData == null) {
-      content.add(pw.Text('Bu dosyada gösterilecek veri bulunamadı.'));
+      content.add(pw.Text(_t('pdf.noData')));
     }
 
     doc.addPage(pw.MultiPage(maxPages: 500, build: (context) => content));
@@ -66,33 +71,40 @@ class PdfExportService {
   ) {
     return [
       if (perms.viewCardHolderPii)
-        ..._section('Kart Sahibi Bilgileri', _cardHolderLines(data)),
+        ..._section(_t('pdf.cardHolder'), _cardHolderLines(data)),
       if (perms.viewCardHolderPii && details != null)
-        ..._section(
-          'Ehliyet ve Kullanım Bilgileri',
-          _licenceAndUsageLines(details),
-        ),
-      ..._section('Sürüş Özeti', _drivingSummaryLines(data)),
+        ..._section(_t('pdf.licenceAndUsage'), _licenceAndUsageLines(details)),
+      ..._section(_t('pdf.drivingSummary'), _drivingSummaryLines(data)),
       ..._tableSection(
-        'Aktivite Kaydı',
+        _t('pdf.activityLog'),
         data.activityLog.length,
-        headers: const ['Başlangıç', 'Bitiş', 'Tür', 'Manuel mi?'],
+        headers: [
+          _t('pdf.start'),
+          _t('pdf.end'),
+          _t('pdf.type'),
+          _t('pdf.manual'),
+        ],
         rows: data.activityLog
             .map(
               (a) => [
                 _fmt(a.startTime),
                 _fmt(a.endTime),
                 _activityLabel(a.type),
-                a.isManualEntry ? 'Evet' : 'Hayır',
+                a.isManualEntry ? _t('pdf.yes') : _t('pdf.no'),
               ],
             )
             .toList(),
       ),
       if (perms.viewViolations) ...[
         ..._tableSection(
-          'İhlaller',
+          _t('pdf.violations'),
           violations.length,
-          headers: const ['Başlangıç', 'Bitiş', 'Tür', 'Kural'],
+          headers: [
+            _t('pdf.start'),
+            _t('pdf.end'),
+            _t('pdf.type'),
+            _t('pdf.rule'),
+          ],
           rows: violations
               .map(
                 (v) => [
@@ -105,47 +117,52 @@ class PdfExportService {
               .toList(),
         ),
         ..._tableSection(
-          'Olaylar',
+          _t('pdf.events'),
           data.lastEvents.length,
-          headers: const ['Zaman', 'Açıklama'],
+          headers: [_t('pdf.time'), _t('pdf.description')],
           rows: data.lastEvents
               .map((e) => [_fmt(e.timestamp), e.description])
               .toList(),
         ),
         ..._tableSection(
-          'Arızalar',
+          _t('pdf.faults'),
           data.lastFaults.length,
-          headers: const ['Zaman', 'Açıklama'],
+          headers: [_t('pdf.time'), _t('pdf.description')],
           rows: data.lastFaults
               .map((e) => [_fmt(e.timestamp), e.description])
               .toList(),
         ),
         if (details != null) ...[
           ..._tableSection(
-            'Kullanılan Araçlar',
+            _t('pdf.vehiclesUsed'),
             details.vehicleRecords.length,
-            headers: const ['Plaka', 'İlk Kullanım', 'Son Kullanım', 'Km'],
+            headers: [
+              _t('pdf.plate'),
+              _t('pdf.firstUse'),
+              _t('pdf.lastUse'),
+              _t('pdf.km'),
+            ],
             rows: details.vehicleRecords
                 .map(
                   (r) => [
                     r.vehicleRegistration.isEmpty ? '-' : r.vehicleRegistration,
                     r.firstUse != null ? _fmt(r.firstUse!) : '-',
-                    r.lastUse != null ? _fmt(r.lastUse!) : 'kullanımda',
+                    r.lastUse != null ? _fmt(r.lastUse!) : _t('ddd.stillInUse'),
                     r.odometerEndKm != null
                         ? '${r.odometerBeginKm} → ${r.odometerEndKm}'
-                        : '${r.odometerBeginKm} (kullanımda)',
+                        : '${r.odometerBeginKm} (${_t('ddd.stillInUse')})',
                   ],
                 )
                 .toList(),
           ),
           ..._section(
-            'Son Denetim',
+            _t('pdf.lastControl'),
             _controlActivityLines(details.lastControlActivity),
           ),
           ..._tableSection(
-            'Konum Kayıtları',
+            _t('pdf.places'),
             details.places.length,
-            headers: const ['Zaman', 'Ülke', 'Km'],
+            headers: [_t('pdf.time'), _t('pdf.country'), _t('pdf.km')],
             rows: details.places
                 .map(
                   (p) => [
@@ -157,9 +174,9 @@ class PdfExportService {
                 .toList(),
           ),
           ..._tableSection(
-            'Özel Durum Kayıtları',
+            _t('pdf.specificConditions'),
             details.specificConditions.length,
-            headers: const ['Zaman', 'Tür'],
+            headers: [_t('pdf.time'), _t('pdf.type')],
             rows: details.specificConditions
                 .map(
                   (c) => [
@@ -176,70 +193,94 @@ class PdfExportService {
 
   static List<String> _cardHolderLines(TachographDriverData data) {
     return [
-      'Ad Soyad: ${data.holderFullName}',
-      'Kart No: ${data.cardNumber}',
-      'Düzenleyen Ülke: ${_countryLabel(data.cardIssuingMemberState)}',
+      _t('pdf.holderName', {'value': data.holderFullName}),
+      _t('pdf.cardNumber', {'value': data.cardNumber}),
+      _t('pdf.issuingState', {
+        'value': _countryLabel(data.cardIssuingMemberState),
+      }),
       if (data.cardIssueDate != null)
-        'Düzenleme Tarihi: ${_fmt(data.cardIssueDate!)}',
+        _t('pdf.issueDate', {'value': _fmt(data.cardIssueDate!)}),
       if (data.cardExpiryDate != null)
-        'Son Geçerlilik: ${_fmt(data.cardExpiryDate!)}',
+        _t('pdf.expiryDate', {'value': _fmt(data.cardExpiryDate!)}),
       if (data.dateOfBirth != null)
-        'Doğum Tarihi: ${_fmtDateOnly(data.dateOfBirth!)}',
-      'Araç Plakası: ${data.vehicleRegistration}',
+        _t('pdf.birthDate', {'value': _fmtDateOnly(data.dateOfBirth!)}),
+      _t('pdf.vehicleReg', {'value': data.vehicleRegistration}),
     ];
   }
 
   static List<String> _licenceAndUsageLines(CardFileDetails details) {
     return [
       if (details.drivingLicenceAuthority.isNotEmpty)
-        'Ehliyet Veren Makam: ${details.drivingLicenceAuthority}',
+        _t('pdf.licenceAuthority', {'value': details.drivingLicenceAuthority}),
       if (details.drivingLicenceNumber.isNotEmpty)
-        'Ehliyet No: ${details.drivingLicenceNumber}',
+        _t('pdf.licenceNumber', {'value': details.drivingLicenceNumber}),
       if (details.lastDownloadDate != null)
-        'Son İndirme Tarihi: ${_fmt(details.lastDownloadDate!)}',
+        _t('pdf.lastDownload', {'value': _fmt(details.lastDownloadDate!)}),
       if (details.currentUsageSessionOpenTime != null)
-        'Açık Oturum Başlangıcı: ${_fmt(details.currentUsageSessionOpenTime!)}',
+        _t('pdf.sessionOpen', {
+          'value': _fmt(details.currentUsageSessionOpenTime!),
+        }),
       if (details.currentUsageVehicleRegistration.isNotEmpty)
-        'Kullanımdaki Araç: ${details.currentUsageVehicleRegistration}',
+        _t('pdf.vehicleInUse', {
+          'value': details.currentUsageVehicleRegistration,
+        }),
     ];
   }
 
   static List<String> _drivingSummaryLines(TachographDriverData data) {
     return [
-      'Güncel Sürüş: ${TachographDriverData.formatMinutes(data.currentDrivingMinutes)}',
-      'Günlük Sürüş: ${TachographDriverData.formatMinutes(data.dailyDrivingMinutes)}',
-      'Haftalık Sürüş: ${TachographDriverData.formatMinutes(data.weeklyDrivingMinutes)}',
-      'İki Haftalık Sürüş: ${TachographDriverData.formatMinutes(data.biWeeklyDrivingMinutes)}',
-      'Kilometre: ${data.odometerKm} km',
+      _t('pdf.currentDriving', {
+        'value': TachographDriverData.formatMinutes(data.currentDrivingMinutes),
+      }),
+      _t('pdf.dailyDriving', {
+        'value': TachographDriverData.formatMinutes(data.dailyDrivingMinutes),
+      }),
+      _t('pdf.weeklyDriving', {
+        'value': TachographDriverData.formatMinutes(data.weeklyDrivingMinutes),
+      }),
+      _t('pdf.biWeeklyDriving', {
+        'value': TachographDriverData.formatMinutes(
+          data.biWeeklyDrivingMinutes,
+        ),
+      }),
+      _t('pdf.odometer', {'value': data.odometerKm}),
     ];
   }
 
   static List<String> _controlActivityLines(ControlActivityRecord? control) {
-    if (control == null) return ['Denetim kaydı yok.'];
+    if (control == null) return [_t('pdf.noControl')];
     return [
-      'Denetim Zamanı: ${_fmt(control.controlTime!)}',
+      _t('pdf.controlTime', {'value': _fmt(control.controlTime!)}),
       if (control.controlVehicleRegistration.isNotEmpty)
-        'Denetim Aracı: ${control.controlVehicleRegistration}',
+        _t('pdf.controlVehicle', {'value': control.controlVehicleRegistration}),
       if (control.controlCardNumber.isNotEmpty)
-        'Denetim Kart No: ${control.controlCardNumber}',
+        _t('pdf.controlCard', {'value': control.controlCardNumber}),
       if (control.downloadPeriodBegin != null &&
           control.downloadPeriodEnd != null)
-        'İndirme Aralığı: ${_fmtDateOnly(control.downloadPeriodBegin!)} - ${_fmtDateOnly(control.downloadPeriodEnd!)}',
+        _t('pdf.controlPeriod', {
+          'from': _fmtDateOnly(control.downloadPeriodBegin!),
+          'to': _fmtDateOnly(control.downloadPeriodEnd!),
+        }),
     ];
   }
 
   static List<pw.Widget> _vuSections(VehicleUnitData data) {
     return [
-      ..._section('Genel Bilgiler', _vuOverviewLines(data)),
+      ..._section(_t('pdf.general'), _vuOverviewLines(data)),
       ..._section(
-        'Cihaz Teknik Bilgileri',
+        _t('pdf.technical'),
         _vuTechnicalDataLines(data.technicalData),
       ),
       ..._vuIdentificationTextsSection(data.identificationTexts),
       ..._tableSection(
-        'Hız Oturumları',
+        _t('pdf.speedSessions'),
         data.speedSessions.length,
-        headers: const ['Başlangıç', 'Bitiş', 'Maks. km/h', 'Ort. km/h'],
+        headers: [
+          _t('pdf.start'),
+          _t('pdf.end'),
+          _t('pdf.maxKmh'),
+          _t('pdf.avgKmh'),
+        ],
         rows: data.speedSessions
             .map(
               (s) => [
@@ -252,9 +293,9 @@ class PdfExportService {
             .toList(),
       ),
       ..._tableSection(
-        'Günlük Aktivite - VU',
+        _t('pdf.vuDaily'),
         data.dailyActivities.length,
-        headers: const ['Tarih', 'Km (gece yarısı)', 'Kart Oturumları'],
+        headers: [_t('pdf.date'), _t('pdf.kmMidnight'), _t('pdf.cardSessions')],
         rows: data.dailyActivities
             .map(
               (d) => [
@@ -270,26 +311,36 @@ class PdfExportService {
             .toList(),
       ),
       ..._tableSection(
-        'Olaylar ve Arızalar - VU',
+        _t('pdf.vuEvents'),
         data.eventsAndFaults.length,
-        headers: const ['Başlangıç', 'Bitiş', 'Açıklama', 'Tür'],
+        headers: [
+          _t('pdf.start'),
+          _t('pdf.end'),
+          _t('pdf.description'),
+          _t('pdf.type'),
+        ],
         rows: data.eventsAndFaults
             .map(
               (e) => [
                 e.beginTime != null ? _fmt(e.beginTime!) : '-',
-                e.endTime != null ? _fmt(e.endTime!) : 'kullanımda',
+                e.endTime != null ? _fmt(e.endTime!) : _t('ddd.stillInUse'),
                 e.isFault
                     ? EuEventFaultCodes.faultLabel(e.type)
                     : EuEventFaultCodes.eventLabel(e.type),
-                e.isFault ? 'Arıza' : 'Olay',
+                e.isFault ? _t('ddd.faultBadge') : _t('ddd.eventBadge'),
               ],
             )
             .toList(),
       ),
       ..._tableSection(
-        'Hız Aşımları - VU',
+        _t('pdf.vuOverspeed'),
         data.overspeedingEvents.length,
-        headers: const ['Başlangıç', 'Bitiş', 'Maks. km/h', 'Ort. km/h'],
+        headers: [
+          _t('pdf.start'),
+          _t('pdf.end'),
+          _t('pdf.maxKmh'),
+          _t('pdf.avgKmh'),
+        ],
         rows: data.overspeedingEvents
             .map(
               (o) => [
@@ -302,13 +353,13 @@ class PdfExportService {
             .toList(),
       ),
       ..._tableSection(
-        'Kalibrasyon Geçmişi',
+        _t('pdf.calibration'),
         data.calibrationRecords.length,
-        headers: const [
-          'Atölye',
-          'İzinli Hız',
-          'Km (Eski→Yeni)',
-          'Sonraki Kalibrasyon',
+        headers: [
+          _t('pdf.workshop'),
+          _t('pdf.authorisedSpeed'),
+          _t('pdf.kmOldNew'),
+          _t('pdf.nextCalibration'),
         ],
         rows: data.calibrationRecords
             .map(
@@ -330,42 +381,51 @@ class PdfExportService {
     return [
       if (data.vin.isNotEmpty) 'VIN: ${data.vin}',
       if (data.vehicleRegistrationNumber.isNotEmpty)
-        'Plaka: ${data.vehicleRegistrationNumber}',
+        _t('pdf.plateValue', {'value': data.vehicleRegistrationNumber}),
       if (data.overview?.currentDateTime != null)
-        'Cihaz Saati: ${_fmt(data.overview!.currentDateTime!)}',
+        _t('pdf.deviceTime', {'value': _fmt(data.overview!.currentDateTime!)}),
       if (data.overview?.downloadablePeriodStart != null &&
           data.overview?.downloadablePeriodEnd != null)
-        'İndirilebilir Dönem: ${_fmt(data.overview!.downloadablePeriodStart!)} – ${_fmt(data.overview!.downloadablePeriodEnd!)}',
+        _t('pdf.downloadable', {
+          'from': _fmt(data.overview!.downloadablePeriodStart!),
+          'to': _fmt(data.overview!.downloadablePeriodEnd!),
+        }),
     ];
   }
 
   static List<String> _vuTechnicalDataLines(VuTechnicalData? t) {
-    if (t == null) return ['Veri yok.'];
+    if (t == null) return [_t('pdf.none')];
     return [
-      'Üretici: ${t.manufacturerName}',
+      _t('pdf.manufacturer', {'value': t.manufacturerName}),
       if (t.manufacturerAddress.isNotEmpty)
-        'Üretici Adresi: ${t.manufacturerAddress}',
-      'Parça No: ${t.partNumber}',
-      'Seri No: ${t.serialNumber} (${t.serialMonth.toString().padLeft(2, '0')}/20${t.serialYear.toString().padLeft(2, '0')})',
-      'Yazılım Sürümü: ${t.softwareVersion}',
+        _t('pdf.manufacturerAddress', {'value': t.manufacturerAddress}),
+      _t('pdf.partNumber', {'value': t.partNumber}),
+      _t('pdf.serialNumber', {
+        'value':
+            '${t.serialNumber} (${t.serialMonth.toString().padLeft(2, '0')}/20${t.serialYear.toString().padLeft(2, '0')})',
+      }),
+      _t('pdf.software', {'value': t.softwareVersion}),
       if (t.manufacturingDate != null)
-        'Üretim Tarihi: ${_fmt(t.manufacturingDate!)}',
-      'Onay No: ${t.approvalNumber}',
-      'Hareket Sensörü — Seri No: ${t.sensorSerialNumber} (${t.sensorSerialMonth.toString().padLeft(2, '0')}/20${t.sensorSerialYear.toString().padLeft(2, '0')})',
-      'Hareket Sensörü — Onay No: ${t.sensorApprovalNumber}',
+        _t('pdf.manufacturingDate', {'value': _fmt(t.manufacturingDate!)}),
+      _t('pdf.approval', {'value': t.approvalNumber}),
+      _t('pdf.sensorSerial', {
+        'value':
+            '${t.sensorSerialNumber} (${t.sensorSerialMonth.toString().padLeft(2, '0')}/20${t.sensorSerialYear.toString().padLeft(2, '0')})',
+      }),
+      _t('pdf.sensorApproval', {'value': t.sensorApprovalNumber}),
       if (t.sensorPairingDateFirst != null)
-        'Hareket Sensörü — İlk Eşleştirme Tarihi: ${_fmt(t.sensorPairingDateFirst!)}',
+        _t('pdf.sensorPairing', {'value': _fmt(t.sensorPairingDateFirst!)}),
     ];
   }
 
   static List<pw.Widget> _vuIdentificationTextsSection(
     List<IdentifiedText> items,
   ) {
-    final title = 'Kimlik Metinleri (${items.length})';
+    final title = _t('pdf.idTexts', {'count': items.length});
     if (items.isEmpty) {
       return [
         pw.Header(level: 1, text: title),
-        pw.Text('Kayıt yok.'),
+        pw.Text(_t('pdf.noRecords')),
         pw.SizedBox(height: 12),
       ];
     }
@@ -383,7 +443,7 @@ class PdfExportService {
     return [
       pw.Header(level: 1, text: title),
       if (lines.isEmpty)
-        pw.Text('Kayıt yok.')
+        pw.Text(_t('pdf.noRecords'))
       else
         pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -403,7 +463,7 @@ class PdfExportService {
     if (rows.isEmpty) {
       return [
         pw.Header(level: 1, text: full),
-        pw.Text('Kayıt yok.'),
+        pw.Text(_t('pdf.noRecords')),
         pw.SizedBox(height: 12),
       ];
     }
@@ -431,41 +491,30 @@ class PdfExportService {
   static String _activityLabel(ActivityType type) {
     switch (type) {
       case ActivityType.driving:
-        return 'Sürüş';
+        return _t('pdf.actDriving');
       case ActivityType.rest:
-        return 'Dinlenme';
+        return _t('pdf.actRest');
       case ActivityType.available:
-        return 'Hazır Bulunma';
+        return _t('pdf.actAvailable');
       case ActivityType.work:
-        return 'Diğer Çalışma';
+        return _t('pdf.actWork');
       case ActivityType.unknown:
-        return 'Bilinmiyor';
+        return _t('pdf.actUnknown');
     }
   }
 
-  static String _violationLabel(Violation v) {
-    const labels = {
-      'violation.continuousDrivingExceeded': 'Sürekli sürüş limiti aşıldı',
-      'violation.dailyDrivingExceeded': 'Günlük sürüş limiti aşıldı',
-      'violation.weeklyDrivingExceeded': 'Haftalık sürüş limiti aşıldı',
-      'violation.biWeeklyDrivingExceeded': 'İki haftalık sürüş limiti aşıldı',
-      'violation.dailyRestInsufficient': 'Günlük dinlenme süresi yetersiz',
-      'violation.weeklyRestInsufficient': 'Haftalık dinlenme süresi yetersiz',
-      'violation.missingRecord': 'Kayıtsız zaman aralığı',
-    };
-    return labels[v.descriptionKey] ?? v.descriptionKey;
-  }
+  static String _violationLabel(Violation v) => _t(v.descriptionKey);
 
   static String _specificConditionLabel(int type) {
     switch (type) {
       case 1:
-        return 'Kapsam dışı sürüş başlangıcı';
+        return _t('ddd.specificConditionOutOfScopeBegin');
       case 2:
-        return 'Kapsam dışı sürüş bitişi';
+        return _t('ddd.specificConditionOutOfScopeEnd');
       case 3:
-        return 'Feribot/tren geçişi';
+        return _t('ddd.specificConditionFerryTrain');
       default:
-        return 'Bilinmeyen (kod $type)';
+        return _t('ddd.specificConditionUnknown', {'code': type});
     }
   }
 

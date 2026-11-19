@@ -5,6 +5,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart' show PdfGoogleFonts;
 import 'package:share_plus/share_plus.dart';
 
+import '../localization/localization.dart';
+
 class KLineLogExportService {
   KLineLogExportService._();
 
@@ -20,7 +22,9 @@ class KLineLogExportService {
         build: (context) => [
           pw.Header(level: 0, text: 'SmartTrack K-LINE Log'),
           pw.Text(
-            'Oluşturulma: ${_fmt(DateTime.now())}',
+            AppLocalizations.text('pdf.generated', {
+              'time': _fmt(DateTime.now()),
+            }),
             style: const pw.TextStyle(fontSize: 9),
           ),
           pw.SizedBox(height: 8),

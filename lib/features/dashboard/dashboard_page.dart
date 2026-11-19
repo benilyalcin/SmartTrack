@@ -19,10 +19,13 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  String _t(String key) {
-    return AppLocalizations.getText(
-      AppStateProvider.of(context).selectedLanguage,
-      key,
+  String _t(String key, [Map<String, Object?> args = const {}]) {
+    return AppLocalizations.fill(
+      AppLocalizations.getText(
+        AppStateProvider.of(context).selectedLanguage,
+        key,
+      ),
+      args,
     );
   }
 
@@ -75,7 +78,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
               child: Text(
-                '${_t('nav.timeline')} Göster',
+                _t('dashboard.showPage', {'name': _t('nav.timeline')}),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
@@ -628,15 +631,15 @@ class _DashboardPageState extends State<DashboardPage> {
 
     final String subtitle;
     if (isDone) {
-      subtitle = 'Tamamlandı ✓';
+      subtitle = _t('dashboard.breakDone');
     } else if (isResting) {
       subtitle = targetsSecondHalf
-          ? '2. molanız sürüyor (en az 30 dk)'
-          : 'Molanız sürüyor';
+          ? _t('dashboard.secondBreakRunning')
+          : _t('dashboard.breakRunning');
     } else if (targetsSecondHalf) {
-      subtitle = '2. molanız en az 30 dk olmalı';
+      subtitle = _t('dashboard.secondBreakMin');
     } else {
-      subtitle = 'Tek parça 45 dk, ya da önce ≥15dk sonra ≥30dk bölünmüş mola';
+      subtitle = _t('dashboard.breakRule');
     }
 
     return _buildCardShell(
@@ -717,9 +720,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final scheme = Theme.of(context).colorScheme;
     final isReduced =
         minDailyRest != null && minDailyRest <= const Duration(hours: 9);
-    final crewNote = isCrew
-        ? ' Ekip halinde sürüyorsunuz — bir sonraki dinlenmenizi son dinlenmenizin bitişinden itibaren 30 saat içinde almalısınız (tekli sürücüde 24 saat).'
-        : '';
+    final crewNote = isCrew ? ' ${_t('dashboard.crewNote')}' : '';
 
     return _buildCardShell(
       context,

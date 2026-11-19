@@ -1,34 +1,42 @@
+import '../localization/localization.dart';
+
 class EuEventFaultCodes {
   EuEventFaultCodes._();
 
+  /// EventFaultType codes and the localization keys of their names.
   static const Map<int, String> eventLabels = {
-    1: 'Geçersiz kart takıldı',
-    2: 'Kart çakışması',
-    3: 'Zaman çakışması',
-    4: 'Uygun olmayan kartla sürüş',
-    5: 'Sürüş sırasında kart takıldı',
-    6: 'Kart oturumu düzgün kapatılmadı',
-    7: 'Hız aşımı',
-    8: 'Güç kesintisi',
-    9: 'Hareket verisi hatası',
-    10: 'Araç hareket çakışması',
+    1: 'euEvent.invalidCard',
+    2: 'euEvent.cardConflict',
+    3: 'euEvent.timeOverlap',
+    4: 'euEvent.drivingWithoutCard',
+    5: 'euEvent.cardInsertedWhileDriving',
+    6: 'euEvent.lastSessionNotClosed',
+    7: 'euEvent.overSpeeding',
+    8: 'euEvent.powerInterruption',
+    9: 'euEvent.motionDataError',
+    10: 'euEvent.vehicleMotionConflict',
 
-    19: 'Hareket sensöründe yetkisiz değişiklik',
+    19: 'euEvent.sensorChanged',
   };
 
   static const Map<int, String> faultLabels = {
-    48: 'Kayıt cihazı arızası: detay yok',
-    49: 'Kayıt cihazı arızası: cihaz iç arızası',
-    50: 'Kayıt cihazı arızası: yazıcı arızası',
-    51: 'Kayıt cihazı arızası: ekran arızası',
-    52: 'Kayıt cihazı arızası: indirme arızası',
-    53: 'Kayıt cihazı arızası: sensör arızası',
-    64: 'Kart arızası: detay yok',
+    48: 'euFault.vuNoDetail',
+    49: 'euFault.vuInternal',
+    50: 'euFault.printer',
+    51: 'euFault.display',
+    52: 'euFault.download',
+    53: 'euFault.sensor',
+    64: 'euFault.cardNoDetail',
   };
 
   static String eventLabel(int code) =>
-      '${eventLabels[code] ?? 'Bilinmeyen olay'} (kod $code)';
+      _label(eventLabels[code] ?? 'euEvent.unknown', code);
 
   static String faultLabel(int code) =>
-      '${faultLabels[code] ?? 'Bilinmeyen arıza'} (kod $code)';
+      _label(faultLabels[code] ?? 'euFault.unknown', code);
+
+  static String _label(String key, int code) => AppLocalizations.text(
+    'eu.codeLabel',
+    {'label': AppLocalizations.text(key), 'code': code},
+  );
 }

@@ -5,7 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../localization/localization.dart';
 import '../services/driving_time_calculator.dart';
+
+String _t(String key, [Map<String, Object?> args = const {}]) =>
+    AppLocalizations.text(key, args);
 
 class AnimatedProfileAvatar extends StatefulWidget {
   final VoidCallback onOpenSettings;
@@ -71,7 +75,7 @@ class _AnimatedProfileAvatarState extends State<AnimatedProfileAvatar>
           enabled: false,
           height: 32,
           child: Text(
-            'HESAP',
+            _t('avatar.account'),
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
@@ -84,26 +88,32 @@ class _AnimatedProfileAvatarState extends State<AnimatedProfileAvatar>
         _menuRow(
           'settings',
           Icons.settings_outlined,
-          'Ayarlar',
+          _t('nav.settings'),
           scheme.onSurface,
           scheme,
         ),
         _menuRow(
           'about',
           Icons.info_outline,
-          'Hakkımızda',
+          _t('about.title'),
           scheme.onSurface,
           scheme,
         ),
         _menuRow(
           'rules',
           Icons.gavel_outlined,
-          'Kurallar ve Yönetmelik',
+          _t('avatar.rules'),
           scheme.onSurface,
           scheme,
         ),
         const PopupMenuDivider(height: 8),
-        _menuRow('logout', Icons.logout, 'Çıkış Yap', scheme.error, scheme),
+        _menuRow(
+          'logout',
+          Icons.logout,
+          _t('avatar.logout'),
+          scheme.error,
+          scheme,
+        ),
       ],
     );
 
@@ -207,44 +217,50 @@ void _showRulesDialog(BuildContext context) {
   final scheme = Theme.of(context).colorScheme;
   final rules = [
     (
-      'Kesintisiz Sürüş — Art. 7',
-      '${DrivingTimeCalculator.continuousDrivingLimit.inHours} saat ${DrivingTimeCalculator.continuousDrivingLimit.inMinutes % 60} dakika sonunda en az 45 dakikalık mola gerekir '
-          '(ya da önce en az 15 dakika, sonra en az 30 dakika olacak şekilde bölünmüş mola).',
+      _t('rules.continuousTitle'),
+      _t('rules.continuousBody', {
+        'h': DrivingTimeCalculator.continuousDrivingLimit.inHours,
+        'm': DrivingTimeCalculator.continuousDrivingLimit.inMinutes % 60,
+      }),
     ),
     (
-      'Günlük Sürüş — Art. 6',
-      'Günlük sürüş süresi ${DrivingTimeCalculator.dailyDrivingLimit.inHours} saati geçemez (haftada iki kez ${DrivingTimeCalculator.dailyDrivingLimit.inHours + 1} saate kadar uzatılabilir).',
+      _t('rules.dailyTitle'),
+      _t('rules.dailyBody', {
+        'hours': DrivingTimeCalculator.dailyDrivingLimit.inHours,
+        'extended': DrivingTimeCalculator.dailyDrivingLimit.inHours + 1,
+      }),
     ),
     (
-      'Haftalık Sürüş — Art. 6',
-      'Bir haftalık (Pazartesi-Pazar) toplam sürüş süresi ${DrivingTimeCalculator.weeklyDrivingLimit.inHours} saati geçemez.',
+      _t('rules.weeklyTitle'),
+      _t('rules.weeklyBody', {
+        'hours': DrivingTimeCalculator.weeklyDrivingLimit.inHours,
+      }),
     ),
     (
-      'İki Haftalık Sürüş — Art. 6',
-      'Ardışık iki hafta içindeki toplam sürüş süresi ${DrivingTimeCalculator.biWeeklyDrivingLimit.inHours} saati geçemez.',
+      _t('rules.biWeeklyTitle'),
+      _t('rules.biWeeklyBody', {
+        'hours': DrivingTimeCalculator.biWeeklyDrivingLimit.inHours,
+      }),
     ),
-    (
-      'Haftalık Dinlenme Telafisi — Art. 8(6)',
-      'Kısaltılmış bir haftalık dinlenme nedeniyle oluşan telafi borcu, oluştuğu haftayı izleyen 3. haftanın sonuna kadar, tek seferde kullanılarak telafi edilmelidir.',
-    ),
+    (_t('rules.compTitle'), _t('rules.compBody')),
   ];
 
   final pdfDocuments = [
     (
-      'Kullanım Kılavuzu',
-      'STC-8255 Dijital Takograf Kullanım Kılavuzu',
+      _t('rules.docOperation'),
+      _t('rules.docOperationSub'),
       'assets/pdfs/STC-8255-Operation-Manual.pdf',
       Icons.menu_book_outlined,
     ),
     (
-      'Hazırlık Kılavuzu',
-      'STC-8255 Dijital Takograf Hazırlık Kılavuzu',
+      _t('rules.docPreparation'),
+      _t('rules.docPreparationSub'),
       'assets/pdfs/STC-8255-Preparation-Manual.pdf',
       Icons.build_outlined,
     ),
     (
-      'Takograf Dökümanı',
-      'STC-8255 Dijital Takograf Teknik Döküman',
+      _t('rules.docTechnical'),
+      _t('rules.docTechnicalSub'),
       'assets/pdfs/STC-8255-Tachograph.pdf',
       Icons.description_outlined,
     ),
@@ -253,7 +269,7 @@ void _showRulesDialog(BuildContext context) {
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Kurallar ve Yönetmelik'),
+      title: Text(_t('avatar.rules')),
       content: SizedBox(
         width: 420,
         child: SingleChildScrollView(
@@ -262,7 +278,7 @@ void _showRulesDialog(BuildContext context) {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Uygulamanın uyum hesaplamaları AB 561/2006 Tüzüğü\'nün aşağıdaki maddelerine dayanır:',
+                _t('rules.intro'),
                 style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
               ),
               const SizedBox(height: 16),
@@ -287,8 +303,7 @@ void _showRulesDialog(BuildContext context) {
                 const SizedBox(height: 14),
               ],
               Text(
-                'Not: Bu, uzatılmış limitler ve feribot/tren istisnaları gibi tüm özel durumları '
-                'kapsamayan bir temel uyum kontrolüdür — resmi denetimlerde tüzüğün kendisi esastır.',
+                _t('rules.note'),
                 style: TextStyle(
                   fontSize: 11,
                   fontStyle: FontStyle.italic,
@@ -299,7 +314,7 @@ void _showRulesDialog(BuildContext context) {
               Divider(color: scheme.outlineVariant),
               const SizedBox(height: 16),
               Text(
-                'Teknik Dökümanlar',
+                _t('rules.docsTitle'),
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
@@ -308,7 +323,7 @@ void _showRulesDialog(BuildContext context) {
               ),
               const SizedBox(height: 4),
               Text(
-                'Aşağıdaki PDF dökümanlarına tıklayarak açabilirsiniz:',
+                _t('rules.docsHint'),
                 style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
               const SizedBox(height: 12),
@@ -329,7 +344,7 @@ void _showRulesDialog(BuildContext context) {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Kapat'),
+          child: Text(_t('common.close')),
         ),
       ],
     ),
@@ -367,15 +382,12 @@ class _PdfDocumentTileState extends State<_PdfDocumentTile> {
       final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(byteData.buffer.asUint8List(), flush: true);
 
-      final result = await OpenFilex.open(
-        file.path,
-        type: 'application/pdf',
-      );
+      final result = await OpenFilex.open(file.path, type: 'application/pdf');
 
       if (result.type != ResultType.done && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('PDF açılamadı: ${result.message}'),
+            content: Text(_t('rules.pdfFailed', {'reason': result.message})),
             backgroundColor: widget.scheme.error,
           ),
         );
@@ -384,7 +396,7 @@ class _PdfDocumentTileState extends State<_PdfDocumentTile> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('PDF açılırken hata oluştu: $e'),
+            content: Text(_t('rules.pdfError', {'error': e})),
             backgroundColor: widget.scheme.error,
           ),
         );
@@ -464,4 +476,3 @@ class _PdfDocumentTileState extends State<_PdfDocumentTile> {
     );
   }
 }
-

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../core/localization/localization.dart';
 import '../../core/services/kline_log_export_service.dart';
 import '../../core/services/trace_log_service.dart';
 import '../../core/widgets/app_snackbar.dart';
+
+String _t(String key, [Map<String, Object?> args = const {}]) =>
+    AppLocalizations.text(key, args);
 
 class _FieldRow {
   _FieldRow({required this.label, required this.value, required this.success});
@@ -27,7 +31,7 @@ List<_FieldRow> _buildFieldRows(List<String> lines) {
     final success = result.startsWith(_successPrefix);
     final value = success
         ? result.substring(_successPrefix.length)
-        : 'Yanıt yok';
+        : _t('dbg.noAnswer');
 
     rows[canonicalLabel] = _FieldRow(
       label: canonicalLabel,
@@ -73,7 +77,7 @@ class _ValuesDebugPageState extends State<ValuesDebugPage> {
       if (mounted) {
         showAppSnackBar(
           context,
-          'PDF oluşturulamadı: $e',
+          _t('dbg.pdfFailed', {'error': e}),
           type: AppSnackBarType.error,
         );
       }
@@ -86,7 +90,7 @@ class _ValuesDebugPageState extends State<ValuesDebugPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ham Değerler (Tanılama)'),
+        title: Text(_t('dbg.valuesTitle')),
         actions: [
           IconButton(
             icon: _exporting
@@ -96,19 +100,17 @@ class _ValuesDebugPageState extends State<ValuesDebugPage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.picture_as_pdf_outlined),
-            tooltip: 'PDF olarak indir / paylaş',
+            tooltip: _t('dbg.exportPdf'),
             onPressed: _exporting ? null : _exportPdf,
           ),
           IconButton(
             icon: Icon(_paused ? Icons.play_arrow : Icons.pause),
-            tooltip: _paused
-                ? 'Canlı güncellemeyi devam ettir'
-                : 'Canlı güncellemeyi durdur',
+            tooltip: _paused ? _t('dbg.resumeLive') : _t('dbg.pauseLive'),
             onPressed: _togglePause,
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            tooltip: 'Temizle',
+            tooltip: _t('dbg.clear'),
             onPressed: () => TraceLogService.instance.clear(),
           ),
         ],
@@ -121,13 +123,16 @@ class _ValuesDebugPageState extends State<ValuesDebugPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Canlı İletişim Kaydı (Son Bağlantı)',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                Text(
+                  _t('dbg.liveTraceTitle'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Bağlantıyı yeniden başlat — her alan okunduğu anda burada gerçek, parse edilmiş değeriyle görünür ve her ~20 saniyelik yenileme döngüsünde güncellenir.',
+                  _t('dbg.liveTraceHint'),
                   style: TextStyle(
                     fontSize: 11,
                     color: Theme.of(context).colorScheme.outline,
@@ -158,7 +163,7 @@ class _ValuesDebugPageState extends State<ValuesDebugPage> {
     if (rows.isEmpty) {
       return Center(
         child: Text(
-          'Henüz kayıt yok — bağlantı kurulmadı veya handshake başlamadı.',
+          _t('dbg.noRecords'),
           style: TextStyle(
             fontSize: 12,
             color: Theme.of(context).colorScheme.outline,
@@ -175,10 +180,10 @@ class _ValuesDebugPageState extends State<ValuesDebugPage> {
           headingRowHeight: 36,
           dataRowMinHeight: 32,
           dataRowMaxHeight: 44,
-          columns: const [
-            DataColumn(label: Text('Alan')),
-            DataColumn(label: Text('Değer')),
-            DataColumn(label: Text('Durum')),
+          columns: [
+            DataColumn(label: Text(_t('dbg.colField'))),
+            DataColumn(label: Text(_t('dbg.colValue'))),
+            DataColumn(label: Text(_t('dbg.colStatus'))),
           ],
           rows: [
             for (final row in rows)

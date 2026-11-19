@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import '../localization/localization.dart';
+
 class KLineFrame {
   static const int taddr = 0xEE;
   static const int saddr = 0xF0;
@@ -841,34 +843,36 @@ class DtcResponseParser {
 }
 
 class DtcCodes {
-  static const Map<String, String> _descriptions = {
-    '002007': 'Sensör güç kaynağı: üst sınırın üzerinde',
-    '002003': 'Sensör güç kaynağı: alt sınırın altında',
-    '002004': 'Sensör güç kaynağı: sinyal yok',
-    '000007': 'Takograf güç kaynağı: üst sınırın üzerinde',
-    '000003': 'Takograf güç kaynağı: alt sınırın altında',
-    '000004': 'Takograf güç kaynağı: sinyal yok',
-    '000200': 'Sürücü Kartı 1 hatası',
-    '000300': 'Sürücü Kartı 2 hatası',
-    '000660': 'Yazıcıda kağıt kalmadı',
-    '002180': 'Sensörden hız sinyali gelmiyor',
-    '002280': 'Geçersiz hız sinyali veya veri hattı hatası',
-    '002380': 'Hız sensörü — Kayıt Ünitesi arası veri hattı sinyali yok',
-    '002452': 'Sensör / takograf imza uyuşmazlığı',
-    '000800': 'Saat/tarih hatası',
-    '000900': 'Kontak kapalı ama hız darbeleri algılanıyor',
-    '000A70': 'CAN veri yolu dahili hatası',
-    '000B78': 'CAN veri yolu kapalı (bus off)',
-    '000D33': 'Kalibrasyon belleği okuma/yazma hatası',
-    '000D40': 'Kalibrasyon hatası',
-    '000700': 'Yazıcı hatası',
-    '000400': 'Kart okuyucu 1 hatası',
-    '000500': 'Kart okuyucu 2 hatası',
-    '000F00': 'Düğme/tuş takımı hatası',
-    '001030': 'Dahili ekran hatası',
-    '002508': 'Sensör dahili hatası',
-    '003000': 'Hız darbesi çıkışı (Kayıt Ünitesi) hatası',
-    '000139': 'Kayıt ünitesi dahili hatası',
+  /// The DTCs the unit is known to report. Each one's text is the
+  /// `dtc.<code>` key of AppLocalizations.
+  static const Set<String> _known = {
+    '002007',
+    '002003',
+    '002004',
+    '000007',
+    '000003',
+    '000004',
+    '000200',
+    '000300',
+    '000660',
+    '002180',
+    '002280',
+    '002380',
+    '002452',
+    '000800',
+    '000900',
+    '000A70',
+    '000B78',
+    '000D33',
+    '000D40',
+    '000700',
+    '000400',
+    '000500',
+    '000F00',
+    '001030',
+    '002508',
+    '003000',
+    '000139',
   };
 
   static String? describe(int high, int mid, int low) {
@@ -877,7 +881,7 @@ class DtcCodes {
       mid,
       low,
     ].map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase()).join();
-    return _descriptions[key];
+    return _known.contains(key) ? AppLocalizations.text('dtc.$key') : null;
   }
 }
 

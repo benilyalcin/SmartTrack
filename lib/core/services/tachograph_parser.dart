@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../localization/localization.dart';
 import 'driving_time_calculator.dart';
 import 'real_card_activity_parser.dart';
 import 'real_card_identification_parser.dart';
@@ -199,26 +200,27 @@ class TachoEvent {
 class DddFileParser {
   final TlvDecoder _decoder = TlvDecoder();
 
+  // Localization keys of the event and fault names.
   static const Map<int, String> eventDescriptions = {
-    0x01: 'Kart takılmadı (sürüş)',
-    0x02: 'Kart çıkarıldı (sürüş sırasında)',
-    0x03: 'Hız aşımı',
-    0x04: 'Güç kesintisi',
-    0x05: 'Sensör hatası',
-    0x06: 'Veri bütünlüğü hatası',
-    0x07: 'Zaman çakışması',
-    0x08: 'Son geçerli konum',
-    0x09: 'Kalibrasyon hatası',
-    0x0A: 'Süre ihlali',
+    0x01: 'cardEv.noCard',
+    0x02: 'cardEv.cardRemoved',
+    0x03: 'euEvent.overSpeeding',
+    0x04: 'euEvent.powerInterruption',
+    0x05: 'cardEv.sensorError',
+    0x06: 'cardEv.dataIntegrity',
+    0x07: 'euEvent.timeOverlap',
+    0x08: 'cardEv.lastPosition',
+    0x09: 'cardEv.calibration',
+    0x0A: 'cardEv.timeViolation',
   };
 
   static const Map<int, String> faultDescriptions = {
-    0x01: 'Kart okuyucu arızası',
-    0x02: 'Yazıcı arızası',
-    0x03: 'Ekran arızası',
-    0x04: 'İndirme arızası',
-    0x05: 'Sensör arızası',
-    0x06: 'Dahili elektronik arıza',
+    0x01: 'cardFault.cardReader',
+    0x02: 'cardFault.printer',
+    0x03: 'cardFault.display',
+    0x04: 'cardFault.download',
+    0x05: 'cardFault.sensor',
+    0x06: 'cardFault.electronics',
   };
 
   TachographDriverData parse(Uint8List rawBytes) {
@@ -448,10 +450,15 @@ class DddFileParser {
               DateTime.now())
         : DateTime.now();
     final table = isFault ? faultDescriptions : eventDescriptions;
-    final label = isFault ? 'Bilinmeyen arıza' : 'Bilinmeyen olay';
+    final known = table[code];
+    final label = AppLocalizations.text(
+      isFault ? 'euFault.unknown' : 'euEvent.unknown',
+    );
     return TachoEvent(
       code: code,
-      description: table[code] ?? '$label (0x${code.toRadixString(16)})',
+      description: known != null
+          ? AppLocalizations.text(known)
+          : '$label (0x${code.toRadixString(16)})',
       timestamp: timestamp,
       isFault: isFault,
     );

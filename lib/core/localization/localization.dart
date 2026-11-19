@@ -6134,11 +6134,7 @@ class AppLocalizations {
       'EN': 'Technical data',
       'DE': 'Technische Daten',
     },
-    'stcdl.download': {
-      'TR': 'İndir',
-      'EN': 'Download',
-      'DE': 'Herunterladen',
-    },
+    'stcdl.download': {'TR': 'İndir', 'EN': 'Download', 'DE': 'Herunterladen'},
     'stcdl.rangeNone': {
       'TR': 'Alınmayacak',
       'EN': 'Not downloaded',
@@ -6178,6 +6174,1279 @@ class AppLocalizations {
       'TR': 'Tüm dönem',
       'EN': 'Full period',
       'DE': 'Gesamter Zeitraum',
+    },
+    'pdf.title': {
+      'TR': 'SmartTrack Takograf Raporu',
+      'EN': 'SmartTrack Tachograph Report',
+      'DE': 'SmartTrack Fahrtenschreiber-Bericht',
+    },
+    'pdf.generated': {
+      'TR': 'Oluşturulma: {time}',
+      'EN': 'Created: {time}',
+      'DE': 'Erstellt: {time}',
+    },
+    'pdf.vuHeader': {
+      'TR': 'Araç Ünitesi (VU) Verileri',
+      'EN': 'Vehicle Unit (VU) Data',
+      'DE': 'Daten der Fahrzeugeinheit (VU)',
+    },
+    'pdf.noData': {
+      'TR': 'Bu dosyada gösterilecek veri bulunamadı.',
+      'EN': 'This file has no data to show.',
+      'DE': 'Diese Datei enthält keine anzeigbaren Daten.',
+    },
+    'pdf.cardHolder': {
+      'TR': 'Kart Sahibi Bilgileri',
+      'EN': 'Card Holder',
+      'DE': 'Karteninhaber',
+    },
+    'pdf.licenceAndUsage': {
+      'TR': 'Ehliyet ve Kullanım Bilgileri',
+      'EN': 'Licence and Usage',
+      'DE': 'Führerschein und Nutzung',
+    },
+    'pdf.drivingSummary': {
+      'TR': 'Sürüş Özeti',
+      'EN': 'Driving Summary',
+      'DE': 'Lenkzeit-Übersicht',
+    },
+    'pdf.activityLog': {
+      'TR': 'Aktivite Kaydı',
+      'EN': 'Activity Log',
+      'DE': 'Tätigkeitsprotokoll',
+    },
+    'pdf.start': {'TR': 'Başlangıç', 'EN': 'Start', 'DE': 'Beginn'},
+    'pdf.end': {'TR': 'Bitiş', 'EN': 'End', 'DE': 'Ende'},
+    'pdf.type': {'TR': 'Tür', 'EN': 'Type', 'DE': 'Art'},
+    'pdf.manual': {'TR': 'Manuel mi?', 'EN': 'Manual?', 'DE': 'Manuell?'},
+    'pdf.yes': {'TR': 'Evet', 'EN': 'Yes', 'DE': 'Ja'},
+    'pdf.no': {'TR': 'Hayır', 'EN': 'No', 'DE': 'Nein'},
+    'pdf.violations': {
+      'TR': 'İhlaller',
+      'EN': 'Infringements',
+      'DE': 'Verstöße',
+    },
+    'pdf.rule': {'TR': 'Kural', 'EN': 'Rule', 'DE': 'Vorschrift'},
+    'pdf.events': {'TR': 'Olaylar', 'EN': 'Events', 'DE': 'Ereignisse'},
+    'pdf.faults': {'TR': 'Arızalar', 'EN': 'Faults', 'DE': 'Störungen'},
+    'pdf.time': {'TR': 'Zaman', 'EN': 'Time', 'DE': 'Zeit'},
+    'pdf.description': {
+      'TR': 'Açıklama',
+      'EN': 'Description',
+      'DE': 'Beschreibung',
+    },
+    'pdf.vehiclesUsed': {
+      'TR': 'Kullanılan Araçlar',
+      'EN': 'Vehicles Used',
+      'DE': 'Genutzte Fahrzeuge',
+    },
+    'pdf.plate': {'TR': 'Plaka', 'EN': 'Plate', 'DE': 'Kennzeichen'},
+    'pdf.firstUse': {
+      'TR': 'İlk Kullanım',
+      'EN': 'First Use',
+      'DE': 'Erste Nutzung',
+    },
+    'pdf.lastUse': {
+      'TR': 'Son Kullanım',
+      'EN': 'Last Use',
+      'DE': 'Letzte Nutzung',
+    },
+    'pdf.km': {'TR': 'Km', 'EN': 'Km', 'DE': 'km'},
+    'pdf.lastControl': {
+      'TR': 'Son Denetim',
+      'EN': 'Last Control',
+      'DE': 'Letzte Kontrolle',
+    },
+    'pdf.places': {'TR': 'Konum Kayıtları', 'EN': 'Places', 'DE': 'Orte'},
+    'pdf.country': {'TR': 'Ülke', 'EN': 'Country', 'DE': 'Land'},
+    'pdf.specificConditions': {
+      'TR': 'Özel Durum Kayıtları',
+      'EN': 'Specific Conditions',
+      'DE': 'Besondere Bedingungen',
+    },
+    'pdf.holderName': {
+      'TR': 'Ad Soyad: {value}',
+      'EN': 'Name: {value}',
+      'DE': 'Name: {value}',
+    },
+    'pdf.cardNumber': {
+      'TR': 'Kart No: {value}',
+      'EN': 'Card No: {value}',
+      'DE': 'Kartennr.: {value}',
+    },
+    'pdf.issuingState': {
+      'TR': 'Düzenleyen Ülke: {value}',
+      'EN': 'Issuing State: {value}',
+      'DE': 'Ausstellender Staat: {value}',
+    },
+    'pdf.issueDate': {
+      'TR': 'Düzenleme Tarihi: {value}',
+      'EN': 'Issue Date: {value}',
+      'DE': 'Ausstellungsdatum: {value}',
+    },
+    'pdf.expiryDate': {
+      'TR': 'Son Geçerlilik: {value}',
+      'EN': 'Valid Until: {value}',
+      'DE': 'Gültig bis: {value}',
+    },
+    'pdf.birthDate': {
+      'TR': 'Doğum Tarihi: {value}',
+      'EN': 'Date of Birth: {value}',
+      'DE': 'Geburtsdatum: {value}',
+    },
+    'pdf.vehicleReg': {
+      'TR': 'Araç Plakası: {value}',
+      'EN': 'Vehicle Registration: {value}',
+      'DE': 'Amtliches Kennzeichen: {value}',
+    },
+    'pdf.licenceAuthority': {
+      'TR': 'Ehliyet Veren Makam: {value}',
+      'EN': 'Licence Issued By: {value}',
+      'DE': 'Führerschein ausgestellt von: {value}',
+    },
+    'pdf.licenceNumber': {
+      'TR': 'Ehliyet No: {value}',
+      'EN': 'Licence No: {value}',
+      'DE': 'Führerscheinnr.: {value}',
+    },
+    'pdf.lastDownload': {
+      'TR': 'Son İndirme Tarihi: {value}',
+      'EN': 'Last Download: {value}',
+      'DE': 'Letzter Download: {value}',
+    },
+    'pdf.sessionOpen': {
+      'TR': 'Açık Oturum Başlangıcı: {value}',
+      'EN': 'Open Session Since: {value}',
+      'DE': 'Offene Sitzung seit: {value}',
+    },
+    'pdf.vehicleInUse': {
+      'TR': 'Kullanımdaki Araç: {value}',
+      'EN': 'Vehicle in Use: {value}',
+      'DE': 'Fahrzeug in Nutzung: {value}',
+    },
+    'pdf.currentDriving': {
+      'TR': 'Güncel Sürüş: {value}',
+      'EN': 'Current Driving: {value}',
+      'DE': 'Aktuelle Lenkzeit: {value}',
+    },
+    'pdf.dailyDriving': {
+      'TR': 'Günlük Sürüş: {value}',
+      'EN': 'Daily Driving: {value}',
+      'DE': 'Tägliche Lenkzeit: {value}',
+    },
+    'pdf.weeklyDriving': {
+      'TR': 'Haftalık Sürüş: {value}',
+      'EN': 'Weekly Driving: {value}',
+      'DE': 'Wöchentliche Lenkzeit: {value}',
+    },
+    'pdf.biWeeklyDriving': {
+      'TR': 'İki Haftalık Sürüş: {value}',
+      'EN': 'Two-Week Driving: {value}',
+      'DE': 'Lenkzeit in zwei Wochen: {value}',
+    },
+    'pdf.odometer': {
+      'TR': 'Kilometre: {value} km',
+      'EN': 'Odometer: {value} km',
+      'DE': 'Kilometerstand: {value} km',
+    },
+    'pdf.noControl': {
+      'TR': 'Denetim kaydı yok.',
+      'EN': 'No control record.',
+      'DE': 'Kein Kontrolleintrag.',
+    },
+    'pdf.controlTime': {
+      'TR': 'Denetim Zamanı: {value}',
+      'EN': 'Control Time: {value}',
+      'DE': 'Kontrollzeit: {value}',
+    },
+    'pdf.controlVehicle': {
+      'TR': 'Denetim Aracı: {value}',
+      'EN': 'Control Vehicle: {value}',
+      'DE': 'Kontrolliertes Fahrzeug: {value}',
+    },
+    'pdf.controlCard': {
+      'TR': 'Denetim Kart No: {value}',
+      'EN': 'Control Card No: {value}',
+      'DE': 'Kontrollkartennr.: {value}',
+    },
+    'pdf.controlPeriod': {
+      'TR': 'İndirme Aralığı: {from} - {to}',
+      'EN': 'Download Period: {from} - {to}',
+      'DE': 'Download-Zeitraum: {from} - {to}',
+    },
+    'pdf.general': {'TR': 'Genel Bilgiler', 'EN': 'General', 'DE': 'Allgemein'},
+    'pdf.technical': {
+      'TR': 'Cihaz Teknik Bilgileri',
+      'EN': 'Technical Data',
+      'DE': 'Technische Daten',
+    },
+    'pdf.speedSessions': {
+      'TR': 'Hız Oturumları',
+      'EN': 'Speed Sessions',
+      'DE': 'Geschwindigkeitsabschnitte',
+    },
+    'pdf.maxKmh': {'TR': 'Maks. km/h', 'EN': 'Max. km/h', 'DE': 'Max. km/h'},
+    'pdf.avgKmh': {'TR': 'Ort. km/h', 'EN': 'Avg. km/h', 'DE': 'Ø km/h'},
+    'pdf.vuDaily': {
+      'TR': 'Günlük Aktivite - VU',
+      'EN': 'Daily Activity - VU',
+      'DE': 'Tägliche Tätigkeiten - VU',
+    },
+    'pdf.date': {'TR': 'Tarih', 'EN': 'Date', 'DE': 'Datum'},
+    'pdf.kmMidnight': {
+      'TR': 'Km (gece yarısı)',
+      'EN': 'Km (midnight)',
+      'DE': 'km (Mitternacht)',
+    },
+    'pdf.cardSessions': {
+      'TR': 'Kart Oturumları',
+      'EN': 'Card Sessions',
+      'DE': 'Kartensitzungen',
+    },
+    'pdf.vuEvents': {
+      'TR': 'Olaylar ve Arızalar - VU',
+      'EN': 'Events and Faults - VU',
+      'DE': 'Ereignisse und Störungen - VU',
+    },
+    'pdf.vuOverspeed': {
+      'TR': 'Hız Aşımları - VU',
+      'EN': 'Overspeeding - VU',
+      'DE': 'Geschwindigkeitsüberschreitungen - VU',
+    },
+    'pdf.calibration': {
+      'TR': 'Kalibrasyon Geçmişi',
+      'EN': 'Calibration History',
+      'DE': 'Kalibrierungsverlauf',
+    },
+    'pdf.workshop': {'TR': 'Atölye', 'EN': 'Workshop', 'DE': 'Werkstatt'},
+    'pdf.authorisedSpeed': {
+      'TR': 'İzinli Hız',
+      'EN': 'Authorised Speed',
+      'DE': 'Zulässige Geschwindigkeit',
+    },
+    'pdf.kmOldNew': {
+      'TR': 'Km (Eski→Yeni)',
+      'EN': 'Km (Old→New)',
+      'DE': 'km (alt→neu)',
+    },
+    'pdf.nextCalibration': {
+      'TR': 'Sonraki Kalibrasyon',
+      'EN': 'Next Calibration',
+      'DE': 'Nächste Kalibrierung',
+    },
+    'pdf.plateValue': {
+      'TR': 'Plaka: {value}',
+      'EN': 'Plate: {value}',
+      'DE': 'Kennzeichen: {value}',
+    },
+    'pdf.deviceTime': {
+      'TR': 'Cihaz Saati: {value}',
+      'EN': 'Unit Time: {value}',
+      'DE': 'Gerätezeit: {value}',
+    },
+    'pdf.downloadable': {
+      'TR': 'İndirilebilir Dönem: {from} – {to}',
+      'EN': 'Downloadable Period: {from} – {to}',
+      'DE': 'Herunterladbarer Zeitraum: {from} – {to}',
+    },
+    'pdf.none': {'TR': 'Veri yok.', 'EN': 'No data.', 'DE': 'Keine Daten.'},
+    'pdf.manufacturer': {
+      'TR': 'Üretici: {value}',
+      'EN': 'Manufacturer: {value}',
+      'DE': 'Hersteller: {value}',
+    },
+    'pdf.manufacturerAddress': {
+      'TR': 'Üretici Adresi: {value}',
+      'EN': 'Manufacturer Address: {value}',
+      'DE': 'Herstelleradresse: {value}',
+    },
+    'pdf.partNumber': {
+      'TR': 'Parça No: {value}',
+      'EN': 'Part No: {value}',
+      'DE': 'Teilenr.: {value}',
+    },
+    'pdf.serialNumber': {
+      'TR': 'Seri No: {value}',
+      'EN': 'Serial No: {value}',
+      'DE': 'Seriennr.: {value}',
+    },
+    'pdf.software': {
+      'TR': 'Yazılım Sürümü: {value}',
+      'EN': 'Software Version: {value}',
+      'DE': 'Softwareversion: {value}',
+    },
+    'pdf.manufacturingDate': {
+      'TR': 'Üretim Tarihi: {value}',
+      'EN': 'Manufactured: {value}',
+      'DE': 'Herstellungsdatum: {value}',
+    },
+    'pdf.approval': {
+      'TR': 'Onay No: {value}',
+      'EN': 'Approval No: {value}',
+      'DE': 'Genehmigungsnr.: {value}',
+    },
+    'pdf.sensorSerial': {
+      'TR': 'Hareket Sensörü — Seri No: {value}',
+      'EN': 'Motion Sensor — Serial No: {value}',
+      'DE': 'Bewegungssensor — Seriennr.: {value}',
+    },
+    'pdf.sensorApproval': {
+      'TR': 'Hareket Sensörü — Onay No: {value}',
+      'EN': 'Motion Sensor — Approval No: {value}',
+      'DE': 'Bewegungssensor — Genehmigungsnr.: {value}',
+    },
+    'pdf.sensorPairing': {
+      'TR': 'Hareket Sensörü — İlk Eşleştirme Tarihi: {value}',
+      'EN': 'Motion Sensor — First Paired: {value}',
+      'DE': 'Bewegungssensor — erste Kopplung: {value}',
+    },
+    'pdf.idTexts': {
+      'TR': 'Kimlik Metinleri ({count})',
+      'EN': 'Identification Texts ({count})',
+      'DE': 'Identifikationstexte ({count})',
+    },
+    'pdf.noRecords': {
+      'TR': 'Kayıt yok.',
+      'EN': 'No records.',
+      'DE': 'Keine Einträge.',
+    },
+    'pdf.actDriving': {'TR': 'Sürüş', 'EN': 'Driving', 'DE': 'Lenken'},
+    'pdf.actRest': {'TR': 'Dinlenme', 'EN': 'Rest', 'DE': 'Ruhezeit'},
+    'pdf.actAvailable': {
+      'TR': 'Hazır Bulunma',
+      'EN': 'Availability',
+      'DE': 'Bereitschaft',
+    },
+    'pdf.actWork': {
+      'TR': 'Diğer Çalışma',
+      'EN': 'Other Work',
+      'DE': 'Andere Arbeit',
+    },
+    'pdf.actUnknown': {'TR': 'Bilinmiyor', 'EN': 'Unknown', 'DE': 'Unbekannt'},
+    'avatar.account': {'TR': 'HESAP', 'EN': 'ACCOUNT', 'DE': 'KONTO'},
+    'avatar.rules': {
+      'TR': 'Kurallar ve Yönetmelik',
+      'EN': 'Rules and Regulation',
+      'DE': 'Regeln und Verordnung',
+    },
+    'avatar.logout': {'TR': 'Çıkış Yap', 'EN': 'Log out', 'DE': 'Abmelden'},
+    'rules.intro': {
+      'TR':
+          'Uygulamanın uyum hesaplamaları AB 561/2006 Tüzüğü\'nün aşağıdaki maddelerine dayanır:',
+      'EN':
+          'The app\'s compliance checks are based on these articles of EU Regulation 561/2006:',
+      'DE':
+          'Die Prüfungen der App beruhen auf diesen Artikeln der EU-Verordnung 561/2006:',
+    },
+    'rules.continuousTitle': {
+      'TR': 'Kesintisiz Sürüş — Art. 7',
+      'EN': 'Continuous Driving — Art. 7',
+      'DE': 'Ununterbrochene Lenkzeit — Art. 7',
+    },
+    'rules.continuousBody': {
+      'TR':
+          '{h} saat {m} dakika sonunda en az 45 dakikalık mola gerekir (ya da önce en az 15 dakika, sonra en az 30 dakika olacak şekilde bölünmüş mola).',
+      'EN':
+          'After {h} hours {m} minutes a break of at least 45 minutes is required (or a split break of at least 15 minutes followed by at least 30 minutes).',
+      'DE':
+          'Nach {h} Stunden {m} Minuten ist eine Pause von mindestens 45 Minuten nötig (oder geteilt: erst mindestens 15, dann mindestens 30 Minuten).',
+    },
+    'rules.dailyTitle': {
+      'TR': 'Günlük Sürüş — Art. 6',
+      'EN': 'Daily Driving — Art. 6',
+      'DE': 'Tägliche Lenkzeit — Art. 6',
+    },
+    'rules.dailyBody': {
+      'TR':
+          'Günlük sürüş süresi {hours} saati geçemez (haftada iki kez {extended} saate kadar uzatılabilir).',
+      'EN':
+          'Daily driving time may not exceed {hours} hours (it may be extended to {extended} hours twice a week).',
+      'DE':
+          'Die tägliche Lenkzeit darf {hours} Stunden nicht überschreiten (zweimal pro Woche bis zu {extended} Stunden).',
+    },
+    'rules.weeklyTitle': {
+      'TR': 'Haftalık Sürüş — Art. 6',
+      'EN': 'Weekly Driving — Art. 6',
+      'DE': 'Wöchentliche Lenkzeit — Art. 6',
+    },
+    'rules.weeklyBody': {
+      'TR':
+          'Bir haftalık (Pazartesi-Pazar) toplam sürüş süresi {hours} saati geçemez.',
+      'EN':
+          'Total driving time in a week (Monday to Sunday) may not exceed {hours} hours.',
+      'DE':
+          'Die Gesamtlenkzeit einer Woche (Montag bis Sonntag) darf {hours} Stunden nicht überschreiten.',
+    },
+    'rules.biWeeklyTitle': {
+      'TR': 'İki Haftalık Sürüş — Art. 6',
+      'EN': 'Two-Week Driving — Art. 6',
+      'DE': 'Lenkzeit in zwei Wochen — Art. 6',
+    },
+    'rules.biWeeklyBody': {
+      'TR':
+          'Ardışık iki hafta içindeki toplam sürüş süresi {hours} saati geçemez.',
+      'EN':
+          'Total driving time in two consecutive weeks may not exceed {hours} hours.',
+      'DE':
+          'Die Gesamtlenkzeit in zwei aufeinanderfolgenden Wochen darf {hours} Stunden nicht überschreiten.',
+    },
+    'rules.compTitle': {
+      'TR': 'Haftalık Dinlenme Telafisi — Art. 8(6)',
+      'EN': 'Weekly Rest Compensation — Art. 8(6)',
+      'DE': 'Ausgleich der wöchentlichen Ruhezeit — Art. 8(6)',
+    },
+    'rules.compBody': {
+      'TR':
+          'Kısaltılmış bir haftalık dinlenme nedeniyle oluşan telafi borcu, oluştuğu haftayı izleyen 3. haftanın sonuna kadar, tek seferde kullanılarak telafi edilmelidir.',
+      'EN':
+          'A reduced weekly rest must be compensated en bloc before the end of the third week following the week in question.',
+      'DE':
+          'Eine reduzierte wöchentliche Ruhezeit muss vor Ende der dritten Woche nach der betreffenden Woche zusammenhängend ausgeglichen werden.',
+    },
+    'rules.note': {
+      'TR':
+          'Not: Bu, uzatılmış limitler ve feribot/tren istisnaları gibi tüm özel durumları kapsamayan bir temel uyum kontrolüdür — resmi denetimlerde tüzüğün kendisi esastır.',
+      'EN':
+          'Note: this is a basic compliance check that does not cover every special case, such as extended limits and ferry/train exceptions — in official controls the regulation itself applies.',
+      'DE':
+          'Hinweis: Dies ist eine Grundprüfung, die nicht alle Sonderfälle wie verlängerte Grenzen und Fähr-/Zugausnahmen abdeckt — bei amtlichen Kontrollen gilt die Verordnung selbst.',
+    },
+    'rules.docsTitle': {
+      'TR': 'Teknik Dökümanlar',
+      'EN': 'Technical Documents',
+      'DE': 'Technische Dokumente',
+    },
+    'rules.docsHint': {
+      'TR': 'Aşağıdaki PDF dökümanlarına tıklayarak açabilirsiniz:',
+      'EN': 'Tap a PDF document below to open it:',
+      'DE': 'Tippen Sie auf ein PDF-Dokument, um es zu öffnen:',
+    },
+    'rules.docOperation': {
+      'TR': 'Kullanım Kılavuzu',
+      'EN': 'Operation Manual',
+      'DE': 'Bedienungsanleitung',
+    },
+    'rules.docOperationSub': {
+      'TR': 'STC-8255 Dijital Takograf Kullanım Kılavuzu',
+      'EN': 'STC-8255 Digital Tachograph Operation Manual',
+      'DE': 'Bedienungsanleitung STC-8255 Digitaler Fahrtenschreiber',
+    },
+    'rules.docPreparation': {
+      'TR': 'Hazırlık Kılavuzu',
+      'EN': 'Preparation Manual',
+      'DE': 'Vorbereitungsanleitung',
+    },
+    'rules.docPreparationSub': {
+      'TR': 'STC-8255 Dijital Takograf Hazırlık Kılavuzu',
+      'EN': 'STC-8255 Digital Tachograph Preparation Manual',
+      'DE': 'Vorbereitungsanleitung STC-8255 Digitaler Fahrtenschreiber',
+    },
+    'rules.docTechnical': {
+      'TR': 'Takograf Dökümanı',
+      'EN': 'Tachograph Document',
+      'DE': 'Fahrtenschreiber-Dokument',
+    },
+    'rules.docTechnicalSub': {
+      'TR': 'STC-8255 Dijital Takograf Teknik Döküman',
+      'EN': 'STC-8255 Digital Tachograph Technical Document',
+      'DE': 'Technisches Dokument STC-8255 Digitaler Fahrtenschreiber',
+    },
+    'rules.pdfFailed': {
+      'TR': 'PDF açılamadı: {reason}',
+      'EN': 'Could not open the PDF: {reason}',
+      'DE': 'PDF konnte nicht geöffnet werden: {reason}',
+    },
+    'rules.pdfError': {
+      'TR': 'PDF açılırken hata oluştu: {error}',
+      'EN': 'Error while opening the PDF: {error}',
+      'DE': 'Fehler beim Öffnen des PDF: {error}',
+    },
+    'drivingLimit.title': {
+      'TR': 'Kesintisiz Sürüş Süresi Aşıldı',
+      'EN': 'Continuous Driving Time Exceeded',
+      'DE': 'Ununterbrochene Lenkzeit überschritten',
+    },
+    'drivingLimit.ok': {
+      'TR': 'Anladım',
+      'EN': 'Understood',
+      'DE': 'Verstanden',
+    },
+    'alerts.unknownDtc': {
+      'TR': 'Bilinmeyen arıza kodu',
+      'EN': 'Unknown fault code',
+      'DE': 'Unbekannter Fehlercode',
+    },
+    'dashboard.showPage': {
+      'TR': '{name} Göster',
+      'EN': 'Show {name}',
+      'DE': '{name} anzeigen',
+    },
+    'dashboard.breakDone': {
+      'TR': 'Tamamlandı ✓',
+      'EN': 'Done ✓',
+      'DE': 'Erledigt ✓',
+    },
+    'dashboard.secondBreakRunning': {
+      'TR': '2. molanız sürüyor (en az 30 dk)',
+      'EN': 'Your second break is running (at least 30 min)',
+      'DE': 'Ihre zweite Pause läuft (mindestens 30 Min.)',
+    },
+    'dashboard.breakRunning': {
+      'TR': 'Molanız sürüyor',
+      'EN': 'Your break is running',
+      'DE': 'Ihre Pause läuft',
+    },
+    'dashboard.secondBreakMin': {
+      'TR': '2. molanız en az 30 dk olmalı',
+      'EN': 'Your second break must be at least 30 min',
+      'DE': 'Ihre zweite Pause muss mindestens 30 Min. dauern',
+    },
+    'dashboard.breakRule': {
+      'TR': 'Tek parça 45 dk, ya da önce ≥15dk sonra ≥30dk bölünmüş mola',
+      'EN': '45 min in one go, or split: ≥15 min first, then ≥30 min',
+      'DE': '45 Min. am Stück oder geteilt: erst ≥15 Min., dann ≥30 Min.',
+    },
+    'dashboard.crewNote': {
+      'TR':
+          'Ekip halinde sürüyorsunuz — bir sonraki dinlenmenizi son dinlenmenizin bitişinden itibaren 30 saat içinde almalısınız (tekli sürücüde 24 saat).',
+      'EN':
+          'You are driving as a crew — you must take your next rest within 30 hours of the end of your last one (24 hours when driving alone).',
+      'DE':
+          'Sie fahren im Team — Ihre nächste Ruhezeit muss innerhalb von 30 Stunden nach Ende der letzten beginnen (allein 24 Stunden).',
+    },
+    'bt.unknownDeviceName': {
+      'TR': 'Bilinmeyen Cihaz',
+      'EN': 'Unknown Device',
+      'DE': 'Unbekanntes Gerät',
+    },
+    'bt.permissionNearby': {
+      'TR':
+          'Bluetooth izni eksik. Lütfen uygulama ayarlarından "Yakındaki cihazlar" iznini verin.',
+      'EN':
+          'Bluetooth permission is missing. Please grant the "Nearby devices" permission in the app settings.',
+      'DE':
+          'Bluetooth-Berechtigung fehlt. Bitte erteilen Sie in den App-Einstellungen die Berechtigung „Geräte in der Nähe“.',
+    },
+    'bt.permissionBtLocation': {
+      'TR':
+          'Bluetooth izni eksik. Lütfen uygulama ayarlarından Bluetooth ve Konum izinlerini kontrol edin.',
+      'EN':
+          'Bluetooth permission is missing. Please check the Bluetooth and Location permissions in the app settings.',
+      'DE':
+          'Bluetooth-Berechtigung fehlt. Bitte prüfen Sie die Bluetooth- und Standortberechtigungen in den App-Einstellungen.',
+    },
+    'bt.timeoutInRange': {
+      'TR':
+          'Cihaz yanıt vermiyor (zaman aşımı) — açık ve menzil içinde olduğundan emin olun',
+      'EN':
+          'The device is not responding (timed out) — make sure it is on and within range',
+      'DE':
+          'Das Gerät antwortet nicht (Zeitüberschreitung) — prüfen Sie, ob es eingeschaltet und in Reichweite ist',
+    },
+    'bt.dongleNotActive': {
+      'TR': 'Dongle bağlantısı aktif değil',
+      'EN': 'The dongle connection is not active',
+      'DE': 'Die Dongle-Verbindung ist nicht aktiv',
+    },
+    'bt.downloadTestNotOpen': {
+      'TR': 'İndirme testi oturumu açık değil — önce başlatın',
+      'EN': 'The download test session is not open — start it first',
+      'DE':
+          'Die Download-Testsitzung ist nicht geöffnet — starten Sie sie zuerst',
+    },
+    'bt.securityAccess': {
+      'TR':
+          'Cihaz güvenlik erişimi istiyor (kalibrasyon/servis kartı gerekebilir)',
+      'EN':
+          'The device asks for security access (a calibration/workshop card may be needed)',
+      'DE':
+          'Das Gerät verlangt Sicherheitszugriff (evtl. Kalibrier-/Werkstattkarte nötig)',
+    },
+    'bt.fieldUnavailable': {
+      'TR':
+          'Takograf {label} alanını şu an vermiyor: ilgili yuvada geçerli kart yok ya da sürücü kişisel veri paylaşımına onay vermemiş.',
+      'EN':
+          'The tachograph is not giving {label} right now: there is no valid card in the slot, or the driver has not agreed to share personal data.',
+      'DE':
+          'Der Fahrtenschreiber liefert {label} derzeit nicht: Im Steckplatz ist keine gültige Karte, oder der Fahrer hat der Weitergabe persönlicher Daten nicht zugestimmt.',
+    },
+    'bt.fieldRejected': {
+      'TR': 'Cihaz {label} alanını reddetti (NRC 0x{nrc})',
+      'EN': 'The device refused {label} (NRC 0x{nrc})',
+      'DE': 'Das Gerät hat {label} abgelehnt (NRC 0x{nrc})',
+    },
+    'bt.noResponse': {
+      'TR': 'Cihazdan yanıt gelmiyor (bağlantı/adaptör kontrol edin)',
+      'EN': 'No answer from the device (check the connection/adapter)',
+      'DE': 'Keine Antwort vom Gerät (Verbindung/Adapter prüfen)',
+    },
+    'bt.unrecognized': {
+      'TR': 'Cihazdan tanınmayan yanıt geldi',
+      'EN': 'The device sent an unrecognised answer',
+      'DE': 'Das Gerät hat eine unbekannte Antwort gesendet',
+    },
+    'bt.noData': {
+      'TR': 'Cihazdan veri alınamadı',
+      'EN': 'No data could be read from the device',
+      'DE': 'Vom Gerät konnten keine Daten gelesen werden',
+    },
+    'bt.connectionError': {
+      'TR': 'Bağlantı hatası: {error}',
+      'EN': 'Connection error: {error}',
+      'DE': 'Verbindungsfehler: {error}',
+    },
+    'bt.simulatedDevice': {
+      'TR': 'Test (Simüle)',
+      'EN': 'Test (simulated)',
+      'DE': 'Test (simuliert)',
+    },
+    'bt.profileHasIts': {
+      'TR': 'Cihazda ITS servisleri var; seçilen profil bu cihaza uymuyor.',
+      'EN': 'The device has ITS services; the chosen profile does not fit it.',
+      'DE': 'Das Gerät hat ITS-Dienste; das gewählte Profil passt nicht dazu.',
+    },
+    'bt.profileNoIts': {
+      'TR': 'Cihazda ITS servisleri yok; seçilen profil bu cihaza uymuyor.',
+      'EN':
+          'The device has no ITS services; the chosen profile does not fit it.',
+      'DE':
+          'Das Gerät hat keine ITS-Dienste; das gewählte Profil passt nicht dazu.',
+    },
+    'bt.bondResult': {
+      'TR': 'Eşleşme sonucu: {state}',
+      'EN': 'Pairing result: {state}',
+      'DE': 'Kopplungsergebnis: {state}',
+    },
+    'drive.notSignedIn': {
+      'TR': 'Google hesabı bağlı değil.',
+      'EN': 'No Google account is connected.',
+      'DE': 'Kein Google-Konto verbunden.',
+    },
+    'drive.noAuth': {
+      'TR': 'Google kimlik doğrulaması alınamadı.',
+      'EN': 'Google sign-in could not be completed.',
+      'DE': 'Die Google-Anmeldung konnte nicht abgeschlossen werden.',
+    },
+    'notif.channelName': {
+      'TR': 'Uyarılar ve İhlaller',
+      'EN': 'Alerts and Infringements',
+      'DE': 'Warnungen und Verstöße',
+    },
+    'notif.channelDesc': {
+      'TR': 'Sürüş süresi ihlalleri, mola ve telafi hatırlatmaları',
+      'EN': 'Driving time infringements, break and compensation reminders',
+      'DE': 'Lenkzeitverstöße, Pausen- und Ausgleichserinnerungen',
+    },
+    'compliance.limitDialog': {
+      'TR':
+          'Kesintisiz sürüş süreniz yasal sınırı (4 sa 30 dk) aştı. Mola süreniz tamamlanmadan sürüşe devam etmeniz idari para cezasına yol açabilir (Karayolları Trafik Yönetmeliği Madde 98). Almanız gereken mola süresi: en az {minutes} dakika.',
+      'EN':
+          'Your continuous driving time has passed the legal limit (4 h 30 min). Driving on before your break is complete can lead to an administrative fine (Turkish Road Traffic Regulation, Art. 98). Break you must take: at least {minutes} minutes.',
+      'DE':
+          'Ihre ununterbrochene Lenkzeit hat die gesetzliche Grenze (4 Std. 30 Min.) überschritten. Weiterfahren vor Ende der Pause kann ein Bußgeld nach sich ziehen (türkische Straßenverkehrsordnung, Art. 98). Erforderliche Pause: mindestens {minutes} Minuten.',
+    },
+    'compliance.preWarning415': {
+      'TR':
+          'Kesintisiz sürüş süreniz 4 saat 15 dakikaya ulaştı — yakında mola vermeniz gerekiyor.',
+      'EN':
+          'Your continuous driving time has reached 4 hours 15 minutes — you need to take a break soon.',
+      'DE':
+          'Ihre ununterbrochene Lenkzeit hat 4 Stunden 15 Minuten erreicht — Sie müssen bald eine Pause machen.',
+    },
+    'compliance.crewMismatch': {
+      'TR':
+          'Ekip modu: Ana sürücü sürüyor, yedek sürücü dinleniyor. Yedek sürücünün bu süre boyunca sürüşe yardımcı bir görev üstlenmediğinden emin olun — aksi halde bu süre "dinlenme" değil "diğer çalışma" sayılır.',
+      'EN':
+          'Crew mode: the main driver is driving and the co-driver is resting. Make sure the co-driver takes on no task that helps the driving during this time — otherwise it counts as "other work", not "rest".',
+      'DE':
+          'Teammodus: Der Hauptfahrer fährt, der Beifahrer ruht. Achten Sie darauf, dass der Beifahrer in dieser Zeit keine unterstützende Aufgabe übernimmt — sonst zählt sie als „andere Arbeit“, nicht als „Ruhezeit“.',
+    },
+    'compliance.shortBreak': {
+      'TR':
+          'Bu {minutes} dakikalık duraklama resmi mola sayılmayabilir (en az 15 dakika gerekir) — kesintisiz sürüş sayacınız sıfırlanmadı.',
+      'EN':
+          'This {minutes}-minute stop may not count as a legal break (at least 15 minutes are needed) — your continuous driving counter was not reset.',
+      'DE':
+          'Dieser {minutes}-minütige Halt zählt möglicherweise nicht als Pause (mindestens 15 Minuten nötig) — Ihr Zähler für ununterbrochene Lenkzeit wurde nicht zurückgesetzt.',
+    },
+    'eu.codeLabel': {
+      'TR': '{label} (kod {code})',
+      'EN': '{label} (code {code})',
+      'DE': '{label} (Code {code})',
+    },
+    'euEvent.unknown': {
+      'TR': 'Bilinmeyen olay',
+      'EN': 'Unknown event',
+      'DE': 'Unbekanntes Ereignis',
+    },
+    'euFault.unknown': {
+      'TR': 'Bilinmeyen arıza',
+      'EN': 'Unknown fault',
+      'DE': 'Unbekannte Störung',
+    },
+    'euEvent.invalidCard': {
+      'TR': 'Geçersiz kart takıldı',
+      'EN': 'Insertion of a non-valid card',
+      'DE': 'Einstecken einer ungültigen Karte',
+    },
+    'euEvent.cardConflict': {
+      'TR': 'Kart çakışması',
+      'EN': 'Card conflict',
+      'DE': 'Kartenkonflikt',
+    },
+    'euEvent.timeOverlap': {
+      'TR': 'Zaman çakışması',
+      'EN': 'Time overlap',
+      'DE': 'Zeitüberschneidung',
+    },
+    'euEvent.drivingWithoutCard': {
+      'TR': 'Uygun olmayan kartla sürüş',
+      'EN': 'Driving without an appropriate card',
+      'DE': 'Fahren ohne geeignete Karte',
+    },
+    'euEvent.cardInsertedWhileDriving': {
+      'TR': 'Sürüş sırasında kart takıldı',
+      'EN': 'Card inserted while driving',
+      'DE': 'Karte während der Fahrt eingesteckt',
+    },
+    'euEvent.lastSessionNotClosed': {
+      'TR': 'Kart oturumu düzgün kapatılmadı',
+      'EN': 'Last card session not correctly closed',
+      'DE': 'Letzte Kartensitzung nicht korrekt beendet',
+    },
+    'euEvent.overSpeeding': {
+      'TR': 'Hız aşımı',
+      'EN': 'Over speeding',
+      'DE': 'Geschwindigkeitsüberschreitung',
+    },
+    'euEvent.powerInterruption': {
+      'TR': 'Güç kesintisi',
+      'EN': 'Power supply interruption',
+      'DE': 'Unterbrechung der Stromversorgung',
+    },
+    'euEvent.motionDataError': {
+      'TR': 'Hareket verisi hatası',
+      'EN': 'Motion data error',
+      'DE': 'Fehler bei Bewegungsdaten',
+    },
+    'euEvent.vehicleMotionConflict': {
+      'TR': 'Araç hareket çakışması',
+      'EN': 'Vehicle motion conflict',
+      'DE': 'Konflikt bei der Fahrzeugbewegung',
+    },
+    'euEvent.sensorChanged': {
+      'TR': 'Hareket sensöründe yetkisiz değişiklik',
+      'EN': 'Unauthorised change of motion sensor',
+      'DE': 'Unbefugter Austausch des Bewegungssensors',
+    },
+    'euFault.vuNoDetail': {
+      'TR': 'Kayıt cihazı arızası: detay yok',
+      'EN': 'Recording equipment fault, no further details',
+      'DE': 'Störung des Kontrollgeräts, keine Details',
+    },
+    'euFault.vuInternal': {
+      'TR': 'Kayıt cihazı arızası: cihaz iç arızası',
+      'EN': 'Recording equipment fault: VU internal fault',
+      'DE': 'Störung des Kontrollgeräts: interne VU-Störung',
+    },
+    'euFault.printer': {
+      'TR': 'Kayıt cihazı arızası: yazıcı arızası',
+      'EN': 'Recording equipment fault: printer fault',
+      'DE': 'Störung des Kontrollgeräts: Druckerstörung',
+    },
+    'euFault.display': {
+      'TR': 'Kayıt cihazı arızası: ekran arızası',
+      'EN': 'Recording equipment fault: display fault',
+      'DE': 'Störung des Kontrollgeräts: Anzeigestörung',
+    },
+    'euFault.download': {
+      'TR': 'Kayıt cihazı arızası: indirme arızası',
+      'EN': 'Recording equipment fault: downloading fault',
+      'DE': 'Störung des Kontrollgeräts: Downloadstörung',
+    },
+    'euFault.sensor': {
+      'TR': 'Kayıt cihazı arızası: sensör arızası',
+      'EN': 'Recording equipment fault: sensor fault',
+      'DE': 'Störung des Kontrollgeräts: Sensorstörung',
+    },
+    'euFault.cardNoDetail': {
+      'TR': 'Kart arızası: detay yok',
+      'EN': 'Card fault, no further details',
+      'DE': 'Kartenstörung, keine Details',
+    },
+    'cardEv.noCard': {
+      'TR': 'Kart takılmadı (sürüş)',
+      'EN': 'No card inserted (driving)',
+      'DE': 'Keine Karte eingesteckt (Fahrt)',
+    },
+    'cardEv.cardRemoved': {
+      'TR': 'Kart çıkarıldı (sürüş sırasında)',
+      'EN': 'Card removed (while driving)',
+      'DE': 'Karte entnommen (während der Fahrt)',
+    },
+    'cardEv.sensorError': {
+      'TR': 'Sensör hatası',
+      'EN': 'Sensor error',
+      'DE': 'Sensorfehler',
+    },
+    'cardEv.dataIntegrity': {
+      'TR': 'Veri bütünlüğü hatası',
+      'EN': 'Data integrity error',
+      'DE': 'Datenintegritätsfehler',
+    },
+    'cardEv.lastPosition': {
+      'TR': 'Son geçerli konum',
+      'EN': 'Last valid position',
+      'DE': 'Letzte gültige Position',
+    },
+    'cardEv.calibration': {
+      'TR': 'Kalibrasyon hatası',
+      'EN': 'Calibration error',
+      'DE': 'Kalibrierfehler',
+    },
+    'cardEv.timeViolation': {
+      'TR': 'Süre ihlali',
+      'EN': 'Time infringement',
+      'DE': 'Zeitverstoß',
+    },
+    'cardFault.cardReader': {
+      'TR': 'Kart okuyucu arızası',
+      'EN': 'Card reader fault',
+      'DE': 'Kartenleserstörung',
+    },
+    'cardFault.printer': {
+      'TR': 'Yazıcı arızası',
+      'EN': 'Printer fault',
+      'DE': 'Druckerstörung',
+    },
+    'cardFault.display': {
+      'TR': 'Ekran arızası',
+      'EN': 'Display fault',
+      'DE': 'Anzeigestörung',
+    },
+    'cardFault.download': {
+      'TR': 'İndirme arızası',
+      'EN': 'Downloading fault',
+      'DE': 'Downloadstörung',
+    },
+    'cardFault.sensor': {
+      'TR': 'Sensör arızası',
+      'EN': 'Sensor fault',
+      'DE': 'Sensorstörung',
+    },
+    'cardFault.electronics': {
+      'TR': 'Dahili elektronik arıza',
+      'EN': 'Internal electronics fault',
+      'DE': 'Interne Elektronikstörung',
+    },
+    'dtc.002007': {
+      'TR': 'Sensör güç kaynağı: üst sınırın üzerinde',
+      'EN': 'Sensor power supply: above upper limit',
+      'DE': 'Sensorversorgung: über dem oberen Grenzwert',
+    },
+    'dtc.002003': {
+      'TR': 'Sensör güç kaynağı: alt sınırın altında',
+      'EN': 'Sensor power supply: below lower limit',
+      'DE': 'Sensorversorgung: unter dem unteren Grenzwert',
+    },
+    'dtc.002004': {
+      'TR': 'Sensör güç kaynağı: sinyal yok',
+      'EN': 'Sensor power supply: no signal',
+      'DE': 'Sensorversorgung: kein Signal',
+    },
+    'dtc.000007': {
+      'TR': 'Takograf güç kaynağı: üst sınırın üzerinde',
+      'EN': 'Tachograph power supply: above upper limit',
+      'DE': 'Versorgung Fahrtenschreiber: über dem oberen Grenzwert',
+    },
+    'dtc.000003': {
+      'TR': 'Takograf güç kaynağı: alt sınırın altında',
+      'EN': 'Tachograph power supply: below lower limit',
+      'DE': 'Versorgung Fahrtenschreiber: unter dem unteren Grenzwert',
+    },
+    'dtc.000004': {
+      'TR': 'Takograf güç kaynağı: sinyal yok',
+      'EN': 'Tachograph power supply: no signal',
+      'DE': 'Versorgung Fahrtenschreiber: kein Signal',
+    },
+    'dtc.000200': {
+      'TR': 'Sürücü Kartı 1 hatası',
+      'EN': 'Driver card 1 error',
+      'DE': 'Fehler Fahrerkarte 1',
+    },
+    'dtc.000300': {
+      'TR': 'Sürücü Kartı 2 hatası',
+      'EN': 'Driver card 2 error',
+      'DE': 'Fehler Fahrerkarte 2',
+    },
+    'dtc.000660': {
+      'TR': 'Yazıcıda kağıt kalmadı',
+      'EN': 'Printer out of paper',
+      'DE': 'Drucker ohne Papier',
+    },
+    'dtc.002180': {
+      'TR': 'Sensörden hız sinyali gelmiyor',
+      'EN': 'No speed signal from the sensor',
+      'DE': 'Kein Geschwindigkeitssignal vom Sensor',
+    },
+    'dtc.002280': {
+      'TR': 'Geçersiz hız sinyali veya veri hattı hatası',
+      'EN': 'Invalid speed signal or data line error',
+      'DE': 'Ungültiges Geschwindigkeitssignal oder Fehler der Datenleitung',
+    },
+    'dtc.002380': {
+      'TR': 'Hız sensörü — Kayıt Ünitesi arası veri hattı sinyali yok',
+      'EN': 'No data line signal between speed sensor and recording unit',
+      'DE':
+          'Kein Signal auf der Datenleitung zwischen Geschwindigkeitssensor und Registriereinheit',
+    },
+    'dtc.002452': {
+      'TR': 'Sensör / takograf imza uyuşmazlığı',
+      'EN': 'Sensor / tachograph signature mismatch',
+      'DE': 'Signaturabweichung Sensor / Fahrtenschreiber',
+    },
+    'dtc.000800': {
+      'TR': 'Saat/tarih hatası',
+      'EN': 'Clock/date error',
+      'DE': 'Uhrzeit-/Datumsfehler',
+    },
+    'dtc.000900': {
+      'TR': 'Kontak kapalı ama hız darbeleri algılanıyor',
+      'EN': 'Ignition off but speed pulses detected',
+      'DE': 'Zündung aus, aber Geschwindigkeitsimpulse erkannt',
+    },
+    'dtc.000A70': {
+      'TR': 'CAN veri yolu dahili hatası',
+      'EN': 'CAN bus internal error',
+      'DE': 'Interner CAN-Bus-Fehler',
+    },
+    'dtc.000B78': {
+      'TR': 'CAN veri yolu kapalı (bus off)',
+      'EN': 'CAN bus off',
+      'DE': 'CAN-Bus abgeschaltet (Bus-off)',
+    },
+    'dtc.000D33': {
+      'TR': 'Kalibrasyon belleği okuma/yazma hatası',
+      'EN': 'Calibration memory read/write error',
+      'DE': 'Lese-/Schreibfehler im Kalibrierspeicher',
+    },
+    'dtc.000D40': {
+      'TR': 'Kalibrasyon hatası',
+      'EN': 'Calibration error',
+      'DE': 'Kalibrierfehler',
+    },
+    'dtc.000700': {
+      'TR': 'Yazıcı hatası',
+      'EN': 'Printer error',
+      'DE': 'Druckerfehler',
+    },
+    'dtc.000400': {
+      'TR': 'Kart okuyucu 1 hatası',
+      'EN': 'Card reader 1 error',
+      'DE': 'Fehler Kartenleser 1',
+    },
+    'dtc.000500': {
+      'TR': 'Kart okuyucu 2 hatası',
+      'EN': 'Card reader 2 error',
+      'DE': 'Fehler Kartenleser 2',
+    },
+    'dtc.000F00': {
+      'TR': 'Düğme/tuş takımı hatası',
+      'EN': 'Button/keypad error',
+      'DE': 'Tasten-/Tastaturfehler',
+    },
+    'dtc.001030': {
+      'TR': 'Dahili ekran hatası',
+      'EN': 'Internal display error',
+      'DE': 'Interner Anzeigefehler',
+    },
+    'dtc.002508': {
+      'TR': 'Sensör dahili hatası',
+      'EN': 'Sensor internal error',
+      'DE': 'Interner Sensorfehler',
+    },
+    'dtc.003000': {
+      'TR': 'Hız darbesi çıkışı (Kayıt Ünitesi) hatası',
+      'EN': 'Speed pulse output (recording unit) error',
+      'DE': 'Fehler am Geschwindigkeitsimpulsausgang (Registriereinheit)',
+    },
+    'dtc.000139': {
+      'TR': 'Kayıt ünitesi dahili hatası',
+      'EN': 'Recording unit internal error',
+      'DE': 'Interner Fehler der Registriereinheit',
+    },
+    'ddl.overview': {
+      'TR': 'Genel bakış verisi alınıyor…',
+      'EN': 'Reading overview data…',
+      'DE': 'Übersichtsdaten werden gelesen…',
+    },
+    'ddl.eventsFaults': {
+      'TR': 'Olaylar ve arızalar alınıyor…',
+      'EN': 'Reading events and faults…',
+      'DE': 'Ereignisse und Störungen werden gelesen…',
+    },
+    'ddl.detailedSpeed': {
+      'TR': 'Detaylı hız verisi alınıyor…',
+      'EN': 'Reading detailed speed data…',
+      'DE': 'Detaillierte Geschwindigkeitsdaten werden gelesen…',
+    },
+    'ddl.technical': {
+      'TR': 'Teknik veri alınıyor…',
+      'EN': 'Reading technical data…',
+      'DE': 'Technische Daten werden gelesen…',
+    },
+    'ddl.card': {
+      'TR': 'Sürücü kartı verisi alınıyor…',
+      'EN': 'Reading driver card data…',
+      'DE': 'Fahrerkartendaten werden gelesen…',
+    },
+    'ddl.activityDay': {
+      'TR':
+          'Aktivite verisi kontrol ediliyor: {date} ({index}/{total}, {found} günde veri bulundu)',
+      'EN':
+          'Checking activity data: {date} ({index}/{total}, data found on {found} days)',
+      'DE':
+          'Tätigkeitsdaten werden geprüft: {date} ({index}/{total}, Daten an {found} Tagen gefunden)',
+    },
+    'dbg.pdfFailed': {
+      'TR': 'PDF oluşturulamadı: {error}',
+      'EN': 'Could not create the PDF: {error}',
+      'DE': 'PDF konnte nicht erstellt werden: {error}',
+    },
+    'dbg.shareFailed': {
+      'TR': 'Log paylaşılamadı: {error}',
+      'EN': 'Could not share the log: {error}',
+      'DE': 'Protokoll konnte nicht geteilt werden: {error}',
+    },
+    'dbg.exportPdf': {
+      'TR': 'PDF olarak indir / paylaş',
+      'EN': 'Download / share as PDF',
+      'DE': 'Als PDF herunterladen / teilen',
+    },
+    'dbg.shareText': {
+      'TR': 'Metin olarak paylaş',
+      'EN': 'Share as text',
+      'DE': 'Als Text teilen',
+    },
+    'dbg.autoScrollOn': {
+      'TR': 'Otomatik kaydırma açık',
+      'EN': 'Auto-scroll on',
+      'DE': 'Automatisches Scrollen an',
+    },
+    'dbg.autoScrollOff': {
+      'TR': 'Otomatik kaydırma kapalı',
+      'EN': 'Auto-scroll off',
+      'DE': 'Automatisches Scrollen aus',
+    },
+    'dbg.clear': {'TR': 'Temizle', 'EN': 'Clear', 'DE': 'Leeren'},
+    'dbg.noLogDongle': {
+      'TR': 'Henüz log yok. Dongle\'a bağlanınca burada görünecek.',
+      'EN': 'No log yet. It appears here once you connect to the dongle.',
+      'DE':
+          'Noch kein Protokoll. Es erscheint hier, sobald Sie mit dem Dongle verbunden sind.',
+    },
+    'dbg.noLogDevice': {
+      'TR': 'Henüz log yok. Cihaza bağlanınca burada görünecek.',
+      'EN': 'No log yet. It appears here once you connect to a device.',
+      'DE':
+          'Noch kein Protokoll. Es erscheint hier, sobald Sie mit einem Gerät verbunden sind.',
+    },
+    'dbg.devLog': {
+      'TR': 'Geliştirici Logu',
+      'EN': 'Developer Log',
+      'DE': 'Entwicklerprotokoll',
+    },
+    'dbg.closeDownloadPanel': {
+      'TR': 'İndirme testi panelini kapat',
+      'EN': 'Close the download test panel',
+      'DE': 'Download-Testbereich schließen',
+    },
+    'dbg.downloadPanel': {
+      'TR': 'İndirme testi paneli (0x0D)',
+      'EN': 'Download test panel (0x0D)',
+      'DE': 'Download-Testbereich (0x0D)',
+    },
+    'dbg.downloadResultsTooltip': {
+      'TR': 'İndirme Sonuçları (ham veri + ASCII)',
+      'EN': 'Download results (raw data + ASCII)',
+      'DE': 'Download-Ergebnisse (Rohdaten + ASCII)',
+    },
+    'dbg.downloadTestTitle': {
+      'TR': 'İndirme Testi — her adımı tek tek gönder, sonucu log\'da izle',
+      'EN':
+          'Download test — send each step on its own and follow the result in the log',
+      'DE':
+          'Download-Test — jeden Schritt einzeln senden und das Ergebnis im Protokoll verfolgen',
+    },
+    'dbg.prefix': {'TR': 'Ön ek:', 'EN': 'Prefix:', 'DE': 'Präfix:'},
+    'dbg.prefixDocumented': {
+      'TR': '(belgelenen, henüz donanımda doğrulanmadı)',
+      'EN': '(documented, not yet confirmed on hardware)',
+      'DE': '(dokumentiert, auf der Hardware noch nicht bestätigt)',
+    },
+    'dbg.prefixVerified': {
+      'TR': '(RDBI\'de çalıştığı doğrulanmış)',
+      'EN': '(confirmed to work with RDBI)',
+      'DE': '(mit RDBI als funktionierend bestätigt)',
+    },
+    'dbg.stepStart': {'TR': 'Başlat', 'EN': 'Start', 'DE': 'Start'},
+    'dbg.stepSession': {
+      'TR': 'Oturum Aç',
+      'EN': 'Open Session',
+      'DE': 'Sitzung öffnen',
+    },
+    'dbg.stepRequest': {
+      'TR': 'İndirme Talebi',
+      'EN': 'Download Request',
+      'DE': 'Download-Anfrage',
+    },
+    'dbg.stepExit': {'TR': 'Sonlandır', 'EN': 'Finish', 'DE': 'Beenden'},
+    'dbg.stepClose': {'TR': 'Kapat', 'EN': 'Close', 'DE': 'Schließen'},
+    'dbg.date': {
+      'TR': 'Tarih: {date}',
+      'EN': 'Date: {date}',
+      'DE': 'Datum: {date}',
+    },
+    'dbg.driverSlot': {
+      'TR': 'Sürücü {slot}',
+      'EN': 'Driver {slot}',
+      'DE': 'Fahrer {slot}',
+    },
+    'dbg.blockOverview': {
+      'TR': 'Genel Bakış',
+      'EN': 'Overview',
+      'DE': 'Übersicht',
+    },
+    'dbg.blockActivities': {
+      'TR': 'Aktiviteler',
+      'EN': 'Activities',
+      'DE': 'Tätigkeiten',
+    },
+    'dbg.blockEventsFaults': {
+      'TR': 'Olaylar ve Hatalar',
+      'EN': 'Events and Faults',
+      'DE': 'Ereignisse und Störungen',
+    },
+    'dbg.blockDetailedSpeed': {
+      'TR': 'Detaylı Hız',
+      'EN': 'Detailed Speed',
+      'DE': 'Detaillierte Geschwindigkeit',
+    },
+    'dbg.blockTechnical': {
+      'TR': 'Teknik Veriler',
+      'EN': 'Technical Data',
+      'DE': 'Technische Daten',
+    },
+    'dbg.blockCard': {
+      'TR': 'Sürücü Kartı',
+      'EN': 'Driver Card',
+      'DE': 'Fahrerkarte',
+    },
+    'dbg.resultsTitle': {
+      'TR': 'İndirme Sonuçları',
+      'EN': 'Download Results',
+      'DE': 'Download-Ergebnisse',
+    },
+    'dbg.saveDdd': {
+      'TR': 'Kaydet (.ddd)',
+      'EN': 'Save (.ddd)',
+      'DE': 'Speichern (.ddd)',
+    },
+    'dbg.saveNoData': {
+      'TR': 'Kaydedilemedi — hiç gerçek veri yok.',
+      'EN': 'Not saved — there is no real data.',
+      'DE': 'Nicht gespeichert — es gibt keine echten Daten.',
+    },
+    'dbg.saved': {
+      'TR': 'Kaydedildi ve ayrıştırıldı — Dosyalar ekranında.',
+      'EN': 'Saved and parsed — see the Files screen.',
+      'DE': 'Gespeichert und ausgewertet — siehe Dateien.',
+    },
+    'dbg.noResults': {
+      'TR':
+          'Henüz sonuç yok. İndirme Testi panelinde bir blok gönderip tamamlanmasını bekle — sonuç burada görünecek.',
+      'EN':
+          'No results yet. Send a block in the download test panel and wait for it to finish — the result shows up here.',
+      'DE':
+          'Noch keine Ergebnisse. Senden Sie im Download-Testbereich einen Block und warten Sie, bis er fertig ist — das Ergebnis erscheint hier.',
+    },
+    'dbg.ascii': {
+      'TR': 'ASCII (yazdırılabilir karakterler)',
+      'EN': 'ASCII (printable characters)',
+      'DE': 'ASCII (druckbare Zeichen)',
+    },
+    'dbg.noAnswer': {
+      'TR': 'Yanıt yok',
+      'EN': 'No answer',
+      'DE': 'Keine Antwort',
+    },
+    'dbg.valuesTitle': {
+      'TR': 'Ham Değerler (Tanılama)',
+      'EN': 'Raw Values (Diagnostics)',
+      'DE': 'Rohwerte (Diagnose)',
+    },
+    'dbg.dongleValuesTitle': {
+      'TR': 'Dongle — Ham Değerler',
+      'EN': 'Dongle — Raw Values',
+      'DE': 'Dongle — Rohwerte',
+    },
+    'dbg.resumeLive': {
+      'TR': 'Canlı güncellemeyi devam ettir',
+      'EN': 'Resume live updates',
+      'DE': 'Live-Aktualisierung fortsetzen',
+    },
+    'dbg.pauseLive': {
+      'TR': 'Canlı güncellemeyi durdur',
+      'EN': 'Pause live updates',
+      'DE': 'Live-Aktualisierung anhalten',
+    },
+    'dbg.liveTraceTitle': {
+      'TR': 'Canlı İletişim Kaydı (Son Bağlantı)',
+      'EN': 'Live Communication Log (Last Connection)',
+      'DE': 'Live-Kommunikationsprotokoll (letzte Verbindung)',
+    },
+    'dbg.liveTraceHint': {
+      'TR':
+          'Bağlantıyı yeniden başlat — her alan okunduğu anda burada gerçek, parse edilmiş değeriyle görünür ve her ~20 saniyelik yenileme döngüsünde güncellenir.',
+      'EN':
+          'Restart the connection — each field shows here with its real, parsed value as soon as it is read, and updates on every ~20-second refresh.',
+      'DE':
+          'Verbindung neu starten — jedes Feld erscheint hier mit seinem echten, ausgewerteten Wert, sobald es gelesen ist, und wird bei jeder Aktualisierung (~20 s) erneuert.',
+    },
+    'dbg.dongleTraceTitle': {
+      'TR': 'Canlı İletişim Kaydı (Dongle)',
+      'EN': 'Live Communication Log (Dongle)',
+      'DE': 'Live-Kommunikationsprotokoll (Dongle)',
+    },
+    'dbg.dongleTraceHint': {
+      'TR':
+          'Dongle üzerinden "Bağlan" ile bağlan — her alan okunduğu anda burada gerçek, parse edilmiş değeriyle görünür.',
+      'EN':
+          'Connect through the dongle with "Connect" — each field shows here with its real, parsed value as soon as it is read.',
+      'DE':
+          'Über den Dongle mit „Verbinden“ verbinden — jedes Feld erscheint hier mit seinem echten, ausgewerteten Wert, sobald es gelesen ist.',
+    },
+    'dbg.noRecords': {
+      'TR': 'Henüz kayıt yok — bağlantı kurulmadı veya handshake başlamadı.',
+      'EN': 'No records yet — no connection, or the handshake has not started.',
+      'DE':
+          'Noch keine Einträge — keine Verbindung oder der Handshake hat nicht begonnen.',
+    },
+    'dbg.noRecordsDongle': {
+      'TR':
+          'Henüz kayıt yok — dongle\'a bağlanılmadı veya el sıkışma başlamadı.',
+      'EN':
+          'No records yet — not connected to the dongle, or the handshake has not started.',
+      'DE':
+          'Noch keine Einträge — nicht mit dem Dongle verbunden oder der Handshake hat nicht begonnen.',
+    },
+    'dbg.colField': {'TR': 'Alan', 'EN': 'Field', 'DE': 'Feld'},
+    'dbg.colValue': {'TR': 'Değer', 'EN': 'Value', 'DE': 'Wert'},
+    'dbg.colStatus': {'TR': 'Durum', 'EN': 'Status', 'DE': 'Status'},
+    'bt.dongleDisconnected': {
+      'TR': 'Dongle bağlantısı koptu',
+      'EN': 'The dongle disconnected',
+      'DE': 'Die Dongle-Verbindung wurde getrennt',
     },
   };
 

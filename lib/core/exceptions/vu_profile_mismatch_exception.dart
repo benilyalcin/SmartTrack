@@ -1,3 +1,4 @@
+import '../localization/localization.dart';
 import 'ble_connection_exception.dart';
 
 /// The device found is not the kind of tachograph the link profile is for:
@@ -9,10 +10,10 @@ class VuProfileMismatchException extends BleConnectionException {
   /// STC 8255's dongle does not.
   final bool deviceHasIts;
 
-  const VuProfileMismatchException({required this.deviceHasIts})
+  VuProfileMismatchException({required this.deviceHasIts})
     : super(
-        message: deviceHasIts
-            ? 'Cihazda ITS servisleri var; seçilen profil bu cihaza uymuyor.'
-            : 'Cihazda ITS servisleri yok; seçilen profil bu cihaza uymuyor.',
+        message: AppLocalizations.text(
+          deviceHasIts ? 'bt.profileHasIts' : 'bt.profileNoIts',
+        ),
       );
 }

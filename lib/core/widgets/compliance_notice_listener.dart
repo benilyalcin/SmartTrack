@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../localization/localization.dart';
 import '../providers/app_state.dart';
 
 class ComplianceNoticeListener extends StatefulWidget {
@@ -65,7 +66,10 @@ class _ComplianceNoticeListenerState extends State<ComplianceNoticeListener> {
               _shownForId = null;
             },
             child: Text(
-              'Kapat',
+              AppLocalizations.getText(
+                appState.selectedLanguage,
+                'common.close',
+              ),
               style: TextStyle(color: foreground, fontWeight: FontWeight.bold),
             ),
           ),

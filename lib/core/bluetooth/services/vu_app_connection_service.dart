@@ -337,7 +337,9 @@ class VuAppConnectionService implements BleConnectionRepository {
             .firstWhere((s) => s != BluetoothBondState.bonding)
             .timeout(const Duration(seconds: _bondTimeoutSeconds));
         if (state != BluetoothBondState.bonded) {
-          throw StateError('Eşleşme sonucu: ${state.name}');
+          throw StateError(
+            AppLocalizations.text('bt.bondResult', {'state': state.name}),
+          );
         }
       } else if (state == BluetoothBondState.none) {
         _log('Eşleşme başlatılıyor (Numeric Comparison).', LogLevel.info);

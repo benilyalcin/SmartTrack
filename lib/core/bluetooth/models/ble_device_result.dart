@@ -1,3 +1,5 @@
+import '../../localization/localization.dart';
+
 class BleDeviceResult {
   final String deviceId;
   final String name;
@@ -21,7 +23,8 @@ class BleDeviceResult {
 
   bool get hasName => name.isNotEmpty;
 
-  String get displayName => hasName ? name : 'Bilinmeyen Cihaz';
+  String get displayName =>
+      hasName ? name : AppLocalizations.text('bt.unknownDeviceName');
 
   bool get isTachographDevice {
     final n = name.toLowerCase();

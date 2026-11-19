@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../core/localization/localization.dart';
 import '../../core/services/app_log_service.dart';
 import '../../core/services/kline_log_export_service.dart';
 import '../../core/widgets/app_snackbar.dart';
+
+String _t(String key, [Map<String, Object?> args = const {}]) =>
+    AppLocalizations.text(key, args);
 
 class KLineLogPage extends StatefulWidget {
   /// Shown as a tab inside the main layout rather than pushed over it: no
@@ -43,7 +47,7 @@ class _KLineLogPageState extends State<KLineLogPage> {
       if (mounted) {
         showAppSnackBar(
           context,
-          'PDF oluşturulamadı: $e',
+          _t('dbg.pdfFailed', {'error': e}),
           type: AppSnackBarType.error,
         );
       }
@@ -61,7 +65,7 @@ class _KLineLogPageState extends State<KLineLogPage> {
       if (mounted) {
         showAppSnackBar(
           context,
-          'Log paylaşılamadı: $e',
+          _t('dbg.shareFailed', {'error': e}),
           type: AppSnackBarType.error,
         );
       }
@@ -80,13 +84,13 @@ class _KLineLogPageState extends State<KLineLogPage> {
         automaticallyImplyLeading: !widget.embedded,
         toolbarHeight: widget.embedded ? 44 : null,
         title: Text(
-          widget.embedded ? 'Geliştirici Logu' : 'Log',
+          widget.embedded ? _t('dbg.devLog') : 'Log',
           style: widget.embedded ? const TextStyle(fontSize: 16) : null,
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.share_outlined),
-            tooltip: 'Metin olarak paylaş',
+            tooltip: _t('dbg.shareText'),
             onPressed: _exporting ? null : _shareText,
           ),
           IconButton(
@@ -100,19 +104,19 @@ class _KLineLogPageState extends State<KLineLogPage> {
                     ),
                   )
                 : const Icon(Icons.picture_as_pdf_outlined),
-            tooltip: 'PDF olarak indir / paylaş',
+            tooltip: _t('dbg.exportPdf'),
             onPressed: _exporting ? null : _exportPdf,
           ),
           IconButton(
             icon: Icon(_autoScroll ? Icons.vertical_align_bottom : Icons.pause),
             tooltip: _autoScroll
-                ? 'Otomatik kaydırma açık'
-                : 'Otomatik kaydırma kapalı',
+                ? _t('dbg.autoScrollOn')
+                : _t('dbg.autoScrollOff'),
             onPressed: () => setState(() => _autoScroll = !_autoScroll),
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            tooltip: 'Temizle',
+            tooltip: _t('dbg.clear'),
             onPressed: () => AppLogService.instance.clear(),
           ),
         ],
@@ -123,10 +127,10 @@ class _KLineLogPageState extends State<KLineLogPage> {
           final lines = AppLogService.instance.lines;
           _scrollToBottomIfNeeded();
           if (lines.isEmpty) {
-            return const Center(
+            return Center(
               child: Text(
-                'Henüz log yok. Cihaza bağlanınca burada görünecek.',
-                style: TextStyle(color: Colors.white54),
+                _t('dbg.noLogDevice'),
+                style: const TextStyle(color: Colors.white54),
               ),
             );
           }

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/localization/localization.dart';
 import '../../core/providers/app_state.dart';
 import '../../core/services/dongle_download_result_service.dart';
 import '../../core/widgets/app_snackbar.dart';
+
+String _t(String key, [Map<String, Object?> args = const {}]) =>
+    AppLocalizations.text(key, args);
 
 class DongleDownloadResultsPage extends StatefulWidget {
   const DongleDownloadResultsPage({super.key});
@@ -35,16 +39,12 @@ class _DongleDownloadResultsPageState extends State<DongleDownloadResultsPage> {
       if (result.card == null && result.vehicleUnit == null) {
         showAppSnackBar(
           context,
-          'Kaydedilemedi — hiç gerçek veri yok.',
+          _t('dbg.saveNoData'),
           type: AppSnackBarType.error,
         );
         return;
       }
-      showAppSnackBar(
-        context,
-        'Kaydedildi ve ayrıştırıldı — Dosyalar ekranında.',
-        type: AppSnackBarType.success,
-      );
+      showAppSnackBar(context, _t('dbg.saved'), type: AppSnackBarType.success);
 
       context.go('/ddd-files');
     } finally {
@@ -59,7 +59,7 @@ class _DongleDownloadResultsPageState extends State<DongleDownloadResultsPage> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: const Text('İndirme Sonuçları'),
+        title: Text(_t('dbg.resultsTitle')),
         actions: [
           IconButton(
             icon: _saving
@@ -72,12 +72,12 @@ class _DongleDownloadResultsPageState extends State<DongleDownloadResultsPage> {
                     ),
                   )
                 : const Icon(Icons.save_alt, color: Colors.lightBlueAccent),
-            tooltip: 'Kaydet (.ddd)',
+            tooltip: _t('dbg.saveDdd'),
             onPressed: _saving ? null : _saveAsDdd,
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            tooltip: 'Temizle',
+            tooltip: _t('dbg.clear'),
             onPressed: () => DongleDownloadResultService.instance.clear(),
           ),
         ],
@@ -87,13 +87,13 @@ class _DongleDownloadResultsPageState extends State<DongleDownloadResultsPage> {
         builder: (context, _) {
           final results = DongleDownloadResultService.instance.results;
           if (results.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Text(
-                  'Henüz sonuç yok. İndirme Testi panelinde bir blok gönderip tamamlanmasını bekle — sonuç burada görünecek.',
+                  _t('dbg.noResults'),
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white54),
+                  style: const TextStyle(color: Colors.white54),
                 ),
               ),
             );
@@ -190,7 +190,7 @@ class _ResultCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'ASCII (yazdırılabilir karakterler)',
+              _t('dbg.ascii'),
               style: TextStyle(
                 color: Colors.lightBlueAccent.withValues(alpha: 0.8),
                 fontSize: 11,

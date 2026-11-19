@@ -357,9 +357,8 @@ class AppBluetoothService {
     bool allowTypeMismatch = false,
   }) async {
     if (!await ensurePermissions()) {
-      throw const BleConnectionException(
-        message:
-            'Bluetooth izni eksik. Lütfen uygulama ayarlarından "Yakındaki cihazlar" iznini verin.',
+      throw BleConnectionException(
+        message: AppLocalizations.text('bt.permissionNearby'),
       );
     }
 
@@ -383,7 +382,7 @@ class AppBluetoothService {
           .timeout(
             _connectTimeoutFor(conn),
             onTimeout: () => throw TimeoutException(
-              'Cihaz yanıt vermiyor (zaman aşımı) — açık ve menzil içinde olduğundan emin olun',
+              AppLocalizations.text('bt.timeoutInRange'),
             ),
           );
       _activeConnection = conn;
@@ -447,9 +446,8 @@ class AppBluetoothService {
     void Function(String message)? onProgress,
   }) async {
     if (!await ensurePermissions()) {
-      throw const BleConnectionException(
-        message:
-            'Bluetooth izni eksik. Lütfen uygulama ayarlarından Bluetooth ve Konum izinlerini kontrol edin.',
+      throw BleConnectionException(
+        message: AppLocalizations.text('bt.permissionBtLocation'),
       );
     }
 
@@ -467,7 +465,7 @@ class AppBluetoothService {
           .timeout(
             _connectTimeout,
             onTimeout: () =>
-                throw TimeoutException('Cihaz yanıt vermiyor (zaman aşımı)'),
+                throw TimeoutException(AppLocalizations.text('scan.timeout')),
           );
       await conn.setNotify('SPP_DATA', enable: true);
       transport = _buildKLineTransport(conn, wirePrefix: 0x0D);
@@ -523,7 +521,7 @@ class AppBluetoothService {
   }) async {
     final conn = _activeConnection;
     if (conn == null || !stcDongleLinked) {
-      throw StateError('No STC dongle link');
+      throw StateError(AppLocalizations.text('bt.dongleNotActive'));
     }
 
     // No new read cycle, and the one under way - the connect handshake can
@@ -538,7 +536,7 @@ class AppBluetoothService {
     }
     _stopLiveRefresh();
     if (!identical(_activeConnection, conn)) {
-      throw StateError('The dongle disconnected');
+      throw StateError(AppLocalizations.text('bt.dongleDisconnected'));
     }
     // Held for the whole transfer, so nothing else starts on the line.
     _refreshInFlight = true;
@@ -593,9 +591,8 @@ class AppBluetoothService {
 
   Future<void> performLegalOnlyDemo(AppBluetoothDevice device) async {
     if (!await ensurePermissions()) {
-      throw const BleConnectionException(
-        message:
-            'Bluetooth izni eksik. Lütfen uygulama ayarlarından Bluetooth ve Konum izinlerini kontrol edin.',
+      throw BleConnectionException(
+        message: AppLocalizations.text('bt.permissionBtLocation'),
       );
     }
     final conn = createConnectionService(
@@ -610,7 +607,7 @@ class AppBluetoothService {
           .timeout(
             _connectTimeout,
             onTimeout: () =>
-                throw TimeoutException('Cihaz yanıt vermiyor (zaman aşımı)'),
+                throw TimeoutException(AppLocalizations.text('scan.timeout')),
           );
       await conn.setNotify('SPP_DATA', enable: true);
       transport = _buildKLineTransport(conn);
@@ -924,7 +921,7 @@ class AppBluetoothService {
   void beginDongleDownloadTest() {
     final conn = _activeConnection;
     if (conn == null || !_wrapKLineForDongle) {
-      throw StateError('Dongle bağlantısı aktif değil');
+      throw StateError(AppLocalizations.text('bt.dongleNotActive'));
     }
     endDongleDownloadTest();
     _downloadTestTransport = _buildKLineTransport(conn, wirePrefix: 0x0D);
@@ -948,7 +945,7 @@ class AppBluetoothService {
   }) {
     final transport = _downloadTestTransport;
     if (transport == null) {
-      throw StateError('İndirme testi oturumu açık değil — önce başlatın');
+      throw StateError(AppLocalizations.text('bt.downloadTestNotOpen'));
     }
     return transport.sendAndReceive(
       frame,
@@ -978,7 +975,7 @@ class AppBluetoothService {
         '$_lineTag [$label]: NEGATIVE RESPONSE, NRC=0x${nrc.toRadixString(16).padLeft(2, '0').toUpperCase()} (${RdbiResponseParser.describeNrc(nrc)})',
       );
       if (nrc == 0x33 || nrc == 0x35 || nrc == 0x36 || nrc == 0x37) {
-        return 'Cihaz güvenlik erişimi istiyor (kalibrasyon/servis kartı gerekebilir)';
+        return AppLocalizations.text('bt.securityAccess');
       }
       // conditionsNotCorrect has two causes on the unit and the answer does
       // not say which: the value is not available now (no valid card in the
@@ -986,20 +983,22 @@ class AppBluetoothService {
       // - it is personal and the driver has not given ITS consent (Annex IC
       // 3.4, Ek-13 ITS_20/24).
       if (nrc == 0x22 && _activeConnection is VuAppConnectionService) {
-        return 'Takograf $label alanını şu an vermiyor: ilgili yuvada geçerli '
-            'kart yok ya da sürücü kişisel veri paylaşımına onay vermemiş.';
+        return AppLocalizations.text('bt.fieldUnavailable', {'label': label});
       }
-      return 'Cihaz $label alanını reddetti (NRC 0x${nrc.toRadixString(16).padLeft(2, '0').toUpperCase()})';
+      return AppLocalizations.text('bt.fieldRejected', {
+        'label': label,
+        'nrc': nrc.toRadixString(16).padLeft(2, '0').toUpperCase(),
+      });
     } else if (response.isEmpty) {
       _log(
         '$_lineTag [$label]: NO RESPONSE (empty — check wiring/adapter/baud)',
       );
-      return 'Cihazdan yanıt gelmiyor (bağlantı/adaptör kontrol edin)';
+      return AppLocalizations.text('bt.noResponse');
     } else {
       _log(
         '$_lineTag [$label]: UNRECOGNIZED RESPONSE (no 0x62 match, no 0x7F)',
       );
-      return 'Cihazdan tanınmayan yanıt geldi';
+      return AppLocalizations.text('bt.unrecognized');
     }
   }
 
@@ -2145,7 +2144,9 @@ class AppBluetoothService {
           spdData != null;
       appState.setTachographDataStatus(
         gotData,
-        reason: gotData ? null : (failureReason ?? 'Cihazdan veri alınamadı'),
+        reason: gotData
+            ? null
+            : (failureReason ?? AppLocalizations.text('bt.noData')),
       );
 
       if (gotData) {
@@ -2206,7 +2207,10 @@ class AppBluetoothService {
       _startLiveRefresh(conn, appState);
     } catch (e) {
       _log('Tachograph Handshake Error: $e');
-      appState.setTachographDataStatus(false, reason: 'Bağlantı hatası: $e');
+      appState.setTachographDataStatus(
+        false,
+        reason: AppLocalizations.text('bt.connectionError', {'error': e}),
+      );
     } finally {
       _refreshInFlight = false;
       if (gated) LinkGate.instance.endLive();

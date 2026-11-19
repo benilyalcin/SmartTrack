@@ -668,7 +668,7 @@ class _AlertsPageState extends State<AlertsPage> {
         items.add(
           _AlertItem(
             icon: Icons.build,
-            title: dtc.description ?? 'Bilinmeyen arıza kodu',
+            title: dtc.description ?? _t('alerts.unknownDtc'),
             subtitle: dtc.hex,
             timestamp: now,
           ),

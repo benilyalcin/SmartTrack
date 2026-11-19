@@ -5,6 +5,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../localization/localization.dart';
+
 class GoogleDriveService {
   GoogleDriveService._();
   static final GoogleDriveService instance = GoogleDriveService._();
@@ -64,12 +66,12 @@ class GoogleDriveService {
   }) async {
     final user = _currentUser;
     if (user == null) {
-      throw StateError('Google hesabı bağlı değil.');
+      throw StateError(AppLocalizations.text('drive.notSignedIn'));
     }
 
     final authenticatedClient = await _googleSignIn.authenticatedClient();
     if (authenticatedClient == null) {
-      throw StateError('Google kimlik doğrulaması alınamadı.');
+      throw StateError(AppLocalizations.text('drive.noAuth'));
     }
     try {
       final api = drive.DriveApi(authenticatedClient);

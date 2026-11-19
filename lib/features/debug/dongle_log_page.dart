@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/localization/localization.dart';
 import '../../core/services/bluetooth_service.dart';
 import '../../core/services/dongle_download_result_service.dart';
 import '../../core/services/dongle_log_service.dart';
@@ -10,17 +11,31 @@ import '../../core/services/kline_log_export_service.dart';
 import '../../core/services/kline_protocol.dart';
 import '../../core/widgets/app_snackbar.dart';
 
-enum _DownloadBlock {
-  overview('Genel Bakış', Icons.description_outlined),
-  activities('Aktiviteler', Icons.event_note_outlined),
-  eventsFaults('Olaylar ve Hatalar', Icons.report_problem_outlined),
-  detailedSpeed('Detaylı Hız', Icons.speed_outlined),
-  technicalData('Teknik Veriler', Icons.build_circle_outlined),
-  card('Sürücü Kartı', Icons.credit_card_outlined);
+String _t(String key, [Map<String, Object?> args = const {}]) =>
+    AppLocalizations.text(key, args);
 
+enum _DownloadBlock {
+  overview('Genel Bakış', 'dbg.blockOverview', Icons.description_outlined),
+  activities('Aktiviteler', 'dbg.blockActivities', Icons.event_note_outlined),
+  eventsFaults(
+    'Olaylar ve Hatalar',
+    'dbg.blockEventsFaults',
+    Icons.report_problem_outlined,
+  ),
+  detailedSpeed('Detaylı Hız', 'dbg.blockDetailedSpeed', Icons.speed_outlined),
+  technicalData(
+    'Teknik Veriler',
+    'dbg.blockTechnical',
+    Icons.build_circle_outlined,
+  ),
+  card('Sürücü Kartı', 'dbg.blockCard', Icons.credit_card_outlined);
+
+  /// Goes into the log lines and the stored results, so it stays Turkish
+  /// like the rest of the log; [labelKey] is what the panel shows.
   final String label;
+  final String labelKey;
   final IconData icon;
-  const _DownloadBlock(this.label, this.icon);
+  const _DownloadBlock(this.label, this.labelKey, this.icon);
 }
 
 class DongleLogPage extends StatefulWidget {
@@ -182,7 +197,7 @@ class _DongleLogPageState extends State<DongleLogPage> {
       if (mounted) {
         showAppSnackBar(
           context,
-          'PDF oluşturulamadı: $e',
+          _t('dbg.pdfFailed', {'error': e}),
           type: AppSnackBarType.error,
         );
       }
@@ -208,13 +223,13 @@ class _DongleLogPageState extends State<DongleLogPage> {
               color: _downloadPanelOpen ? Colors.lightBlueAccent : Colors.white,
             ),
             tooltip: _downloadPanelOpen
-                ? 'İndirme testi panelini kapat'
-                : 'İndirme testi paneli (0x0D)',
+                ? _t('dbg.closeDownloadPanel')
+                : _t('dbg.downloadPanel'),
             onPressed: _toggleDownloadPanel,
           ),
           IconButton(
             icon: const Icon(Icons.data_object),
-            tooltip: 'İndirme Sonuçları (ham veri + ASCII)',
+            tooltip: _t('dbg.downloadResultsTooltip'),
             onPressed: () => context.push('/dongle-download-results'),
           ),
           IconButton(
@@ -228,19 +243,19 @@ class _DongleLogPageState extends State<DongleLogPage> {
                     ),
                   )
                 : const Icon(Icons.picture_as_pdf_outlined),
-            tooltip: 'PDF olarak indir / paylaş',
+            tooltip: _t('dbg.exportPdf'),
             onPressed: _exporting ? null : _exportPdf,
           ),
           IconButton(
             icon: Icon(_autoScroll ? Icons.vertical_align_bottom : Icons.pause),
             tooltip: _autoScroll
-                ? 'Otomatik kaydırma açık'
-                : 'Otomatik kaydırma kapalı',
+                ? _t('dbg.autoScrollOn')
+                : _t('dbg.autoScrollOff'),
             onPressed: () => setState(() => _autoScroll = !_autoScroll),
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            tooltip: 'Temizle',
+            tooltip: _t('dbg.clear'),
             onPressed: () => DongleLogService.instance.clear(),
           ),
         ],
@@ -255,10 +270,10 @@ class _DongleLogPageState extends State<DongleLogPage> {
                 final lines = DongleLogService.instance.lines;
                 _scrollToBottomIfNeeded();
                 if (lines.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
-                      'Henüz log yok. Dongle\'a bağlanınca burada görünecek.',
-                      style: TextStyle(color: Colors.white54),
+                      _t('dbg.noLogDongle'),
+                      style: const TextStyle(color: Colors.white54),
                     ),
                   );
                 }
@@ -302,9 +317,9 @@ class _DongleLogPageState extends State<DongleLogPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'İndirme Testi — her adımı tek tek gönder, sonucu log\'da izle',
-            style: TextStyle(
+          Text(
+            _t('dbg.downloadTestTitle'),
+            style: const TextStyle(
               color: Colors.white70,
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -316,9 +331,9 @@ class _DongleLogPageState extends State<DongleLogPage> {
             spacing: 6,
             runSpacing: 4,
             children: [
-              const Text(
-                'Ön ek:',
-                style: TextStyle(color: Colors.white70, fontSize: 12),
+              Text(
+                _t('dbg.prefix'),
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
               for (final prefix in [0x0D, 0x0C])
                 ChoiceChip(
@@ -342,8 +357,8 @@ class _DongleLogPageState extends State<DongleLogPage> {
                 ),
               Text(
                 _prefixByte == 0x0D
-                    ? '(belgelenen, henüz donanımda doğrulanmadı)'
-                    : '(RDBI\'de çalıştığı doğrulanmış)',
+                    ? _t('dbg.prefixDocumented')
+                    : _t('dbg.prefixVerified'),
                 style: const TextStyle(color: Colors.white38, fontSize: 10),
               ),
             ],
@@ -354,40 +369,40 @@ class _DongleLogPageState extends State<DongleLogPage> {
             runSpacing: 6,
             children: [
               _stepButton(
-                '1. Başlat',
+                '1. ${_t('dbg.stepStart')}',
                 () => _sendStep(
                   KLineFrame.startCommunication,
                   'İndirme-1-StartComm',
                 ),
               ),
               _stepButton(
-                '2. Oturum Aç',
+                '2. ${_t('dbg.stepSession')}',
                 () =>
                     _sendStep(KLineFrame.sessionStandard, 'İndirme-2-Session'),
               ),
               _stepButton(
-                '3. İndirme Talebi',
+                '3. ${_t('dbg.stepRequest')}',
                 () => _sendStep(
                   KLineFrame.requestUpload,
                   'İndirme-3-RequestUpload',
                 ),
               ),
               _stepButton(
-                '4. ${_selectedBlock.label}',
+                '4. ${_t(_selectedBlock.labelKey)}',
                 () => _sendBlockWithContinuation(
                   _frameForSelectedBlock(),
                   'İndirme-4-${_selectedBlock.label}',
                 ),
               ),
               _stepButton(
-                '5. Sonlandır',
+                '5. ${_t('dbg.stepExit')}',
                 () => _sendStep(
                   KLineFrame.requestTransferExit,
                   'İndirme-5-TransferExit',
                 ),
               ),
               _stepButton(
-                '6. Kapat',
+                '6. ${_t('dbg.stepClose')}',
                 () => _sendStep(
                   KLineFrame.stopCommunication,
                   'İndirme-6-StopComm',
@@ -403,7 +418,7 @@ class _DongleLogPageState extends State<DongleLogPage> {
               for (final block in _DownloadBlock.values)
                 ChoiceChip(
                   label: Text(
-                    block.label,
+                    _t(block.labelKey),
                     style: TextStyle(
                       fontSize: 11,
                       color: _selectedBlock == block
@@ -439,7 +454,10 @@ class _DongleLogPageState extends State<DongleLogPage> {
                 color: Colors.lightBlueAccent,
               ),
               label: Text(
-                'Tarih: ${_activitiesDate.day.toString().padLeft(2, '0')}.${_activitiesDate.month.toString().padLeft(2, '0')}.${_activitiesDate.year}',
+                _t('dbg.date', {
+                  'date':
+                      '${_activitiesDate.day.toString().padLeft(2, '0')}.${_activitiesDate.month.toString().padLeft(2, '0')}.${_activitiesDate.year}',
+                }),
                 style: const TextStyle(
                   color: Colors.lightBlueAccent,
                   fontSize: 12,
@@ -461,7 +479,7 @@ class _DongleLogPageState extends State<DongleLogPage> {
                     padding: const EdgeInsets.only(right: 6),
                     child: ChoiceChip(
                       label: Text(
-                        'Sürücü $slot',
+                        _t('dbg.driverSlot', {'slot': slot}),
                         style: TextStyle(
                           fontSize: 11,
                           color: _cardSlot == slot

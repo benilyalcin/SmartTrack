@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../localization/localization.dart';
+
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
@@ -11,9 +13,11 @@ class NotificationService {
   bool _initialized = false;
 
   static const _channelId = 'smarttrack_alerts';
-  static const _channelName = 'Uyarılar ve İhlaller';
-  static const _channelDescription =
-      'Sürüş süresi ihlalleri, mola ve telafi hatırlatmaları';
+  // Android shows these in the system settings; creating the channel again
+  // with the same id renames it, so they follow the app's language.
+  static String get _channelName => AppLocalizations.text('notif.channelName');
+  static String get _channelDescription =>
+      AppLocalizations.text('notif.channelDesc');
 
   Future<void> init() async {
     if (_initialized) return;
@@ -35,7 +39,7 @@ class NotificationService {
             AndroidFlutterLocalNotificationsPlugin
           >();
       await android?.createNotificationChannel(
-        const AndroidNotificationChannel(
+        AndroidNotificationChannel(
           _channelId,
           _channelName,
           description: _channelDescription,
@@ -59,7 +63,7 @@ class NotificationService {
     required String body,
   }) async {
     if (!_initialized) await init();
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: AndroidNotificationDetails(
         _channelId,
         _channelName,
@@ -67,7 +71,7 @@ class NotificationService {
         importance: Importance.high,
         priority: Priority.high,
       ),
-      iOS: DarwinNotificationDetails(),
+      iOS: const DarwinNotificationDetails(),
     );
     await _plugin.show(id, title, body, details);
   }

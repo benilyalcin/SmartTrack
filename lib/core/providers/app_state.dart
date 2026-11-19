@@ -942,18 +942,15 @@ class AppState extends ChangeNotifier {
     if (used >= DrivingTimeCalculator.continuousDrivingLimit) {
       if (!_shownNoticeIds.contains(warnId)) {
         _shownNoticeIds.add(warnId);
-        final targetLabel = activePendingFirstHalfExists
-            ? '30 dakika'
-            : '45 dakika';
-        _pendingContinuousLimitDialogMessage =
-            'Kesintisiz sürüş süreniz yasal sınırı (4 sa 30 dk) '
-            'aştı. Mola süreniz tamamlanmadan sürüşe devam etmeniz idari para cezasına yol açabilir '
-            '(Karayolları Trafik Yönetmeliği Madde 98). Almanız gereken mola süresi: en az $targetLabel.';
+        _pendingContinuousLimitDialogMessage = AppLocalizations.text(
+          'compliance.limitDialog',
+          {'minutes': activePendingFirstHalfExists ? 30 : 45},
+        );
       }
     } else if (used >= const Duration(hours: 4, minutes: 15)) {
       _raiseComplianceNotice(
         preId,
-        'Kesintisiz sürüş süreniz 4 saat 15 dakikaya ulaştı — yakında mola vermeniz gerekiyor.',
+        AppLocalizations.text('compliance.preWarning415'),
         severity: ComplianceNoticeSeverity.info,
       );
     }
@@ -968,9 +965,7 @@ class AppState extends ChangeNotifier {
     if (mismatch) {
       _raiseComplianceNotice(
         id,
-        'Ekip modu: Ana sürücü sürüyor, yedek sürücü dinleniyor. Yedek sürücünün bu süre '
-        'boyunca sürüşe yardımcı bir görev üstlenmediğinden emin olun — aksi halde bu süre '
-        "\"dinlenme\" değil \"diğer çalışma\" sayılır.",
+        AppLocalizations.text('compliance.crewMismatch'),
         severity: ComplianceNoticeSeverity.info,
       );
     } else {
@@ -1808,7 +1803,10 @@ class AppState extends ChangeNotifier {
   /// with no card download for it in all that time, so the stretch is a
   /// question for the driver.
   Future<void> simulateTestReconnect({Duration? simulateAbsence}) async {
-    setBluetoothConnected(true, deviceName: 'Test (Simüle)');
+    setBluetoothConnected(
+      true,
+      deviceName: AppLocalizations.text('bt.simulatedDevice'),
+    );
     if (simulateAbsence != null) {
       _activityData.debugUnexplainedGap(simulateAbsence);
     }
@@ -1852,8 +1850,9 @@ class AppState extends ChangeNotifier {
           closedDuration < const Duration(minutes: 15)) {
         _raiseComplianceNotice(
           'short-break',
-          'Bu ${closedDuration.inMinutes} dakikalık duraklama resmi mola sayılmayabilir '
-              '(en az 15 dakika gerekir) — kesintisiz sürüş sayacınız sıfırlanmadı.',
+          AppLocalizations.text('compliance.shortBreak', {
+            'minutes': closedDuration.inMinutes,
+          }),
           severity: ComplianceNoticeSeverity.info,
         );
       }
