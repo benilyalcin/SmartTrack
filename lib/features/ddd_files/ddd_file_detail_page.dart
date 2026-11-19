@@ -22,6 +22,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/widgets/activity_day_bar_chart.dart';
 import '../../core/widgets/app_snackbar.dart';
+import '../../core/widgets/ddd_source_badge.dart';
 import '../../core/widgets/vu_speed_day_chart.dart';
 
 class DddFileDetailPage extends StatefulWidget {
@@ -150,14 +151,22 @@ class _DddFileDetailPageState extends State<DddFileDetailPage> {
           onPressed: () => context.pop(),
         ),
         const SizedBox(width: 4),
-        Text(
-          _t('ddd.detailTitle'),
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurface,
+        Flexible(
+          child: Text(
+            _t('ddd.detailTitle'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface,
+            ),
           ),
         ),
+        if (_file?.sourceUnit case final source?) ...[
+          const SizedBox(width: 8),
+          DddSourceBadge(source),
+        ],
       ],
     );
   }

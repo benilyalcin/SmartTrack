@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/ddd_file.dart';
+import '../models/tachograph_type.dart';
 import 'ddd_file_storage_io.dart'
     if (dart.library.html) 'ddd_file_storage_web.dart';
 import 'time/legacy_time_migration.dart';
@@ -21,6 +22,7 @@ class DddFileRepository {
     String cardHolderName = '',
     String downloadKind = 'card',
     Uint8List? secondaryBytes,
+    TachographType? sourceUnit,
   }) async {
     final now = DateTime.now();
     final id = now.millisecondsSinceEpoch.toString();
@@ -49,6 +51,7 @@ class DddFileRepository {
       webBytesBase64: webBytesBase64,
       secondaryLocalPath: secondaryLocalPath,
       secondaryWebBytesBase64: secondaryWebBytesBase64,
+      sourceUnit: sourceUnit,
     );
 
     final files = await _readIndex();

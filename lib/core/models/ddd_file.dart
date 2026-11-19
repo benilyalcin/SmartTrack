@@ -1,3 +1,5 @@
+import 'tachograph_type.dart';
+
 class DddFile {
   final String id;
   final DateTime downloadedAt;
@@ -20,6 +22,11 @@ class DddFile {
   final bool isTrashed;
   final DateTime? trashedAt;
 
+  /// The tachograph the file was downloaded from: the STC 8255 through its
+  /// dongle or the ATC 8256 over ITS. Null for files saved before this was
+  /// recorded, and for samples.
+  final TachographType? sourceUnit;
+
   const DddFile({
     required this.id,
     required this.downloadedAt,
@@ -34,6 +41,7 @@ class DddFile {
     this.secondaryWebBytesBase64,
     this.isTrashed = false,
     this.trashedAt,
+    this.sourceUnit,
   });
 
   DddFile copyWith({bool? isTrashed, DateTime? trashedAt}) {
@@ -51,6 +59,7 @@ class DddFile {
       secondaryWebBytesBase64: secondaryWebBytesBase64,
       isTrashed: isTrashed ?? this.isTrashed,
       trashedAt: trashedAt,
+      sourceUnit: sourceUnit,
     );
   }
 
@@ -68,6 +77,7 @@ class DddFile {
     'secondaryWebBytesBase64': secondaryWebBytesBase64,
     'isTrashed': isTrashed,
     'trashedAt': trashedAt?.toUtc().toIso8601String(),
+    'sourceUnit': sourceUnit?.name,
   };
 
   factory DddFile.fromJson(Map<String, dynamic> json) => DddFile(
@@ -86,5 +96,6 @@ class DddFile {
     trashedAt: json['trashedAt'] != null
         ? DateTime.parse(json['trashedAt'] as String)
         : null,
+    sourceUnit: TachographType.values.asNameMap()[json['sourceUnit']],
   );
 }
