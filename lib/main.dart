@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' as fbp;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/localization/localization.dart';
 import 'core/theme/app_theme.dart';
@@ -24,7 +25,14 @@ void main() {
     );
   };
 
-  runZonedGuarded(() => runApp(const SmartTrackApp()), (
+  runZonedGuarded(() {
+    WidgetsFlutterBinding.ensureInitialized();
+    // The Bluetooth library logs two lines for every notification at its
+    // default debug level - some thirty a second during a card download.
+    // Its warnings and errors still show; the app logs what it receives.
+    fbp.FlutterBluePlus.setLogLevel(fbp.LogLevel.info, color: false);
+    runApp(const SmartTrackApp());
+  }, (
     Object error,
     StackTrace stack,
   ) {
